@@ -1,0 +1,18 @@
+{
+  "experiment": "f3a",
+  "seed": 44,
+  "tier": "robust",
+  "case_id": "183946e7d228481d4f98452a292cee42b3fa29850d564ab2e52c8f752b31705b",
+  "result_id": "0a751844b5c42348b41cb4dabeccde557ea87fca735e602677ffba510f8fdd9a",
+  "bundle_det_sha256": "c6cd8607c0ac90fc140e612e4c1b4db6a5ce9e0af406e85ee7f9eef39f186373",
+  "bundle_det_len": 79785,
+  "event_schema_version": 9,
+  "state_schema_version": 4,
+  "source_ref": "main @ 5ac32c4 (5ac32c40432a54ffdd81f1ea94b40a09c1f63d06); event/state schema v9/s4, F6b k=8 bump merged",
+  "toolchain": "rustc-1.93.0",
+  "pins_record": "roadmap/evidence/EXP-F3a-robust.json",
+  "matches_pinned_variant": true,
+  "attempts_per_variant": 3,
+  "attempt_note": "D1: all 3 fresh-process attempts per seed produced a byte-identical bundle.det; this dir vendors one representative attempt (attempt_id is a per-run 128-bit nonce, NOT folded into identity).",
+  "staleness": "v9 content (Certus main @ 5ac32c4). case_id/result_id are the certified per-seed identities in EXP-F3a-robust.json.pinned_variants; bundle_det_sha256/len are build-bound (D-002) and re-derive per identity. On any anchor doubt re-verify against the pins at your vendored commit and re-request; never patch in place."
+}

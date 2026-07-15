@@ -1,0 +1,112 @@
+[
+  {
+    "name": "u8_min",
+    "bytes": "00"
+  },
+  {
+    "name": "u8_max",
+    "bytes": "ff"
+  },
+  {
+    "name": "u16_max",
+    "bytes": "ffff"
+  },
+  {
+    "name": "u32_max",
+    "bytes": "ffffffff"
+  },
+  {
+    "name": "u64_max",
+    "bytes": "ffffffffffffffff"
+  },
+  {
+    "name": "i64_min",
+    "bytes": "0000000000000080"
+  },
+  {
+    "name": "i64_neg1",
+    "bytes": "ffffffffffffffff"
+  },
+  {
+    "name": "utf8_f0",
+    "bytes": "020000006630"
+  },
+  {
+    "name": "utf8_empty",
+    "bytes": "00000000"
+  },
+  {
+    "name": "option_none",
+    "bytes": "00"
+  },
+  {
+    "name": "option_some_u64_7",
+    "bytes": "010700000000000000"
+  },
+  {
+    "name": "enum_eventkind_f0fixture_u16",
+    "bytes": "00f0"
+  },
+  {
+    "name": "f64_pos_zero",
+    "bytes": "0000000000000000"
+  },
+  {
+    "name": "f64_neg_zero_normalized",
+    "bytes": "0000000000000000"
+  },
+  {
+    "name": "f64_1p5",
+    "bytes": "000000000000f83f"
+  },
+  {
+    "name": "file_header",
+    "bytes": "444554424e444c310100000009000000040000007766e239"
+  },
+  {
+    "name": "frame_event_example",
+    "bytes": "012d0000000000000000000000000000000000000000f00016000000000000000000000000000000000000000200000066302c867f00"
+  },
+  {
+    "name": "frame_statetick_example",
+    "bytes": "02bf0000000000000000000000020000000100000000000000000035000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000009000000000000000000620000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000b5d586ce"
+  },
+  {
+    "name": "frame_trailer_example",
+    "bytes": "03720000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002009f8145b4"
+  },
+  {
+    "name": "blake3_regular_len3",
+    "input": "000102",
+    "bytes": "e1be4d7a8ab5560aa4199eea339849ba8e293d55ca0a81006726d184519e647f"
+  },
+  {
+    "name": "blake3_keyed_len3",
+    "key": "whats the Elvish word for friend",
+    "input": "000102",
+    "bytes": "39e67b76b5a007d4921969779fe666da67b5213b096084ab674742f0d5ec62b9"
+  },
+  {
+    "name": "blake3_derive_key_len3",
+    "context": "BLAKE3 2019-12-27 16:29:52 test vectors context",
+    "input": "000102",
+    "bytes": "440aba35cb006b61fc17c0529255de438efc06a8c9ebf3f2ddac3b5a86705797"
+  },
+  {
+    "name": "crc32c_check_123456789",
+    "input": "123456789",
+    "value": "e3069283"
+  },
+  {
+    "name": "f64_nan",
+    "expects_error": "InvalidFloat"
+  },
+  {
+    "name": "f64_pos_inf",
+    "expects_error": "InvalidFloat"
+  },
+  {
+    "name": "f64_neg_inf",
+    "expects_error": "InvalidFloat"
+  }
+]

@@ -1,0 +1,430 @@
+{
+  "_about": "EXP-F3a robust-f3a CAMPAIGN MANIFEST sidecar (IDEA-consumer-facing-campaign-manifest-sidecar-index-, owner-approved review-dated 2026-07-08; assembled at the PR-D publish layer). A DERIVED, consumer-facing index of the 50-seed statistical ensemble so a campaign is independently re-verifiable the way single bundles are (the .det + sidecar pattern) -- the Observatory's campaign-level verification ceremony: re-verify every seed bundle byte-exactly AND recompute the aggregate NEES/NIS against the pinned bounds. DESIGN BOUNDARY (adjudicated at capture): this manifest is OUTSIDE the identity closure -- it folds into NO plan_id / verdict_digest, so the frozen contract is untouched and the format stays evolvable. Every artifact it indexes is already hash-pinned (the per-seed case_id/result_id are the authority in EXP-F3a-robust.json; the bundle_det_sha256 are derived over the campaign's per-attempt bundle.det bytes, byte-identical across the N=3 attempts per seed by D1). A tampered sidecar can misdirect an index lookup but can NEVER forge a verification. It is NOT re-checked by check_citation and NOT read by any gate.",
+  "schema": "campaign-manifest-sidecar/v0 (derived; non-authoritative; folds into nothing)",
+  "experiment": "EXP-F3a",
+  "profile": "robust-f3a",
+  "identity": {
+    "_note": "the LIVE identity the campaign folds; DERIVED echo of EXP-F3a-robust.json's identity block (the pins are the authority).",
+    "toolchain_id": "rustc-1.93.0",
+    "cargo_lock_hash": "ec4455d0e36a109b9eac61edfa3b01b738bf9f1102918cb57f45e00a5de3ee7a"
+  },
+  "verdict_pointer": {
+    "_note": "the AUTHORITATIVE campaign verdict + per-seed identities live here; this sidecar only indexes them.",
+    "pins_record": "roadmap/evidence/EXP-F3a-robust.json",
+    "plan_id": "636c4b4cc0b9b06ecec8950a4115c4a16ae8965dd6bb947e3a6973695109fd4e",
+    "verdict_level": 2,
+    "verdict_level_name": "ROBUST",
+    "attempts_per_variant": 3,
+    "n_seeds": 50,
+    "gating_note": "roadmap/evidence/EXP-F3a-D2-gating-note.md",
+    "gating_note_hash": "a7da0b75a7db8fb5cf5bf7fe0af62d10c0ebeb270d044d7ba1a705630f88eac4"
+  },
+  "statistical_pointer": {
+    "_note": "the verdict_schema_version=2 StatResultBlock the certifier emits (the authority is its verdict_digest); these values are the certifier-recomputed NEES_agg/NIS_agg, seed-deterministic (identical under any build identity). Echoed from EXP-F3a-robust.json.statistical / f3a_evidence.json.statistical.",
+    "verdict_schema_version": 2,
+    "member_count": 2,
+    "members": [
+      {
+        "test_id": 2,
+        "kind": "CHI2_NEES",
+        "statistic": "212.57017224319395",
+        "pass": true
+      },
+      {
+        "test_id": 3,
+        "kind": "CHI2_NIS",
+        "statistic": "93.21421605417723",
+        "pass": true
+      }
+    ],
+    "stat_result_block": "020002005c33dcd93e926a402d0ed8a90dbc63400a22db647bef6e400103000abe40b7b54d574029bcc9fde6c05140f4fd55cdeeca604001"
+  },
+  "test_params_echo": {
+    "_NON_AUTHORITATIVE": "COURTESY COPY ONLY. The 212-byte STAT_FAMILY (test_id=6) plan block folded into the robust-f3a plan_id is the ONE precommit; a consumer who has not yet decoded the plan may read these, but the plan block -- not this echo -- is what a verification checks. These fold into NOTHING.",
+    "stat_family_test_id": 6,
+    "members": [
+      {
+        "test_id": 2,
+        "kind": "CHI2_NEES",
+        "alpha_ppm": 25000,
+        "n_seeds": 50,
+        "sidedness": "TWO",
+        "state_dim": 4,
+        "dof": 200,
+        "alg_id": 1,
+        "critical_lo_bits": "4063bc0da9d80e2d",
+        "critical_hi_bits": "406eef7b64db220a"
+      },
+      {
+        "test_id": 3,
+        "kind": "CHI2_NIS",
+        "alpha_ppm": 25000,
+        "n_seeds": 50,
+        "sidedness": "TWO",
+        "state_dim": 2,
+        "dof": 100,
+        "alg_id": 1,
+        "critical_lo_bits": "4051c0e6fdc9bc29",
+        "critical_hi_bits": "4060caeecd55fdf4"
+      }
+    ]
+  },
+  "seeds": {
+    "_note": "(a) the per-seed bundle index: seed -> {case_id, result_id} (AUTHORITY: EXP-F3a-robust.json.pinned_variants) + bundle_det_sha256 / bundle_det_len (DERIVED over the campaign's per-attempt bundle.det; identical across the N=3 attempts per seed by D1). k*=64 is the statistical evaluation tick.",
+    "count": 50,
+    "index": [
+      {
+        "seed": 42,
+        "case_id": "e8dcdb338ae131b51f2ab53f74dc9c7127485061b31159cbd0c137f73b8e5385",
+        "result_id": "23851a75f0be8fc3a0785b359ab841788d23fc64a964ba39011a839492bcdc79",
+        "bundle_det_sha256": "4014887d0e32223bcff987d3bd07ae8733a711c7c51238c196a0214a74d30b99",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 43,
+        "case_id": "6dc4e5da1d6c28ef16b6a82666ef5dff8af4c8d363bdb3700d78d69b75bd8908",
+        "result_id": "89a1234d4cee29e5e2cfae0ac90ae691a50fcc18984b3a54d8dd98f1b335e556",
+        "bundle_det_sha256": "76c8deb7748cea79de8c500070b995f79db1ace774c2392c04844de4792559e2",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 44,
+        "case_id": "320a33babb41c76cf990fe2def30da977ba4f6dfc422461590a381e0122861b4",
+        "result_id": "efccfd2f631232e88b36b40389a59ce4d82e15723257ecb62d0b5f3605bb0451",
+        "bundle_det_sha256": "95bc028c55d054db80f79041ee1c8d8dd0e17cb5bd1c29eeb4ee405700716863",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 45,
+        "case_id": "5bf17766ba9bb825cafff35c4a49f827392a84d681521cc2fe4ce62822519235",
+        "result_id": "e3b3f39648869e40deec0bb0f8ae220c7ca43f80347d3da36d272cc1b00ef4e1",
+        "bundle_det_sha256": "1e5adafca314285a2d0a9dc6f5bf10c130478b91d1c79d5ea8a7582764a9b26e",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 46,
+        "case_id": "36ac479b4249c6332c039228f3b7fd1d242de65beb382342afeebb9196932cde",
+        "result_id": "e4141cd894e89cee69d2a2ffe611f32d68b0a51700cdab084157ac3292e2eaf8",
+        "bundle_det_sha256": "5ebc6527c5e1ea67866fe81cfe669e3c65a23cf916fefbf09c126455fc931565",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 47,
+        "case_id": "2f7a1edab5c4657ac14305ff8753b34032b22e84c5c9837e262e114e116e00c4",
+        "result_id": "6671ac7bec57ccd9166bbc0c901165fe91ac6ab6622c292187867bf73ff62d6c",
+        "bundle_det_sha256": "d7358f92f12da85ceaacce4df908e7d3899cc0279dc6d2d2740443b0b5ffa6bb",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 48,
+        "case_id": "94fb870b4097c8e3e19d824395ee5869b44b3b26041e667f5fdcd094727cea9b",
+        "result_id": "89fb2ec589c23ae5815d1e7b4192f9db9bdee5f98de880f00fa7c829e5119676",
+        "bundle_det_sha256": "ef956776f30bd70a6a943ebd036c9a1509bbc89f5114e9ed78f49f99792dc2d4",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 49,
+        "case_id": "bf608aff7e9ea9e9dbf68ff077a61020b4235a8eb84771783bb0610e331379c4",
+        "result_id": "b47719776bce7a78658afa5e895f00cbf748fbc95970c82fa835e7add8e79755",
+        "bundle_det_sha256": "890937b473a12896f568211658ff48e92206820f1f7317b30d72c8af2027ae65",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 50,
+        "case_id": "a59a80554ca679aafb619f78759526c94839b741edcb08de333f33597714ddb3",
+        "result_id": "f47027471367aa1126a78a193528579da9e1b87f8762c2e01eb218f479db7062",
+        "bundle_det_sha256": "56e95d6ff73f6fe92282bb49f0854f456773abbc0f168389a8c2eabe3f3d16c6",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 51,
+        "case_id": "13505db0e7a88cf22b1a8f5de1e6be4edd4d4c744d87d72723337840bf817e82",
+        "result_id": "ad36b7d8c1bdee6f41df1c497693b3f0ae50670dcdb1d9fc582ff06322665776",
+        "bundle_det_sha256": "a0d80e2eb84f16e5fa841b8963798b2b65812819454aff6f08c78f0b2f68d995",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 52,
+        "case_id": "6145a14567b911ac69196410caae4845d9089abe769a0cad1840ab6ce42ce4f4",
+        "result_id": "ee171f95e4f174d23daa02b67df6aba509165c064e8ed71bfb9d891bc8f57255",
+        "bundle_det_sha256": "fca88a7685f5058dca1e6c96d2a28982c3a41c564979b6c56beb68270b5e0a6f",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 53,
+        "case_id": "3818f8230b26bda3a620bcf917074fd55544600e45e0f1712915e4290780fbac",
+        "result_id": "1087d8bdf6f97036117c4c54054fac63a58d26aed5978b585a8905e86e8af5ff",
+        "bundle_det_sha256": "b6eb632d6a2616e2daaba1eabad2f6520be2901aa9fb2b7262734eb933130c1d",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 54,
+        "case_id": "234a126696184f038c94804f2aeba323602e74fa2ec77e9dd7a4e22e0ecfdf27",
+        "result_id": "f163f520ceafa5e782c862a960635013aa708cbf59b364db23831ffcc0892c3a",
+        "bundle_det_sha256": "ae6e6babeeb11db2f949c63f2b6129f9da054634f6fb709111e694463d47860c",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 55,
+        "case_id": "8a99a649619edbeda850458b2facaf4e7d15e1fc7988f75c9ba86b5b4deff89f",
+        "result_id": "94bbc4fc96b2b5e67b925b2d793cd7f44c6bcf4cebb03f69fbcdba01afc851e9",
+        "bundle_det_sha256": "3121e3a65aafddee176e329320abe1094e955ea8880d593d109116b64836e51a",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 56,
+        "case_id": "ffba63492ff18d61007214eff0b6bfd06d83b6bfe3a31444e4dd072e9630eb56",
+        "result_id": "33fd13ac1c4264010c03758d43324bbd98cfc89fba49d54d67df53c1a41e64f5",
+        "bundle_det_sha256": "16f16e8dc8cdd7baf0b9b28eda233c47c3f1eb7e320e0458d6d7fec8d25950ac",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 57,
+        "case_id": "02a5795a62191f5c8add19293a57ff53b2a1aefdacc0b186960d01daf135380e",
+        "result_id": "984215bdecc8507e30fcf699e24a83554be36a010a4d1fd00063eddf6bafa389",
+        "bundle_det_sha256": "83dc5baf3f8c071d37b98b244ed4d14b5c64a01558fd129bdabaadbac338cd49",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 58,
+        "case_id": "223b12aa32c29a91ece1420540dde4dc2b7f3ed9391ea0b9ba64e9ec5e77a896",
+        "result_id": "c483ea13c23d6c1bc5987d0881acfc9764f4253c8f194cd280aeec13aa7f7bc8",
+        "bundle_det_sha256": "68a09e356b19b2295a40f90ffd1d1035fcd266fc709cdd82c08f20c918696bc1",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 59,
+        "case_id": "8a407ec705abbcbdcb15b9341b3812e0e1ee5cb9ba62aec26cb82032faadf9db",
+        "result_id": "e99abbc73259938671b947c2f28167524c06e2b5bd9856a3dc79e1c9d336c656",
+        "bundle_det_sha256": "a393df2ee16d0ee3c6c3ca5f112f2d250cdcc27e834aab55f4dc7b1bb4efb24a",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 60,
+        "case_id": "a0d1094545f6437f71aa14b0ea54dcc69afaeffe4d959158f79354dc64fb8349",
+        "result_id": "2afcc8a2abc0cef48414b5d4ffba673a47d07967ca88da8ff9cc1d9a66a22cd9",
+        "bundle_det_sha256": "05457a30a877df3ca9847efd62000de59f94abf84448fc795b5823a55ee0c6c1",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 61,
+        "case_id": "a40b0d39c30ebb71a4545151f774d6e2891ec5e161f15a3c8f424d8a78ab52de",
+        "result_id": "f6a436465768dc367dde6c95144b6848cc6091c733f48d59af530a1aec7f067d",
+        "bundle_det_sha256": "4505424bef8d109e2983041b0754efd29bd38710906b5403c8296b570593a792",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 62,
+        "case_id": "cd7a96770efab61e0a530825a93a17bd585018a17fa509a81e4cdd66fc91b688",
+        "result_id": "b454cef29d3af362f07325bf0ec6998b8ca217b4761519432eb0204ad82bff2f",
+        "bundle_det_sha256": "6b4a3c5a47c859ff8d69f37d4a5c75a6c95cee867ff43a1cd7f17d89dbdb47e4",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 63,
+        "case_id": "d37a9ef94b76a514c86e29ad41258d4996b44e53c7f53ad9700cd5062a855d5b",
+        "result_id": "faf0e693112fc3049559e368860ca412123a4402f36149adf32fc85463ac2d21",
+        "bundle_det_sha256": "bb53be80190272e60968540d8811308eac6bcd9a9a9ba05f69e88d09e473f104",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 64,
+        "case_id": "9aa14b61470a2706b420a9df73f53990b0aa224afeffcc2d45adab8ccdb5b355",
+        "result_id": "2036f14a2e759595e9aed8efb805aeb4c1af360d43ab757f24e40c1fa8af144a",
+        "bundle_det_sha256": "7b4422b5447cab0fa0f6979978619cf28bfbfb77ae962481ba795680949df074",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 65,
+        "case_id": "82540a114ce1124eb9b467c913a3317977371949862f02cc0e372d4335b17ac7",
+        "result_id": "f1cc57bd652fc6ed7570019a86234e28749f08332c346e649876e915475b178c",
+        "bundle_det_sha256": "952face194c1f6a9f8f0e45cab81ea67a08303172f3cd430e4ac43bc935bacaf",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 66,
+        "case_id": "cabd6b843b5f3cfda218c3061a927967d959a0a8494bd25515196a131136fb32",
+        "result_id": "6a413bd305c91492b25b2f90026b34abf69b6fa933d89fd079871470ae0f958d",
+        "bundle_det_sha256": "15d9b06121f13b3572c57ce682eaf59af5e7ec759f72048bf2de9ac05c3d903e",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 67,
+        "case_id": "f08d466773b20fb285e245aa32988fe5c841fd475561c76a8582d3aa86aa5106",
+        "result_id": "dd15facd384566f8cc1678377b4a3dc7eb97c244a42d39026580546b588763fc",
+        "bundle_det_sha256": "e5313b4a503c4dc5b73dde058163118759241f193e3ef9c0214b426c3fe928df",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 68,
+        "case_id": "8954b701c1a329811ae07bd343b4958f4a5cd95e14e9e033a62310806e22fc87",
+        "result_id": "790476bbcb4e81b78fd5f7ee55fd8d0a261ab3ee9055828ba6b97b85cb36158b",
+        "bundle_det_sha256": "0aff5fae33d5bddcd57a8a9193943912ca8aea732e0a945f6fcf77f3bb3fd598",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 69,
+        "case_id": "195ceabcd09221ab71f31c93a5021224c525295f7cb7e195de7c9526979fa5cd",
+        "result_id": "57f6b1d54634538d8422841bb7ba1eb63cca1e46459a121d19c724e5f48bf177",
+        "bundle_det_sha256": "5abe233bab8dea2c08b9a445824c92b4a195374f6ecf3129e9dbe368e90de364",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 70,
+        "case_id": "c7b0d40e7b7ba2874e0316e52b3d02968cffd797c75cb71a74024b8d46326d6b",
+        "result_id": "ef2030bfbc397049c5e5526b11a7db2457f7a8ffdf22d3d60824f84f8a343d4d",
+        "bundle_det_sha256": "26ecfff3ae8b8214613e2c0afa087e83154bc7abc4df643df861fa7abe3f9b1b",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 71,
+        "case_id": "5e21c65a2fedffc291c79fe8362baf8c8a57861c4cd45e03e4e64e5b851a01c9",
+        "result_id": "057fe88bcb4e3f09420039936655d3d63a6fe6a85ab766c9e30f7d468b9f8b2e",
+        "bundle_det_sha256": "f0ddc8225e40a4e26c6e28dcea09a43cb1a9c92fd623a299ae96d482db4afd60",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 72,
+        "case_id": "83bb0a0708f934c8ad3c99b76133db61a72217099f390da96b1a7741047d36e3",
+        "result_id": "2eb30c70bc6bfc37c1d4a3534ff469a466d57aca0d796e7bd9dd0d90901b462d",
+        "bundle_det_sha256": "c3be862c5de991e9524e2b1afd3ba8287d124f82d5bd3d4742ee662e0875d736",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 73,
+        "case_id": "3c8e5809433e5979313868241c1e2379072a3f98fd0678c580e72b7094d2df45",
+        "result_id": "6e0c2b25aca43f80126e7e0756d2efc5f20b711cd0672ec50ce9d98bdecad8e2",
+        "bundle_det_sha256": "9acf3bb67296d0716e0363a955bd318580fd02d15fafb6206166b1f427d6828b",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 74,
+        "case_id": "89085ce9013a746862178e665fc07dfa523f6d974d18f08949adf65d2771aa56",
+        "result_id": "851845f34e552475c2b46a08b04b72b3fc4c9507b35bb1f009ec8cf4e7d3c419",
+        "bundle_det_sha256": "7e583e915e7f86e2c8bc96ce8cd08a37c294f521d1ff769e54a5e122f174eebd",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 75,
+        "case_id": "80f0804931b95a7d86c7ed15d2583f066fa14cfdd35288b68ccad9ef890269cd",
+        "result_id": "0a73148590485215b525100b53b9eca8183dd7e5c2564bfc9f228a3c7a539dde",
+        "bundle_det_sha256": "75d8e904a0146f6f97c42e075487aafab3a460b1a6cc6a525bc5bed23b15b61a",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 76,
+        "case_id": "7b226c0628223960ad81ba65097702f27232853b5d02cfcfb438d23801386a26",
+        "result_id": "2d7894fc7772d633ea686e99f6b3db93e36ecd0d4e441617d1c6ad7a319f1029",
+        "bundle_det_sha256": "5e03ec30cc3d161b48ca1748efe508505f333705831a7de7174c86ce11331281",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 77,
+        "case_id": "d3956375d0fa84613e65c953a21d823aaaaba1e8080660a3cd4b05e64d82b4a8",
+        "result_id": "96649753234ce73c6010f5bb3fc5c8cc371b817ebd9feaa2560975b0b5b47273",
+        "bundle_det_sha256": "c2a544b0eecddc183cca24e20787176e95e6956e9fd070454672317b19fefdeb",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 78,
+        "case_id": "5eb89238b7bf4dc834f04b5dc62ea2917879099cf7e9834b7d252b4301c34273",
+        "result_id": "bed7430b83cb51b804abeb5d0a5355fb5cc9188da122532a1eaed327a61a3ded",
+        "bundle_det_sha256": "2c7b12ed085dacf83ba096d19e9906af2431b22fb6fec7ca2108215b8f864322",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 79,
+        "case_id": "1917acd660e71f8c14e101eac0b6bb8f4d100437ec6dc94dec92a12673b40d3e",
+        "result_id": "46967346432ece7e95f269f47db31380fbb50d1179314d5dbd1a27332c29eede",
+        "bundle_det_sha256": "ac1b718ba746583f5df8848c579116549176c012b77f2b059c66ff52098def4b",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 80,
+        "case_id": "cf26753f024a5208cdbeadc962dc9dfd1076688a3311e10187e825787098242a",
+        "result_id": "710b7bbc184d78b7124c4452fdb3f077e60cec5b72f9ec02a84eded7b2dfd4a6",
+        "bundle_det_sha256": "df078f0775798512f7f7edd741757f701659413fb1c48121c0a0cc7bca6188b9",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 81,
+        "case_id": "f974fa022219ee66ab9fdf07274eae262912d5e661a717738a10bd852c6d4b8c",
+        "result_id": "b69eeddb8163a70343bf4f4d75dce65f55f927686d2da32ad8f3c0a522aaf430",
+        "bundle_det_sha256": "e3726c1006f0d575f3c073de952bbbecfd5585b41dfe99da536bb307bb87c134",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 82,
+        "case_id": "dbe224650a596f77e31f2f26647180a2b9c95347a7a03720232a16afc37825e7",
+        "result_id": "21faf01cdf460aa23779c41b5d598eb12c9637ae4d616ca2ffe09e48c828adc8",
+        "bundle_det_sha256": "cd3feed350bc5c9fb7e6b375eb6f854e5dfbc77b9ccec938d1ef31882041b921",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 83,
+        "case_id": "cffe3cdd2a66d9829632b9dde8a965a7f923752b7876c6066e9dd5eb41a4cfdf",
+        "result_id": "96be19cd42532d37b0a6d9365ccaacec3e44a592c03991ed66310b107e0dcc4f",
+        "bundle_det_sha256": "4cefa2d242748ce135e221b916162f4434b098692781307bcdd959977e3dbcdc",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 84,
+        "case_id": "2123be5864f328e43a58d20ba96982d773123b50719e01e130dc1b13632534a6",
+        "result_id": "e574a67ad1ddf895089db6ee883e534b5a9c2edaaaf920b90cd10bb7eb2949ae",
+        "bundle_det_sha256": "21aaa0ab463e1c0d9f9ea6bd5b6a3fd6d627c2a4300fc451e6d9eb80cb8a7a2a",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 85,
+        "case_id": "248aa386d8d574e6bb2347a3f90c8059dbfea9dd85b0626949898eefa6085298",
+        "result_id": "83f68805668013d5667a2fc4e5339cef402dbb37f7052dc7386ef9c65ff59cbc",
+        "bundle_det_sha256": "48c268ba06b9ad80313335df1c267ad1ba2ff629cca6c6a669c49c1d85306d70",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 86,
+        "case_id": "0839a2215711d324e7fbadf1a23332a071d23208fdfcecfab32645ba35bfba97",
+        "result_id": "7f5a45f1c0a3b1fc864c32efd049882ac8598460e3a10b56731a8590a4e6166d",
+        "bundle_det_sha256": "32893c157c8e4b77a8480b3d349e56357f9d07e44beb551bf20ff238448c964e",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 87,
+        "case_id": "5410dc211bedc8289070c4953996a1a418705ffa7ade1546831c963e1f943cb3",
+        "result_id": "2bf14f97c51ccc0e73fccc2f0d5a4bbbfb0f1fb3395bfb391b9860822ff62be2",
+        "bundle_det_sha256": "78af8db3d316f8b06d0242575d7066b3b2cb6aee1a4b5672115f0a7dc0814b23",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 88,
+        "case_id": "98a2e1b2b0ee5fdd31b24ee4775bc8be15e65761f471af1ab1a6e7ed707c6241",
+        "result_id": "2851b8738e7a57e2d02a0c0db1266f89ec67ba297e91fbd34ca0a63862b654b4",
+        "bundle_det_sha256": "953ff2fb22591abb2c436feb97268226550c2a47b5d8651ef598c606cf5d86c8",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 89,
+        "case_id": "db9d59e30fa069c85c77cb9beb8ccd11b18c5b91eedd5f2a850fd7b78de1e05f",
+        "result_id": "93335f10f9f071ec67cf6057e6926b58d1f6ede569644f3cff7644ce464feb9c",
+        "bundle_det_sha256": "361782f501083395aba40f933b57980de36549ec9e96b23e77dc89616b9c50c6",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 90,
+        "case_id": "14c013d68d0699174dfd59ca1b2ab473c2549f87bb87b8585045c278fb380548",
+        "result_id": "12993b32cc40692732a7eb8a518d64ccc21cf692f31b37acfa69e399f78ec8d8",
+        "bundle_det_sha256": "ab6cc0ccb61bd533e8bae601866b95d1376b35c5f1d117ad679156a95a06c5f4",
+        "bundle_det_len": 79785
+      },
+      {
+        "seed": 91,
+        "case_id": "b7213a5333a74faa79a0ce98585f6dc3e5cc8e18a855ea9b8ac96e55e4f5a07d",
+        "result_id": "9b30cf2a7d4d6f9617a06630b97984861ac9ef611efad5eb527a26b4febbd9dc",
+        "bundle_det_sha256": "c41fae21c7f99ec510f86c603d293175439c01bd7cfbe4836a2ed4178ac572c0",
+        "bundle_det_len": 79785
+      }
+    ]
+  },
+  "supersedes_plan_id": "0000000000000000000000000000000000000000000000000000000000000000",
+  "_supersedes_note": "all-zero = first attempt, no supersedes chain (spec-3c: a supersedes chain >1 without a recorded methodology change is the p-hacking tripwire; a consumer surfaces this field to viewers)."
+}

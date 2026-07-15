@@ -1,0 +1,72 @@
+{
+  "manifest_schema_version": 1,
+  "inputs": {
+    "event_schema_version": 9,
+    "state_schema_version": 4,
+    "determinism_class": 1,
+    "schema_registry_hash": "d7f96f5cdd49a8d408b70e1fd83512c50b626b1138c25c052dfdc02a906d09da",
+    "state_registry_hash": "1ba2765046b662a518c225da1350a71e9c0f6f5107fae96d2f56d0f10de422c4",
+    "capability_matrix_hash": "847271d1cef7f9aa296d01af1a221a11061ab7c0aaadba296859cbb0a523a594",
+    "toolchain_id": "SYNTHETIC-F2A",
+    "cargo_lock_hash": "ec2bd03bf86b935fa34d71ad7ebb049f1f10f87d343e521511d8f9e6625620cd",
+    "scenario_id": "f2a-visibility",
+    "scenario_hash": "ec2bd03bf86b935fa34d71ad7ebb049f1f10f87d343e521511d8f9e6625620cd",
+    "seed": "42",
+    "config": {
+      "dt_us": "125000",
+      "step_limit": "96",
+      "sensor_effects_model": 0,
+      "max_frame_bytes": 65545,
+      "max_payload_bytes": 65536,
+      "max_state_tick_bytes": 65536,
+      "max_entities": 16,
+      "max_events": "320",
+      "max_ticks": "96",
+      "max_string_len": 256,
+      "max_collection_len": 256
+    },
+    "resources": {
+      "dyn_dep_closure_hash": "ec2bd03bf86b935fa34d71ad7ebb049f1f10f87d343e521511d8f9e6625620cd",
+      "resource_manifest_hash": "ec2bd03bf86b935fa34d71ad7ebb049f1f10f87d343e521511d8f9e6625620cd",
+      "termination_policy_hash": "ec2bd03bf86b935fa34d71ad7ebb049f1f10f87d343e521511d8f9e6625620cd",
+      "subsystem_schedule_hash": "1f7c74f742bed00adfb9cf9d62b698c3a475479d386679d24a3fb1a71f751448",
+      "runtime_flags_hash": "ec2bd03bf86b935fa34d71ad7ebb049f1f10f87d343e521511d8f9e6625620cd"
+    }
+  },
+  "outputs": {
+    "hashes": {
+      "event_hash": {
+        "value": "51e6f49adb1405382b31e18bbe605c1395e2f1600ffc38740ce34db69a6343aa",
+        "algo": "blake3-256",
+        "encoding": "fixed-le/v1"
+      },
+      "state_trajectory_hash": {
+        "value": "de6fe6e3c291154b7a47ae8fc5692fb48aba0a31f09dfe490aa05386396c3cf9",
+        "algo": "blake3-256",
+        "encoding": "fixed-le/v1"
+      },
+      "result_id": {
+        "value": "51ac2e490069cf56d5063a53047c2faaf0139ad864bfb57f91367c870ef300e8",
+        "algo": "blake3-256",
+        "encoding": "fixed-le/v1"
+      }
+    },
+    "event_count": "212",
+    "tick_count": "96",
+    "sim_time_start_us": "0",
+    "sim_time_end_us": "12000000",
+    "run_complete": true,
+    "termination_reason": 2,
+    "event_stream_digest": null,
+    "state_checkpoint_stream_digest": null,
+    "evidence_bundle_digest": null
+  },
+  "provenance": {
+    "case_id": "8925a01adbbc396eba55cfb9ca1f5874287ae2c968a5f242c4d68ec486e6f985",
+    "build_id": "62759a3b302b5d7495c8f3581b19719e63b166221ef25525e806ea0c818638cb",
+    "attempt_id": "990720e5728cdd00486a6aeb68d16768",
+    "commit": "UNKNOWN",
+    "dirty": true,
+    "created_at": "2026-07-15T05:14:08Z"
+  }
+}

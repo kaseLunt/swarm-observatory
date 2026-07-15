@@ -1,0 +1,15 @@
+name: byte-exact conformance
+on:
+  push: { branches: [main] }
+  pull_request:
+# read-only token: the job only checks out and runs tests; nothing here needs write scope
+permissions: { contents: read }
+jobs:
+  goldens:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run conformance

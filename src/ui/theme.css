@@ -1,0 +1,36 @@
+:root {
+  --bg-void: #080b0f;
+  --bg-panel: #10151c;
+  --bg-elevated: #16202b;
+  --border: #1c2733;
+  --border-bright: #2a3b4d;
+  --text-primary: #d7e0ea;
+  --text-dim: #8899aa;
+  --text-faint: #5a6b7a;
+  --accent: #56b6ff;
+  --time-cursor: #ffd166;
+  --verified: #4ade80;
+  --mismatch: #f87171;
+  --pending: #64748b;
+  --verdict-affirm: #3af2ff;
+  --verdict-negate: #c2410c;
+  --spine: #b366f5;
+  --grid-cell: #243444;
+  --grid-major: #31465b;
+  --vignette-center: #0c1420;
+  --vignette-edge: #05070a;
+  --cat-query: #82a8d2;
+  --cat-decision: #e2a05c;
+  --cat-mutating: #e072ae;
+  --cat-fact: #2dd4bf;
+  --cat-comms: #a78bfa;
+  --dur-fast: 120ms;
+  --dur-base: 220ms;
+  --dur-slow: 400ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --type-family: 'Segoe UI', system-ui, sans-serif;
+  --type-mono: ui-monospace, 'Cascadia Code', monospace;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-fast: 0ms; --dur-base: 0ms; --dur-slow: 0ms; }
+}

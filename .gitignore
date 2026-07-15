@@ -1,0 +1,34 @@
+# swarm-observatory scratch (git-ignored SDD workspace)
+.superpowers/
+# Serena LSP scratch (language-server cache; never committed)
+.serena/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Playwright smoke artifacts (generated, not source)
+e2e/screenshots/
+test-results/
+playwright-report/
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

@@ -1,0 +1,22 @@
+{
+  "_about": "EXP-F1 canonical (seed 42) golden -- independently produced by the F1 closed-form oracle (f1_motion.py) folding the FROZEN engine-harvested libm KAT.",
+  "spec_file": "roadmap/work/EXP-F1-contract.md",
+  "spec_blake3": "c169cce7ad22782d40bb9595667311a1e225a08b7cef2f0d2a62662b494ba9ff",
+  "oracle_tool_sha256": "3c6a724fb85433b118ddf1ac2ab74cb4f99d5c8206a6bc1e7a5b04d8f349e7f2",
+  "oracle_emit_sha256": "e9473e07668efb18206f70091e3d4dd525786d5726d2ded322fd9fc2d11a11c5",
+  "oracle_requirements_sha256": "94d536129aa10a78f2e54e4e2adb09c77fa13fc441ce6a24034edef845e4831b",
+  "oracle_pkg_sha256": "7756bd6462fec1a3f9ccbf5b9a42472f121d6eb53401db419f7f095133f3ea7f",
+  "blake3_pkg": "blake3==1.0.4",
+  "kat_sha256": "d930d0c15ae8264abfe159e4b2148c0e287d1a3c8b01c5352df9e3d03961ddff",
+  "seed": 42,
+  "psi0_bits": "400779a0853d317e",
+  "case_id": "a5f78a53d5c86b9ceab61090b5274cd5d9f0af5c4474d3d71eef1b6474615dde",
+  "subsystem_schedule_hash": "69d4b3bce8dccccbd4277c4e0a0938b64810245808500c02431b1a0b555737bb",
+  "event_hash": "46720d8a4223747a870b6bbbabc00d02881adf99952a8f5628bb0dbb2fcb26c4",
+  "state_trajectory_hash": "44033d839bcd885acf6c97994db031abe80318c399d5d1d1ffe50f68ab950e1c",
+  "result_id": "ca485c6345f445ed79cb3188323ce3e6b24c86c71a0169ef78987ddc63941813",
+  "event_count": 67,
+  "tick_count": 64,
+  "bundle_det_len": 20665,
+  "bundle_det_sha256": "d3296e44f0a91d983de7a855bdbd09a3565fc04a86d3ad133bd563328b406a0a"
+}

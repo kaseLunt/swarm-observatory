@@ -1,0 +1,47 @@
+# v0.5c — the rest is interactive
+
+**Branch:** `dev/v0.5c` (base: main @ 3d12738, v0.5b CI-green)
+**Source:** v0.5b critic nits (release gate passed SHIP-WITH-NITS; these are the nits) + the n2 diagnosis (`.superpowers/sdd/diag-v05c-n2.md`).
+**Thesis:** the finale made the rest worth looking at; this cycle makes it worth touching — and closes the two composition gaps the critic measured.
+
+## Pinned constraints
+
+- **Critic PROTECT list is binding:** finale composition on all three runs; the single-ease handoff + RM snap; tour hold framing/timing; the e0 full-spine rest; dressing-preserving no-ops at rest (L/Space/missed-click). T2 below amends ONE ruled exception (scrub-from-finale) — nothing else on the list moves.
+- Rest-on-final-state untouched (all camera/render, as v0.5b).
+- Spec §8 discipline (no React state in frame loops, zero steady per-frame allocation, module scratch, getState reads).
+- Out of scope: pulse verdict palette, help phrase, URL schema, campaign items.
+
+## Diagnosis-driven rulings
+
+1. **The click-dead hero is a plain, pre-existing raycast bug** (diag symptom A): the pick/hover hit mesh's `InstancedMesh.boundingSphere` freezes at first computation; three.js's raycast early-outs once the subject leaves the early corridor. Fix is the diagnosed one-liner (invalidate `boundingSphere` at the same event-rate site that sets `instanceMatrix.needsUpdate`), NOT a redesign. This also restores mid-run clickability (part of the critic's n3 and the entry-B asterisk).
+2. **Symptom B (drag evaporates dressing) is closed — provably absent** (8-gesture probe, per-frame color capture). No code change. If design ever reproduces it with a specific gesture, re-diagnose with the archived probes.
+3. **Scrub-from-finale re-fit is a ruled design amendment** (critic nit 1, top): the v0.5b spec line "clearing finale must NOT re-frame" produced a black void on f1 (camera parked at the sky where the head was; dressing correctly cleared). Amendment: on the finale FALLING EDGE caused by a playhead move, positioned runs with non-null `bounds` request an establish-class context frame (wide fit, no lit). Narrowly scoped — only when *leaving a finale*; ordinary scrubs never re-frame; e0/f0 (`bounds === null`) keep the current stay-put behavior (critic: e0 handles the gesture fine). Camera-only; grammar-coherent (the same playhead action that tears down the dressing hands you back the establishing context).
+4. **Early-run follow edge-riding is tracking lag, not bias overshoot** (critic n4: head at ~89–93% frame width at 0.9–1.8s with label clipping): the exponential pivot lags the accelerating head by ≈v/rate; the bias adds a little. Remedy: predictive lead compensation — aim at `head + LEAD·(v/rate)` along the instantaneous velocity (α ≈ 0.5–0.8, calibrated on screenshots), which cancels steady-state lag while keeping the soft rate. Zero-alloc (velocity from consecutive head samples in module scratch); reuses the T1-v0.5b dt-eased factor; the bias cap stays.
+5. **Mid-run subject presence** (critic n3 residual after the raycast fix): at the establishing distance the drone is inherently sub-pixel; the *comet tip* is the visible proxy. Remedy: show the existing ground-ring at the live head during unselected play (a tracking marker — honest: entity position is data; reuses the ring mesh + placement path, no new geometry). Selection/finale ring gates take priority. If the ring at wide distance is also sub-pixel, calibrate its scale-at-distance within the existing mesh scale lever — no new shaders.
+6. **e0 spine accumulates DURING play** (OWNER AMENDMENT 2026-07-08, supersedes critic n5's end-of-run materialization): the playback problem is not the reveal's 160ms pop — it is that nothing accumulates during the 8s of play ("spasmodic blinking", owner verdict). The spine thread builds progressively AS the run plays: each pulsed event leaves its segment behind in the quiet rest tone (drawRange grows with the playhead — the exact grammar f1's trail already has: pulse = now-cursor, thread = the traversed record). Rest = the completed record (no pop, no separate materialization; critic n5 dissolves by construction). Scrub back = thread truncates to the playhead (drawRange follows tick both directions, matching the trail's reveal semantics). Reduced motion: identical (accumulation is data-truthful display, not decorative motion). Finale framing/celebration unchanged. NOTE: a deeper e0 visualization redesign (layout semantics, verdict legibility, query-content display) is under owner design discussion — this ruling is direction-agnostic (persistence is the principle every candidate shares) and lands now regardless.
+
+## Tasks (SEQUENTIAL — T1 unblocks re-testing reachability; T2/T3 share Scene.tsx)
+
+### T1 — the raycast fix (bug class)
+**Files:** `src/ui/Scene.tsx` (hit-mesh update site, diag: ~:409 region), `e2e/smoke.spec.ts`.
+**Steps:** land the diagnosed one-liner (`hit.boundingSphere = null` beside `instanceMatrix.needsUpdate = true`; one why-comment naming the three.js freeze behavior). Verify hover at far corridor too (same sphere gate). Add the suite's FIRST 3D-click e2e: play f1 to finale → click the celebrated head → assert selection (`?sel=` in URL or the store), and a mid-run pause+click case (the diagnosis proved mid-run clicks were structurally dead — pause first so the target is stationary; if sub-pixel size makes even a paused click flaky at establish distance, click via the head's projected coordinates from the store, and say so in the test comment).
+**Acceptance:** click+hover work at tick 0, mid-corridor, and finale rest (browser evidence); selection at finale keeps the finale (grammar); zero per-frame cost added (invalidation rides the event-rate block); 307 baseline green + new tests; smoke 12→13+.
+
+### T2 — scrub-from-finale context re-fit (ruled amendment)
+**Files:** `src/ui/Scene.tsx` (falling-edge site + consume), tests.
+**Steps:** on the finale falling edge (the existing detection at `Scene.tsx:314-317`), fire the re-fit ONLY when the tick moved in the SAME store batch AND the run did not change: gate = `!s.finale && prev.finale && s.tick !== prev.tick && s.runId === prev.runId && positioned && bounds !== null` → request establish-intent frame. Store-batch atomicity is the cause detector: `setTick`/`applyLink` write `{tick, finale:false}` atomically (playhead move → re-fit); tour-start's bracket and play-at-rest clear finale WITHOUT moving the tick (no re-fit); `selectRun` moves the tick but also changes `runId` in the same batch (no re-fit; the mount stamp-seed guard at `Scene.tsx:252-260` additionally neutralizes any stale request). **Plan-authorship correction (pre-dispatch):** the earlier `!isTourActive()` gate was WRONG for tour-start — `useTour.start()` clears finale at :341 BEFORE `registerTourInterrupt` at :347, so `isTourActive()` is false at that falling edge; the same-batch gates replace it. Also update the THREE stale spec-line comments (`Scene.tsx:141`, `:312`, `:562` — "clearing the finale never re-frames") to cite the amendment. Ordinary scrubs (no finale active) must provably never re-frame (test). Orbit-drag cede and focus/selection supersession unchanged. RM snaps. e0/f0: no-op (test).
+**Acceptance:** browser: f1 scrub-at-finale-rest → camera eases to the wide context frame, no void (before/after screenshots); e0 scrub-at-rest unchanged; dressing clear semantics untouched; a plain scrub mid-run still never moves the camera; suite + smoke green.
+**Reviewer flag:** this AMENDS a v0.5b spec line by critic adjudication — the test that pinned "clearing finale does not re-frame" (if one exists) must be consciously updated to pin the new ruled behavior, with the ruling cited in the test comment.
+
+### T3 — staging & polish (lead compensation + play ring + spine materialization)
+**Files:** `src/ui/Scene.tsx`, `src/ui/camera.ts` (lead helper, pure + TDD), ChainSpine block, tests.
+**Steps:** (a) predictive lead per ruling 4 (pure helper for the lead term; scratch velocity estimate; calibrate LEAD on screenshots — target: head ≤ ~75% frame width through the whole selected-play run, label never clipping; the v0.5b bias + cap unchanged). (b) unselected-play tracking ring per ruling 5 (gate: playing && unselected && positioned && !finale-active; priority: selection > finale > play-tracking; zero-alloc placement reuse). (c) e0 spine materialization per ruling 6 (~400ms root→leaf progressive reveal; RM instant; the 74-segment reveal must not regress the zero-per-frame property of the rest state once settled).
+**Acceptance:** browser evidence for all three (early-run composition frames, mid-run presence shot, reveal timing capture); RM paths; suite + smoke green.
+
+## Endgame-lite
+1. Clean-room (worktree; expect ~310+ unit, 13+ smoke).
+2. Codex sweep (raycast-fix probe: programmatic raycaster hit-test at far corridor pre/post; falling-edge matrix incl. run-switch/tour races; alloc audit on lead/ring/reveal paths; grammar re-fuzz).
+3. Fable brief (amendment coherence, PROTECT compliance, honesty: tracking ring is a data-true marker; ledger sweep).
+4. Scoped experiential critic re-check (the interaction script: click the hero everywhere, scrub-from-finale on all runs, early-run composition, mid-run presence, e0 reveal feel) — release gate.
+
+**Hard limits (standing):** no merge/push without owner word; never touch the engine repo (Certus); no AI attribution; codex reviews every task; worktree isolation for branch-switchers; critic PROTECT list binding.

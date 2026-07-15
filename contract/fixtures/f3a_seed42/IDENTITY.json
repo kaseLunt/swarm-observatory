@@ -1,0 +1,17 @@
+{
+  "experiment": "f3a",
+  "seed": 42,
+  "tier": "KAT (hermetic synthetic identity)",
+  "case_id": "ff4b6a1f002ca2f2df5406d72bccd76d53dd4601e0921f491dff6b7d19f08299",
+  "result_id": "e265f93266b5c2b54e0cff97806bd824ea3c93ab42648f4d53abdb0a045a6694",
+  "bundle_det_sha256": "ca13f5e8515c97384f53bfd33a5f6ba4262512d17c65ba9d8ddc2ce9617b87c2",
+  "bundle_det_len": 79785,
+  "event_schema_version": 9,
+  "state_schema_version": 4,
+  "source_ref": "main-lineage @ b4f7e14 (b4f7e1479e355ac7528cc3d720407898e0a5b1f6); event/state schema v9/s4 (the last v9/s4 commit before the F5 k-bump). NOTE: Certus history was rewritten for the public launch; the prior v9 drop cites the pre-rewrite SHA 5ac32c4 -- content pins (registry hashes, toolchain, cargo_lock) are identical and are the binding identity.",
+  "toolchain": "rustc-1.93.0",
+  "pins_record": "roadmap/evidence/EXP-F3a-correct.json",
+  "attempts_per_variant": 3,
+  "attempt_note": "D1: all 3 fresh-process attempts produced a byte-identical bundle.det; this dir vendors one representative attempt (attempt_id is a per-run 128-bit nonce, NOT folded into identity).",
+  "staleness": "v9 content (Certus main-lineage @ b4f7e14). ids re-pin only at future registry bumps -- on any anchor doubt re-verify against the pins at your vendored commit and re-request; never patch in place."
+}

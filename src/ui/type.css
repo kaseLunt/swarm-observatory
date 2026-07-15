@@ -1,0 +1,16 @@
+/* Typographic scale (spec §6 house type). One family (var(--type-family)) and a modular scale as
+   custom props applied to headings/labels/body/mono. Imported after theme.css, before app.css so the
+   more specific app.css selectors keep winning where they already tune a size. */
+:root {
+  --fs-mono: 0.72rem;
+  --fs-label: 0.7rem;
+  --fs-body: 0.82rem;
+  --fs-h2: 0.84rem;   /* section headers now sit ABOVE body (was 0.72, below body) — a real header tier */
+  --fs-h1: 1.45rem;   /* display tier (~1.25-ratio open): wordmark + ceremony/gate H1, keeps 0.22em tracking */
+  --tracking-label: 0.15em;
+  --tracking-h1: 0.22em;
+}
+body { font-family: var(--type-family); }
+.readout, .chainmeta, .help-keys, .provenance td, .inspector td { font-variant-numeric: tabular-nums; }
+h1, .app header h1 { font-size: var(--fs-h1); letter-spacing: var(--tracking-h1); }
+h2, .inspector h2, .help-panel h2 { font-size: var(--fs-h2); letter-spacing: var(--tracking-label); text-transform: uppercase; }

@@ -1,0 +1,72 @@
+{
+  "manifest_schema_version": 1,
+  "inputs": {
+    "event_schema_version": 9,
+    "state_schema_version": 4,
+    "determinism_class": 1,
+    "schema_registry_hash": "d7f96f5cdd49a8d408b70e1fd83512c50b626b1138c25c052dfdc02a906d09da",
+    "state_registry_hash": "1ba2765046b662a518c225da1350a71e9c0f6f5107fae96d2f56d0f10de422c4",
+    "capability_matrix_hash": "847271d1cef7f9aa296d01af1a221a11061ab7c0aaadba296859cbb0a523a594",
+    "toolchain_id": "SYNTHETIC-F0",
+    "cargo_lock_hash": "ec2bd03bf86b935fa34d71ad7ebb049f1f10f87d343e521511d8f9e6625620cd",
+    "scenario_id": "f0-fixture",
+    "scenario_hash": "ec2bd03bf86b935fa34d71ad7ebb049f1f10f87d343e521511d8f9e6625620cd",
+    "seed": "42",
+    "config": {
+      "dt_us": "1000",
+      "step_limit": "2",
+      "sensor_effects_model": 0,
+      "max_frame_bytes": 65545,
+      "max_payload_bytes": 65536,
+      "max_state_tick_bytes": 65536,
+      "max_entities": 16,
+      "max_events": "64",
+      "max_ticks": "16",
+      "max_string_len": 256,
+      "max_collection_len": 256
+    },
+    "resources": {
+      "dyn_dep_closure_hash": "ec2bd03bf86b935fa34d71ad7ebb049f1f10f87d343e521511d8f9e6625620cd",
+      "resource_manifest_hash": "ec2bd03bf86b935fa34d71ad7ebb049f1f10f87d343e521511d8f9e6625620cd",
+      "termination_policy_hash": "ec2bd03bf86b935fa34d71ad7ebb049f1f10f87d343e521511d8f9e6625620cd",
+      "subsystem_schedule_hash": "ec2bd03bf86b935fa34d71ad7ebb049f1f10f87d343e521511d8f9e6625620cd",
+      "runtime_flags_hash": "ec2bd03bf86b935fa34d71ad7ebb049f1f10f87d343e521511d8f9e6625620cd"
+    }
+  },
+  "outputs": {
+    "hashes": {
+      "event_hash": {
+        "value": "071949371fa43eb266ccea54470b45de4c68cc36d7f6e6dac26d0ef180643bfb",
+        "algo": "blake3-256",
+        "encoding": "fixed-le/v1"
+      },
+      "state_trajectory_hash": {
+        "value": "b508664a027448d7ade1bcabd5a7d95c7983d0fe72f62a4953d03f72e5039cd8",
+        "algo": "blake3-256",
+        "encoding": "fixed-le/v1"
+      },
+      "result_id": {
+        "value": "f6d63fbd6f14ae0bbe3dd2b4070435e13f66e11ef214d9339338fa00a7737f55",
+        "algo": "blake3-256",
+        "encoding": "fixed-le/v1"
+      }
+    },
+    "event_count": "2",
+    "tick_count": "2",
+    "sim_time_start_us": "0",
+    "sim_time_end_us": "2000",
+    "run_complete": true,
+    "termination_reason": 2,
+    "event_stream_digest": null,
+    "state_checkpoint_stream_digest": null,
+    "evidence_bundle_digest": null
+  },
+  "provenance": {
+    "case_id": "12ce20780433ba2793c30f6d68b2fb9567e02f694746557fdaafad1fd58ce6ad",
+    "build_id": "0000000000000000000000000000000000000000000000000000000000000000",
+    "attempt_id": "00000000000000000000000000000000",
+    "commit": "UNKNOWN",
+    "dirty": false,
+    "created_at": "1970-01-01T00:00:00Z"
+  }
+}

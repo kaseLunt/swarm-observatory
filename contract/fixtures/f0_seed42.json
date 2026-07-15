@@ -1,0 +1,27 @@
+{
+  "_about": "Spec 3a rev 9 F0 golden vectors -- independently produced by the reference encoder.",
+  "seed": 42,
+  "spec_file": "docs/v2/architecture/spec-3a-event-schema.md",
+  "spec_blake3": "c169cce7ad22782d40bb9595667311a1e225a08b7cef2f0d2a62662b494ba9ff",
+  "oracle_tool_sha256": "3c6a724fb85433b118ddf1ac2ab74cb4f99d5c8206a6bc1e7a5b04d8f349e7f2",
+  "oracle_emit_sha256": "e9473e07668efb18206f70091e3d4dd525786d5726d2ded322fd9fc2d11a11c5",
+  "oracle_requirements_sha256": "94d536129aa10a78f2e54e4e2adb09c77fa13fc441ce6a24034edef845e4831b",
+  "oracle_pkg_sha256": "7756bd6462fec1a3f9ccbf5b9a42472f121d6eb53401db419f7f095133f3ea7f",
+  "blake3_pkg": "blake3==1.0.4",
+  "schema_registry_hash": "d7f96f5cdd49a8d408b70e1fd83512c50b626b1138c25c052dfdc02a906d09da",
+  "state_registry_hash": "1ba2765046b662a518c225da1350a71e9c0f6f5107fae96d2f56d0f10de422c4",
+  "capability_matrix_hash": "847271d1cef7f9aa296d01af1a221a11061ab7c0aaadba296859cbb0a523a594",
+  "case_id": "12ce20780433ba2793c30f6d68b2fb9567e02f694746557fdaafad1fd58ce6ad",
+  "rng_key": "018a2203a7a21d795a4d8fdd6f5bc8f744b6d486c6a8a9b732400b7174ac972a",
+  "draws": [
+    3022020804694091693,
+    5754063878471584576
+  ],
+  "event_hash": "071949371fa43eb266ccea54470b45de4c68cc36d7f6e6dac26d0ef180643bfb",
+  "state_trajectory_hash": "b508664a027448d7ade1bcabd5a7d95c7983d0fe72f62a4953d03f72e5039cd8",
+  "result_id": "f6d63fbd6f14ae0bbe3dd2b4070435e13f66e11ef214d9339338fa00a7737f55",
+  "event_count": 2,
+  "tick_count": 2,
+  "bundle_det_len": 879,
+  "bundle_det_sha256": "d52942f3682a956b1e8ae6ef38546233ecadb16c6c479cebe070e88e82ddb5d3"
+}

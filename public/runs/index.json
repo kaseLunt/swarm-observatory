@@ -1,0 +1,73 @@
+[
+  {
+    "id": "f1",
+    "title": "F1 motion lifecycle (golden, det-only)",
+    "base": "runs/f1",
+    "detOnly": true,
+    "ticks": 64,
+    "kinds": {
+      "288": 3,
+      "289": 64
+    }
+  },
+  {
+    "id": "f0",
+    "title": "F0 determinism fixture (seed 42)",
+    "base": "runs/f0",
+    "ticks": 2,
+    "kinds": {
+      "61440": 2
+    },
+    "dtUs": 1000
+  },
+  {
+    "id": "e0",
+    "title": "E0 geometry sweep (golden, det-only)",
+    "base": "runs/e0",
+    "detOnly": true,
+    "ticks": 75,
+    "kinds": {
+      "23": 75
+    }
+  },
+  {
+    "id": "f2a",
+    "title": "F2a scene & sensing (seed 42)",
+    "base": "runs/f2a",
+    "ticks": 96,
+    "kinds": {
+      "1": 17,
+      "22": 96,
+      "288": 3,
+      "289": 96
+    },
+    "dtUs": 125000
+  },
+  {
+    "id": "f3a",
+    "title": "F3a single-target track (seed 42)",
+    "base": "runs/f3a",
+    "ticks": 96,
+    "kinds": {
+      "1": 80,
+      "2": 1,
+      "3": 78,
+      "4": 1,
+      "288": 1,
+      "289": 96
+    },
+    "dtUs": 125000
+  },
+  {
+    "id": "f4",
+    "title": "F4 comms link (seed 42)",
+    "base": "runs/f4",
+    "ticks": 96,
+    "kinds": {
+      "5": 32,
+      "6": 31,
+      "7": 1
+    },
+    "dtUs": 125000
+  }
+]

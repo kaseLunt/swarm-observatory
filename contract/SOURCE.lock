@@ -1,0 +1,17 @@
+{
+  "certus_commit": "b4f7e1479e355ac7528cc3d720407898e0a5b1f6",
+  "certus_dirty": false,
+  "synced_at": "2026-07-15T06:13:56.381Z",
+  "files": {
+    "contract/fixtures/f0_primitives.json": "489ae1971ff9889e4bf2008116fb1797c7fdb99dcb01cf75e1359608b94c29f0",
+    "contract/fixtures/f0_seed42.det": "d52942f3682a956b1e8ae6ef38546233ecadb16c6c479cebe070e88e82ddb5d3",
+    "contract/fixtures/f0_seed42.manifest.json": "50d38c0d53b35c068035cd461bb371fca84567d5e388c99fcb3d72795b4ea12a",
+    "contract/fixtures/f0_seed42.json": "c7dbe31e9fa0a6577dc9e886711dfa25458fcbc2ed6f0c4363653bb299406d8e",
+    "contract/fixtures/e0_seed42.det": "bd40e1fdf2ce74c4b4dab9c8c415d52b511ceca6624253f6af443e85efa62f47",
+    "contract/fixtures/e0_seed42.json": "17bdd31882d5829c073b41823aafbc8b369e6d53c6edb2eaf2e570acbb3a7393",
+    "contract/fixtures/f1_seed42.det": "d3296e44f0a91d983de7a855bdbd09a3565fc04a86d3ad133bd563328b406a0a",
+    "contract/fixtures/f1_seed42.json": "857a4065d2ee421669d865f3c96d67afaa8fdd2ec707bebc36525af811e8a396",
+    "contract/spec-3a-event-schema.md": "a7f93309649bd330570171ad5145aed40b10a6c58eff02f9b9ea3b6def6aa978",
+    "contract/spec-3b-evidence-layer.md": "81d82a326d88b421945090b2a732f33ed304b3c7449c7d95477c16edadeff22b"
+  }
+}

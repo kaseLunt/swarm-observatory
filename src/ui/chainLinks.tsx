@@ -1,0 +1,101 @@
+// ChainLinks (extracted MOVE-ONLY from Scene.tsx — v0.6 T0 Wave B): cross-entity causal-link segments
+// for the selected event's chain, interpolated to track the moving cones exactly.
+import { useFrame } from '@react-three/fiber'
+import { useEffect, useMemo, useRef } from 'react'
+import type * as THREE from 'three'
+import type { RunModel } from '../model/runModel'
+import { useViewStore } from '../state/viewStore'
+import { entityPosition, lerp3 } from './placement'
+import { PALETTE } from './theme'
+
+// Module-scope scratch OWNED by this file (v0.6 T0 Wave B): the link-endpoint interpolation below reuses
+// these tuples every frame with zero allocation (§8). Before the split ChainLinks borrowed Scene's scratch,
+// which held together only because r3f runs Entities' frame callback first — an implicit cross-component
+// ordering contract this file-local scratch retires (9 numbers buy the independence).
+const scratchA: [number, number, number] = [0, 0, 0]
+const scratchB: [number, number, number] = [0, 0, 0]
+const scratchP: [number, number, number] = [0, 0, 0]
+
+const MAX_LINKS = 256
+export function ChainLinks({ model }: { model: RunModel }) {
+  const geoRef = useRef<THREE.BufferGeometry>(null)
+  // Flat parallel arrays (not an array of [a, b] tuples): useFrame below iterates this by index,
+  // so building tuples/pairs here (off the frame loop) keeps the frame path allocation-free —
+  // `for (const [a, b] of pairs)` would allocate a fresh iterator (and destructure a fresh array)
+  // every single frame.
+  const chainRef = useRef<{ a: string[]; b: string[] } | null>(null)
+  // Stable buffer identity: allocate the positions buffer once so re-renders can't churn the
+  // attribute (a `new Float32Array(...)` inline in the JSX below would reallocate on every render).
+  const positions = useMemo(() => new Float32Array(MAX_LINKS * 2 * 3), [])
+  // Zero-fill the buffer's drawRange at mount: the geometry mounts with MAX_LINKS*2 zero-filled
+  // vertices and Three's default drawRange (Infinity) would draw all of them — a flash of
+  // degenerate lines at the origin — before the first useFrame tick narrows it down.
+  useEffect(() => { geoRef.current?.setDrawRange(0, 0) }, [])
+  // Recompute the cross-entity link pairs off the frame loop (subscription effect → ref); the
+  // useFrame below only reads the ref and writes preallocated buffer positions.
+  useEffect(() => {
+    const compute = (ev: number | null) => {
+      if (ev === null) { chainRef.current = null; return }
+      const { ancestors, descendants } = model.causalChain(ev)
+      const members = [...ancestors, ev, ...descendants]
+      const a: string[] = []
+      const b: string[] = []
+      let total = 0
+      for (const m of members) {
+        const p = model.parentOf(m)
+        if (p === null) continue
+        const sa = model.subjectOf(p); const sb = model.subjectOf(m)
+        if (!sa || !sb || sa === sb) continue
+        total++
+        if (a.length < MAX_LINKS) { a.push(sa); b.push(sb) }
+      }
+      if (total > MAX_LINKS) {
+        console.warn(`ChainLinks: dropped ${total - MAX_LINKS} link(s) beyond MAX_LINKS=${MAX_LINKS} for event ${ev}`)
+      }
+      chainRef.current = { a, b }
+    }
+    compute(useViewStore.getState().selectedEvent)
+    return useViewStore.subscribe((s, prev) => { if (s.selectedEvent !== prev.selectedEvent) compute(s.selectedEvent) })
+  }, [model])
+  useFrame(() => {
+    const geo = geoRef.current
+    if (!geo) return
+    const chain = chainRef.current
+    const pos = geo.getAttribute('position') as THREE.BufferAttribute
+    if (!chain || chain.a.length === 0) { geo.setDrawRange(0, 0); return }
+    // Interpolate link endpoints identically to the cones (same t0→t1 by the same `fraction`) so the
+    // links track moving cones exactly rather than snapping to tick-exact positions a fraction behind.
+    // Reuses this file's OWN module scratch vectors (see top of file) — zero alloc, no cross-component ordering.
+    const { tick, fraction } = useViewStore.getState()
+    const t0 = Math.min(tick, model.tickCount)
+    const t1 = Math.min(t0 + 1, model.tickCount)
+    const s0 = model.entityStatesAt(t0)
+    const s1 = model.entityStatesAt(t1)
+    let n = 0
+    for (let i = 0; i < chain.a.length; i++) {
+      const a0 = s0.get(chain.a[i]!); const b0 = s0.get(chain.b[i]!)
+      if (!a0 || !b0) continue
+      const a1 = s1.get(chain.a[i]!) ?? a0; const b1 = s1.get(chain.b[i]!) ?? b0
+      entityPosition(scratchA, a0, 0); entityPosition(scratchB, a1, 0)
+      lerp3(scratchP, scratchA, scratchB, fraction)
+      pos.setXYZ(n * 2, scratchP[0], scratchP[1], scratchP[2])
+      entityPosition(scratchA, b0, 0); entityPosition(scratchB, b1, 0)
+      lerp3(scratchP, scratchA, scratchB, fraction)
+      pos.setXYZ(n * 2 + 1, scratchP[0], scratchP[1], scratchP[2])
+      n++
+    }
+    pos.needsUpdate = true
+    geo.setDrawRange(0, n * 2)
+  })
+  return (
+    // renderOrder 1 (with the selection ring) so the transparent chain composites AFTER the opaque cones
+    // and the depth-writing scene; depthWrite:false so a half-opaque link never punches a hole in the
+    // depth buffer that pops the trail / selection ring / grid drawn behind it (Task v04-2 §4).
+    <lineSegments frustumCulled={false} renderOrder={1}>
+      <bufferGeometry ref={geoRef}>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+      </bufferGeometry>
+      <lineBasicMaterial color={PALETTE.timeCursor} transparent opacity={0.5} depthWrite={false} />
+    </lineSegments>
+  )
+}

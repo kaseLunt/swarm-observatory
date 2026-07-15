@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Mission control radar mark: dark void disk, concentric range rings, a sweep arm, one blip.
+       Monochrome accent cyan (#56b6ff) on the bg-void tone (#080b0f); tuned to read at 16px. -->
+  <circle cx="16" cy="16" r="15" fill="#080b0f"/>
+  <g fill="none" stroke="#56b6ff" stroke-linecap="round">
+    <circle cx="16" cy="16" r="11" stroke-width="1.5" opacity="0.35"/>
+    <circle cx="16" cy="16" r="6.5" stroke-width="1.5" opacity="0.6"/>
+    <path d="M16 16 L24.5 7.5" stroke-width="1.6" opacity="0.9"/>
+  </g>
+  <circle cx="16" cy="16" r="1.8" fill="#56b6ff"/>
+  <circle cx="22.6" cy="11.4" r="2" fill="#56b6ff"/>
+</svg>

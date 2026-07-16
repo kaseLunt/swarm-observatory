@@ -541,6 +541,45 @@ button.active { border-color: var(--accent); color: var(--accent); }
 .wall-close { align-self: center; color: var(--text-dim); }
 .wall-close:hover, .wall-close:focus-visible { border-color: var(--accent); color: var(--accent); }
 
+/* ── THE TAMPER MOMENT (v0.8 W6) — the ✗ path made demonstrable, beneath the census. DOM only, no frame loop.
+   Marks are sourced from the voices module in the TSX (never a CSS-side glyph); these rules only carry hue +
+   layout. The verified/mismatch classes are the sanctioned voice classes (verified green = a real receipt,
+   mismatch red = a real contradiction). ── */
+.tamper-demo { display: flex; flex-direction: column; gap: 0.6rem; padding-top: 0.7rem; border-top: 1px solid var(--border); }
+.tamper-cta { align-self: center; border-color: var(--border-bright); color: var(--text-primary); letter-spacing: 0.03em; }
+.tamper-cta:hover:not(:disabled), .tamper-cta:focus-visible { border-color: var(--mismatch); color: var(--mismatch); }
+.tamper-cta:disabled { color: var(--text-dim); cursor: default; }
+.tamper-again { align-self: center; margin-top: 0.1rem; }
+.tamper-fail { margin: 0; display: flex; align-items: baseline; gap: 0.4rem; font-size: var(--fs-label); color: var(--text-dim); }
+.tamper-fail .tamper-glyph { color: var(--text-dim); }
+
+.tamper-result { display: flex; flex-direction: column; gap: 0.6rem; animation: fade-in var(--dur-base) var(--ease-out); }
+.tamper-head { margin: 0; font-size: var(--fs-label); color: var(--text-primary); letter-spacing: 0.06em; text-transform: uppercase; }
+.tamper-sub { margin: 0; font-size: var(--fs-label); color: var(--text-dim); }
+
+.tamper-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; }
+@media (max-width: 640px) { .tamper-cols { grid-template-columns: 1fr; } }
+.tamper-col { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.6rem 0.7rem; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-elevated); }
+.tamper-col-head { margin: 0; font-size: var(--fs-mono); color: var(--text-faint); letter-spacing: 0.05em; text-transform: uppercase; }
+.tamper-verdict { margin: 0; display: flex; align-items: baseline; gap: 0.4rem; font-size: var(--fs-label); letter-spacing: 0.03em; }
+.tamper-verdict.verified { color: var(--verified); }
+.tamper-verdict.mismatch { color: var(--mismatch); }
+.tamper-glyph { font-size: 1rem; line-height: 1; }
+
+.tamper-chain { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.28rem; }
+.tamper-row { display: grid; grid-template-columns: 1.1rem auto 1fr; align-items: baseline; gap: 0.45rem; }
+.tamper-mark { font-size: 0.9rem; line-height: 1; text-align: center; }
+.tamper-row.verified .tamper-mark { color: var(--verified); }
+.tamper-row.self .tamper-mark { color: var(--pending); } /* ○ self-consistent — a trailer-self ring (no external oracle), NEVER the ✓ (F3) */
+.tamper-row.unverifiable .tamper-mark { color: var(--text-dim); } /* ? no-verdict — a pin that could not be formed (stays dim) */
+.tamper-row.mismatch .tamper-mark { color: var(--mismatch); }
+.tamper-row.mismatch .tamper-key { color: var(--mismatch); }
+.tamper-key { font-family: var(--type-mono); font-size: var(--fs-mono); color: var(--text-primary); }
+.tamper-oracle { justify-self: end; font-size: var(--fs-mono); color: var(--text-faint); white-space: nowrap; }
+
+.tamper-note { margin: 0; font-size: var(--fs-label); color: var(--text-faint); line-height: 1.5; letter-spacing: 0.01em; }
+@media (prefers-reduced-motion: reduce) { .tamper-result { animation: none; } }
+
 /* ── THE HANGAR → WALL ENTRY (v0.7/v0.8 front door) — a campaign entry inside the run library, following
    the card/CTA grammar. NAMES the ROBUST campaign correctly (it IS the robust campaign); the correct-profile
    f3a run card stays untouched (the profile-conflation tripwire). A distinct class from `.hangar-card` so the

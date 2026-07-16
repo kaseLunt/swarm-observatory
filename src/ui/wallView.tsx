@@ -4,6 +4,7 @@ import { buildCampaignJobs, createCampaignQueue, type CampaignQueue } from '../d
 import { useCampaignStore } from '../state/campaignStore'
 import { requireGlyph } from './voices'
 import { censusLine, gaugeDisplay, gaugeLoadFromFetch, seedVoice, stopWallSession, type GaugeLoad } from './wall'
+import { TamperDemoPanel } from './tamperDemoView'
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
 // THE CERTIFICATION WALL (v0.8 W5) — the campaign certification surface, opened by declaring what it
@@ -62,6 +63,10 @@ export function CertificationWall({ onClose, ref }: CertificationWallProps) {
   const prevFocusRef = useRef<HTMLElement | null>(null)
   const queueRef = useRef<CampaignQueue | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  // F4 — the tamper demo's in-flight fetch controller, registered by TamperDemoPanel, aborted by the SAME
+  // synchronous stop routine below. Hoisting it here means a close-while-demo-fetching tears the demo fetch down
+  // synchronously (the Wall's stop path), not only on the child's passive unmount cleanup (the late-work race).
+  const demoAbortRef = useRef<AbortController | null>(null)
 
   // The seed ids in catalog (seed-number) order — the honest geometry (D4 Ruling 4: a seed-ordered field, no fake
   // scatter). Derived from the ONE shared source (campaignSeedIds) that App's open action seeds the store from, so
@@ -123,7 +128,12 @@ export function CertificationWall({ onClose, ref }: CertificationWallProps) {
   // reopening earns from zero — so no prior session's green survives under a fresh open.
   const stopSession = useCallback(() => {
     stopWallSession({
-      abort: () => { abortRef.current?.abort(); abortRef.current = null },
+      // Abort the manifest fetch AND the tamper demo's in-flight fetch (F4) in the one synchronous stop — the
+      // demo controller rides the same close path as the queue fence + store reset, never the passive-cleanup race.
+      abort: () => {
+        abortRef.current?.abort(); abortRef.current = null
+        demoAbortRef.current?.abort(); demoAbortRef.current = null
+      },
       cancelQueue: () => { queueRef.current?.cancel(); queueRef.current = null },
       reset: () => useCampaignStore.getState().reset(),
     })
@@ -310,6 +320,12 @@ export function CertificationWall({ onClose, ref }: CertificationWallProps) {
             ? <button className="wall-cancel" onClick={cancelVerifyAll}>cancel</button>
             : <button className="wall-cta" onClick={startVerifyAll}>verify all {cat.nSeeds}</button>}
         </div>
+
+        {/* THE TAMPER MOMENT (W6): the ✗ path made demonstrable. Beneath the census — the field proves fifty
+            green receipts; this proves the refusal. Its result lives in the panel's OWN ephemeral state and NEVER
+            enters the campaign store (the session census above stays pure); the fetched seed-42 bytes are cloned
+            before one byte is flipped, so nothing published is touched. See tamperDemoView.tsx. */}
+        <TamperDemoPanel cat={cat} abortRef={demoAbortRef} />
 
         <p className="wall-disclaimer">{DISCLAIMER}</p>
         <button className="wall-close" onClick={handleClose}>close (Esc)</button>

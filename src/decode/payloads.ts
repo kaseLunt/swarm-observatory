@@ -88,6 +88,23 @@ export function decodeDetection(payload: Uint8Array): Detection {
   return d
 }
 
+// The byte SPAN of the `meas` measurement VALUES inside a DetectionMade payload: the offset of meas[0]'s first byte
+// (relative to the payload start) and the total byte length of the F64 values. This is the SINGLE SOURCE for "where
+// meas lives", owned BESIDE decodeDetection — it walks the SAME reader over the SAME prefix fields the decoder walks
+// (subject:U64, sensor:U64, then the VecF64 length prefix) and reads the reader's cursor, rather than a hand-summed
+// `8 + 8 + 4` living in a downstream module. So a schema re-vendor that moves a field moves this span WITH the
+// decoder; it can never leave a caller's offset silently retargeted at a different inner field while its own label
+// still says 'meas'. Callers that must land a byte inside a recorded measurement (the tamper demo) consume THIS.
+// Throws MalformedPayload on a payload too short to carry the prefix — the same failure decodeDetection raises.
+export interface ByteSpan { readonly offset: number; readonly length: number }
+export function detectionMeasSpan(payload: Uint8Array): ByteSpan {
+  const r = new ByteReader(payload)
+  r.u64() // subject:U64 — the two fixed-width fields decodeDetection reads before meas
+  r.u64() // sensor:U64
+  const count = r.u32() // meas:VecF64 length prefix — r.off now sits on meas[0]'s first byte
+  return { offset: r.off, length: count * 8 } // each F64 measurement value is 8 bytes (r.f64)
+}
+
 // kind-22 EligibilityEvaluated (spec-3b §11.1): `subject:U64, sensor:U64, in_range:Bool, in_fov:Bool,
 // los_clear:Bool, eligible:Bool, tiebreak_applied:Bool` — the ± sensing observation. tiebreak_applied is
 // the appended 7th field (the EXP-F2a bump, D-017 "ties are reported, never silent" for the composition).

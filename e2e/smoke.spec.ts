@@ -1042,3 +1042,59 @@ test('the Wall re-earns: reopening after a full verify is back to zero green (re
   await expect(page.locator('.wall-dot.verified')).toHaveCount(0)
   await expect(page.locator('.wall-census')).toContainText('0 of 50 recomputed and matched here')
 })
+
+// ── v0.8 W6: THE TAMPER MOMENT — the ✗ path made demonstrable ──────────────────────────────────────────────
+// Every shipped bundle verifies green, so the REFUSAL machinery was invisible. The Wall's tamper demo fetches ONE
+// certified bundle (seed 42), verifies its pristine bytes, flips ONE byte of a recorded MEASUREMENT in a browser-
+// memory clone, and re-verifies — painting the pristine chain (✓ external pins beside ○ trailer-self rings) beside
+// the tampered refusal (event_hash ✗ cascading to result_id ✗). This is DOM, not WebGL (SwiftShader-safe). The
+// honesty rail: the demo NEVER enters the census.
+test('the Wall tamper demo: flip one byte → the side-by-side refusal (event_hash ✗ cascades to result_id ✗)', async ({ page }) => {
+  const errors: string[] = []
+  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()) })
+  await page.goto('/?run=e0')
+  await expect(page.locator('.readout')).toHaveText('tick 0 / 75', { timeout: 15000 })
+
+  // Open the Wall through the front door.
+  await page.getByRole('button', { name: 'hangar', exact: true }).click()
+  await page.locator('.hangar-campaign-card[data-campaign="robust-f3a"]').getByRole('button', { name: 'open the wall →' }).click()
+  await expect(page.locator('.wall-panel')).toBeVisible()
+
+  // The census is at rest — and it must STAY at rest through the demo (the isolation rail: the demo's tampered
+  // verdict never enters the session census). Capture it before.
+  await expect(page.locator('.wall-census')).toContainText('0 of 50 recomputed and matched here · 50 on record · 0 contradicted')
+
+  // FLIP ONE BYTE — the skeptic's ten seconds. (auto-scrolls the CTA into view.)
+  await page.getByRole('button', { name: /flip one byte/ }).click()
+  await expect(page.locator('.tamper-result')).toBeVisible({ timeout: 15000 })
+  await expect(page.locator('.tamper-col')).toHaveCount(2)
+
+  // PRISTINE column: the verified voice; zero red. The seven-pin chain reads honestly — 3 external ✓ pins
+  // (result_id / case_id / bundle sha-256) beside 4 trailer-self ○ rings (event_hash / state hash / counts).
+  const published = page.locator('.tamper-col').nth(0)
+  await expect(published.locator('.tamper-verdict.verified')).toBeVisible()
+  await expect(published.locator('.tamper-row.verified')).toHaveCount(3)
+  await expect(published.locator('.tamper-row.self')).toHaveCount(4)
+  await expect(published.locator('.tamper-row.mismatch')).toHaveCount(0)
+
+  // TAMPERED column: the mismatch voice, and the CASCADE — event_hash ✗ → result_id ✗ (bundle sha-256 ✗ too);
+  // the untouched fields stay ✓ (surgical, not a blanket refusal).
+  const flipped = page.locator('.tamper-col').nth(1)
+  await expect(flipped.locator('.tamper-verdict.mismatch')).toBeVisible()
+  await expect(flipped.locator('.tamper-row.mismatch')).toHaveCount(3)
+  await expect(flipped.locator('.tamper-row.mismatch').filter({ hasText: 'event_hash' })).toHaveCount(1)
+  await expect(flipped.locator('.tamper-row.mismatch').filter({ hasText: 'result_id' })).toHaveCount(1)
+  await expect(flipped.locator('.tamper-row.verified').filter({ hasText: 'case_id' })).toHaveCount(1)
+
+  // ISOLATION: the session census is untouched — the demo lives in its own ephemeral state, never the rollup.
+  await expect(page.locator('.wall-census')).toContainText('0 of 50 recomputed and matched here · 50 on record · 0 contradicted')
+
+  // BROWSER EVIDENCE — the side-by-side refusal.
+  await page.locator('.tamper-result').scrollIntoViewIfNeeded()
+  await page.waitForTimeout(300)
+  await page.screenshot({ path: '.superpowers/sdd/w6-tamper.png' })
+
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.wall-panel')).toHaveCount(0)
+  expect(errors, `no console errors: ${errors.join(' | ')}`).toEqual([])
+})

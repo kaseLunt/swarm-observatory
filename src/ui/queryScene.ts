@@ -1,5 +1,5 @@
-import { queryBounds, type QueryDraw, type Vec3 } from './queryStage'
-import type { Framing } from './camera'
+import { queryBounds, SPHERE, BOX, TRIANGLE, type QueryDraw, type Vec3, type LosComposite } from './queryStage'
+import { boundsFromPositions, type Bounds, type Framing } from './camera'
 
 // ── Query-stage render helpers (v0.6 T3) ──────────────────────────────────────────────────────────────
 // PURE, three-free support math for the query stage renderer (queryStageView.tsx). Kept out of the model
@@ -117,4 +117,74 @@ export function missRayEndpoint(o: Vec3, dir: Vec3, len: number): Vec3 {
   const denom = Math.hypot(dir[0], dir[1], dir[2])
   const s = denom > 1e-9 ? len / denom : 0
   return [o[0] + dir[0] * s, o[1] + dir[1] * s, o[2] + dir[2] * s]
+}
+
+// ── e0 AUTHORED TOUR SHOTS (v0.8 W7) — decode-true vantages for the query-stage tour ─────────────────────
+// Two shots the query-stage tour arrives on, composed from the SAME decoded geometry the stage draws (the v0.7
+// discipline: every tour number re-derived from the model, never eyeballed). Both flip NED→three with the self-
+// contained basis-B convention (x=n, y=−d, z=e) the renderer + povFraming use, so what is framed is what is
+// drawn — never the app-wide flight basis A (this stage is positionless; nothing on it is in basis A). Pure;
+// off the frame path (memoized once per model in Scene, the sibling of stageBounds / observerFraming).
+
+// The blocking occluder BODY's three-space extremal points, keyed by the DECODED blocker object id (1 sphere ·
+// 2 box · 3 triangle) — mirroring queryStage.seedSolids, but for the ONE occluder a corridor shot must show.
+// The id is decoded (firstBlocker.object); the body is the pinned scenario constant. Sphere → its ±radius AABB
+// corners; box → its min/max; triangle → its three verts. An unpinned id yields no points (the fit falls to the
+// eye + contact alone — an honest degradation, never a throw).
+function occluderBodyExtent(object: number): Vec3[] {
+  if (object === 1) { const { center: c, radius: r } = SPHERE; return [[c[0] - r, c[1] - r, c[2] - r], [c[0] + r, c[1] + r, c[2] + r]] }
+  if (object === 2) return [BOX.min, BOX.max]
+  if (object === 3) return [TRIANGLE.a, TRIANGLE.b, TRIANGLE.c]
+  return []
+}
+
+// SHOT 1 "the first block" — the corridor of the FIRST BLOCKED sightline. Fit {the sightline origin (the eye),
+// the blocking occluder body, the death contact where the ray dies}, three-space, so the ray dying at the
+// occluder is the frame's event with the origin→occluder run in view. The composite (lowest-seq BLOCKED), the
+// blocker's occluder object, and the contact are ALL decoded — never eyeballed (e0's first block is tk39, the
+// sphere at n=191, but this is derived, not pinned). Returns a three-space Bounds the tour frames with the
+// house fit (frameFor), or null when the record carries no blocked sightline (honest empty state → the shot
+// falls through to the trajectory-so-far default, like a 'conjunction' on a non-sensing run).
+export function blockedCorridorBounds(composites: ReadonlyMap<number, LosComposite>): Bounds | null {
+  let best: LosComposite | null = null
+  for (const c of composites.values()) {
+    if (c.los.verdict === 'BLOCKED' && c.firstBlocker?.hitPoint != null && (best === null || c.seq < best.seq)) best = c
+  }
+  if (best === null || best.firstBlocker?.hitPoint == null) return null
+  const fb = best.firstBlocker
+  const pts: number[] = []
+  const push = (v: Vec3): void => { pts.push(v[0], -v[2], v[1]) } // NED→three (basis B): x=n, y=−d, z=e
+  push(best.los.o)                                       // the eye — the sightline's origin
+  push(fb.hitPoint!)                                     // the death contact — where the ray dies
+  for (const p of occluderBodyExtent(fb.object)) push(p) // the blocking occluder body — so the interposition reads
+  return boundsFromPositions(new Float32Array(pts), pts.length / 3)
+}
+
+// SHOT 2 "the second observer" — the crane that STAGES the Observer's-Eye POV. Stand BEHIND and ABOVE the drawn
+// observer and aim at the interrogated theatre: the observer marker reads in the foreground (the eye the O key
+// will drop the viewer into) with the world it questions ahead (lead room). The look AXIS is povFraming's own
+// (observer → theatre centroid), so the post-tour O keypress is a forward dolly down this SAME axis into the
+// eye. The eye and the theatre centroid are DECODED (observerPoint + queryBounds.solidsContacts); the pull-back
+// and lift are authored FRACTIONS of the theatre radius — scene-scaled, so the crane can never rot on a
+// re-decode into a magic absolute. Returns a complete three-space Framing (like povFraming — a directed vantage,
+// not a fittable box), or null when there is no drawn observer or theatre (honest empty state).
+// Calibrated on browser screenshots (v0.8 W7): back 0.8·R seats the eye at ~15% of frame height (a foreground
+// marker, not a speck), and lift 0.15·R drops the observer to the lower third (a 3/4 crane) with the theatre it
+// interrogates above/ahead — the eye clearly introduced, its sightlines fanning up into the world it questions.
+export const CRANE_BACK_K = 0.8 // pull-back behind the eye, in theatre-radius units
+export const CRANE_LIFT_K = 0.15 // crane height above the eye, in theatre-radius units
+export function observerCraneFraming(draws: readonly (QueryDraw | null)[]): Framing | null {
+  const o = observerPoint(draws)
+  const theatre = queryBounds(draws).solidsContacts
+  if (o === null || theatre === null) return null
+  const eye: [number, number, number] = [o[0], -o[2], o[1]]                                              // three-space eye
+  const target: [number, number, number] = [theatre.center[0], -theatre.center[2], theatre.center[1]]   // three-space theatre centroid
+  const dx = target[0] - eye[0], dy = target[1] - eye[1], dz = target[2] - eye[2]
+  const len = Math.hypot(dx, dy, dz)
+  if (len < 1e-6) return null // degenerate: eye coincident with the theatre — no look axis to crane along
+  const ux = dx / len, uy = dy / len, uz = dz / len // unit look axis (eye → theatre) — the povFraming direction
+  const back = theatre.radius * CRANE_BACK_K
+  const lift = theatre.radius * CRANE_LIFT_K
+  const position: [number, number, number] = [eye[0] - ux * back, eye[1] - uy * back + lift, eye[2] - uz * back]
+  return { position, target }
 }

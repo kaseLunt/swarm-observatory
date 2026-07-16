@@ -243,3 +243,61 @@ test('f2a sensing tour: opens and closes on the stage bookend, with authored con
 
   expect(errors, `no console errors: ${errors.join(' | ')}`).toEqual([])
 })
+
+// ── v0.8 W7: THE e0 QUERY-STAGE TOUR — the three authored arrives (corridor / crane / stage bookend) ─────────
+// e0 is POSITIONLESS (no drone cone to compose around), so this proves the arrives by the CAMERA MOVE alone —
+// no HEAD_POS. The scene still latches (Entities mounts a count-0 cone InstancedMesh, so the CAPTURE_SCENE hook
+// finds a ConeGeometry and locks __scene/__camera). The minimal beats-advance contract the design bench ruled:
+// beats 0-1 hold the composed stage frame (un-authored → no displacement); beat 2 'corridor' cranes IN to the
+// first block; beat 4 'crane' moves to the observer-crane vantage; beat 5 'stage' returns to the SAME bookend
+// the load vantage sits on (rest-state parity). The exact per-shot math is unit-pinned (camera.test.ts
+// shotFraming + queryScene.oracle.test.ts decode-true anchors); this proves the wiring end-to-end in ANGLE
+// SwiftShader. The three AFTER frames are the browser evidence (.superpowers/sdd/task-v08-w7-e0-shot{1,2,3}.png).
+test('e0 query-stage tour: corridor / crane / stage-bookend arrives each move the camera; beat 5 returns to the load bookend', async ({ page }) => {
+  test.setTimeout(150_000) // e0's six beats (holds 7.7+11.1+10.4+8.9+8.8+8.4s ≈ 55s) + witness flights + tick-gates + settles
+  await page.addInitScript(CAPTURE_SCENE)
+  const errors: string[] = []
+  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()) })
+  await page.goto('/?run=e0') // a deep link is not a cold open → no auto-tour; we drive it explicitly
+  await expect(page.locator('.readout')).toContainText('tick 0 / 75', { timeout: 15000 })
+  await page.waitForFunction('!!window.__scene', undefined, { timeout: 15000 })
+  // The PRE-TOUR load vantage — for e0 this IS the stage bookend (CameraRig frames the query core theatre on
+  // load). Beat 0 is UN-AUTHORED, so its camera must NOT displace from here; beat 5's 'stage' arrive must RETURN.
+  const preTour = await settle(page)
+
+  await page.getByRole('button', { name: '▶ tour', exact: true }).click()
+  // Beat 0 — the composed stage frame (the tour-start reset frames the core theatre; no arrive). Must not move.
+  await expect(page.locator('.tour-caption')).toContainText('A real run bundle')
+  const camB0 = await settle(page)
+  expect(dist(camB0, preTour), `e0 b0 is un-authored → the camera must NOT displace (Δ=${dist(camB0, preTour).toFixed(2)}u)`).toBeLessThan(2)
+
+  // Beat 2 — 'corridor': crane IN from the ~1800u stage to the first blocked sightline (tk39, origin→sphere), a
+  // much tighter frame. Assert it MOVED off the stage vantage. (Beat 1 holds the stage frame — un-authored.)
+  await expect(page.locator('.tour-caption')).toContainText('Act II — sightlines from the origin', { timeout: 25000 })
+  await waitForTick(page, 43)
+  const camB2 = await settle(page)
+  await page.screenshot({ path: '.superpowers/sdd/task-v08-w7-e0-shot1.png' })
+  const mvB2 = dist(camB2, preTour)
+  expect(mvB2, `e0 b2 'corridor' cranes in off the stage vantage (Δ=${mvB2.toFixed(0)}u)`).toBeGreaterThan(100)
+
+  // Beat 4 — 'crane': move to the observer-crane vantage (behind + above the drawn observer at n=−601). Assert it
+  // MOVED off the corridor frame. (Beat 3 is the Show-the-Math select beat — un-authored, holds beat 2's frame.)
+  await expect(page.locator('.tour-caption')).toContainText('Act III — a second observer', { timeout: 25000 })
+  await waitForTick(page, 74)
+  const camB4 = await settle(page)
+  await page.screenshot({ path: '.superpowers/sdd/task-v08-w7-e0-shot2.png' })
+  const mvB4 = dist(camB4, camB2)
+  expect(mvB4, `e0 b4 'crane' moved off the corridor frame (Δ=${mvB4.toFixed(0)}u)`).toBeGreaterThan(100)
+
+  // Beat 5 — 'stage': the bookend. Crane back to the whole-instrument core theatre, landing on the SAME vantage
+  // the load / free-exploration rest sits on (rest-state parity); the closing CLEAR sightline's far runaway end
+  // lies OUTSIDE this framed core theatre. Assert it RETURNED to preTour AND moved off beat 4's crane.
+  await expect(page.locator('.tour-caption')).toContainText('The closing beat', { timeout: 25000 })
+  const camB5 = await settle(page)
+  await page.screenshot({ path: '.superpowers/sdd/task-v08-w7-e0-shot3.png' })
+  expect(dist(camB5, preTour), `e0 b5 returns to the load bookend (Δ=${dist(camB5, preTour).toFixed(1)}u)`).toBeLessThan(5)
+  const mvB5 = dist(camB5, camB4)
+  expect(mvB5, `e0 b5's crane-back moved the camera off beat 4 (Δ=${mvB5.toFixed(0)}u)`).toBeGreaterThan(100)
+
+  expect(errors, `no console errors: ${errors.join(' | ')}`).toEqual([])
+})

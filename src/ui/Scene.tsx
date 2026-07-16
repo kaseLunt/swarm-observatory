@@ -28,7 +28,7 @@ import { CameraRig, loadFraming, STAGE_FRAME_OPTS, SENSING_STAGE_FRAME_OPTS, TAR
 import { ChainLinks } from './chainLinks'
 import { QueryStage } from './queryStageView'
 import { buildQueryDraws, queryBounds, queryStageApplies } from './queryStage'
-import { povFraming } from './queryScene'
+import { povFraming, blockedCorridorBounds, observerCraneFraming } from './queryScene'
 import { TrajectoryTrail } from './trajectoryTrail'
 import { SensingStage, HEAD_R as HEAD_MARKER_R, SENSOR_MARKER_R, lerpHeadPosition } from './sensingStageView'
 import { buildSensingStage, sensingStageApplies, sensingSubjectRef, TARGET_FRAME_OFFSET } from './sensingStage'
@@ -290,7 +290,7 @@ const OCCLUDER_THREE = { center: nedToThree(OCCLUDER_C), radius: Math.sqrt(OCCLU
 // (STAGE_FRAME_OPTS — the stage lives hundreds of units out, so the capped fit would reject it). This
 // REPLACES the former whole-helix spine finale (the query stage replaces ChainSpine as e0's stage).
 
-function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, observerFraming, hasSensing, subjectIndex }: { model: RunModel; trail: Trail; bounds: Bounds | null; stageBounds: Bounds | null; stageOpts: FrameOpts; finaleBounds: Bounds | null; observerFraming: Framing | null; hasSensing: boolean; subjectIndex: number }) {
+function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, observerFraming, corridorBounds, craneFraming, hasSensing, subjectIndex }: { model: RunModel; trail: Trail; bounds: Bounds | null; stageBounds: Bounds | null; stageOpts: FrameOpts; finaleBounds: Bounds | null; observerFraming: Framing | null; corridorBounds: Bounds | null; craneFraming: Framing | null; hasSensing: boolean; subjectIndex: number }) {
   const meshRef = useRef<THREE.InstancedMesh>(null)
   // Enlarged invisible hit target (Task v04-7): shares the visible mesh's per-instance matrices (written
   // alongside it in the frame loop) and owns ALL cone interaction — click-to-select + hover-lift.
@@ -876,6 +876,8 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
             sensorRadius: hasSensing ? SENSOR_MARKER_R : 0,
             occluder: hasSensing ? OCCLUDER_THREE : null,
             stageBounds,
+            corridor: corridorBounds, // e0 SHOT 1 (null on non-query runs → the 'corridor' shot falls through)
+            crane: craneFraming,      // e0 SHOT 2 (null on non-query runs → the 'crane' shot falls through)
           }, shotOpts, (state.camera as THREE.PerspectiveCamera).aspect)
         }
         if (f === null && trail.count > 0) {
@@ -1138,6 +1140,13 @@ export function Scene({ model }: { model: RunModel }) {
   // theatre — computed ONCE per model (three-space, via queryScene.povFraming), eased on the O keypress by
   // the reused trail-frame owner. Null for f0/f1 (no drawn observer) → the preset is a no-op there.
   const observerFraming = useMemo(() => (queryData ? povFraming(queryData.draws) : null), [queryData])
+  // e0 AUTHORED TOUR SHOTS (v0.8 W7) — the two decode-true query-stage arrive vantages, computed ONCE per model
+  // (the sibling of stageBounds / observerFraming) and threaded into the tour-arrival shotFraming anchors below.
+  // e0Corridor (SHOT 1 "the first block") is the three-space Bounds of the first blocked sightline's
+  // origin→occluder→contact corridor; e0Crane (SHOT 2 "the second observer") is the directed observer-crane
+  // Framing. Null for f0/f1 (no query geometry) → the 'corridor'/'crane' shots fall through there.
+  const e0Corridor = useMemo(() => (queryData ? blockedCorridorBounds(queryData.losComposites) : null), [queryData])
+  const e0Crane = useMemo(() => (queryData ? observerCraneFraming(queryData.draws) : null), [queryData])
   // THE MOUNT GATE (v0.6 MUST-FIX, critic ruling 3; T6 M3 — routed through the ONE complete predicate).
   // buildQueryDraws returns a seq-indexed array that is ALL-NULL for a positionless run whose event kinds have no
   // kind-23 probe (f4) — it NEVER returns null — so `positionless && queryData` alone mounted the stage (its
@@ -1260,7 +1269,7 @@ export function Scene({ model }: { model: RunModel }) {
       <directionalLight position={[5, 10, 3]} intensity={1.2} />
       <RadialGrid />
       <CameraRig bounds={bounds} stageBounds={activeStageBounds} stageOpts={activeStageOpts} />
-      <Entities model={model} trail={entitiesTrail} bounds={entitiesBounds} stageBounds={activeStageBounds} stageOpts={activeStageOpts} finaleBounds={finaleBounds} observerFraming={observerFraming} hasSensing={hasSensing} subjectIndex={subjectIndex} />
+      <Entities model={model} trail={entitiesTrail} bounds={entitiesBounds} stageBounds={activeStageBounds} stageOpts={activeStageOpts} finaleBounds={finaleBounds} observerFraming={observerFraming} corridorBounds={e0Corridor} craneFraming={e0Crane} hasSensing={hasSensing} subjectIndex={subjectIndex} />
       <ChainLinks model={model} />
       {/* The QUERY STAGE — mounted ONLY for a positionless run that ACTUALLY HAS kind-23 draws (e0). Replaces
           the presentational spine: the probes write the world in real NED space (rays fade-spent, contacts +

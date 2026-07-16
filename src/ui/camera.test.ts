@@ -675,7 +675,9 @@ describe('shotFraming (authored tour-camera shot resolution, T4)', () => {
   const sensor: [number, number, number] = [0, 0, 0]          // sensor O
   const occluder = { center: [41, 0, 41] as [number, number, number], radius: Math.sqrt(41) }
   const stageBounds = { center: [24, 0, 40] as [number, number, number], radius: 90 }
-  const full: ShotAnchors = { head, sensor, occluder, stageBounds }
+  const corridor = { center: [160, 1, 0] as [number, number, number], radius: 185 } // e0 SHOT 1 (a three-space box→sphere)
+  const crane: Framing = { position: [-860, 130, -35], target: [415, 0, -47] }       // e0 SHOT 2 (a directed vantage)
+  const full: ShotAnchors = { head, sensor, occluder, stageBounds, corridor, crane }
 
   test("'head' medium composes around the head at the medium distance (= finaleFraming, medium)", () => {
     const f = shotFraming({ kind: 'head', distance: 'medium' }, full, OPTS)!
@@ -743,8 +745,31 @@ describe('shotFraming (authored tour-camera shot resolution, T4)', () => {
     expect(f).toEqual(shotFraming({ kind: 'conjunction' }, full, OPTS)) // occluder absent → same as the bare conjunction
   })
 
+  test("'corridor' (e0 SHOT 1) frames the corridor bounds (= frameFor over a.corridor, the aspect-aware house fit)", () => {
+    const f = shotFraming({ kind: 'corridor' }, full, OPTS)!
+    expect(f).toEqual(frameFor(corridor, OPTS.fit)) // no aspect → the vertical-only fit, like the conjunction default
+    // Aspect-aware, like the conjunction relationship shot (NOT the bookend-parity 'stage'): a narrow canvas pulls back.
+    const narrow = shotFraming({ kind: 'corridor' }, full, OPTS, 0.7)!
+    expect(narrow).toEqual(frameFor(corridor, OPTS.fit, 0.7))
+    expect(shotFraming({ kind: 'corridor' }, full, OPTS, 1.6)).toEqual(f) // aspect ≥ 1 → the vertical fit exactly
+  })
+
+  test("'corridor' with no corridor bounds (a non-query run) → null (falls through to the prefix-fit default)", () => {
+    expect(shotFraming({ kind: 'corridor' }, { ...full, corridor: null }, OPTS)).toBeNull()
+    expect(shotFraming({ kind: 'corridor' }, { head, sensor, occluder, stageBounds }, OPTS)).toBeNull() // field absent
+  })
+
+  test("'crane' (e0 SHOT 2) returns the directed observer-crane framing verbatim (a preset vantage, like the POV)", () => {
+    expect(shotFraming({ kind: 'crane' }, full, OPTS)).toEqual(crane) // composed decode-true in queryScene; returned as-is
+  })
+
+  test("'crane' with no crane framing (a non-query run) → null (falls through to the prefix-fit default)", () => {
+    expect(shotFraming({ kind: 'crane' }, { ...full, crane: null }, OPTS)).toBeNull()
+    expect(shotFraming({ kind: 'crane' }, { head, sensor, occluder, stageBounds }, OPTS)).toBeNull() // field absent
+  })
+
   test('every resolved shot is a finite framing (the consume still guards, but the resolver never emits NaN for finite anchors)', () => {
-    for (const shot of [{ kind: 'head', distance: 'medium' }, { kind: 'head', distance: 'close' }, { kind: 'stage' }, { kind: 'conjunction' }, { kind: 'conjunction', occluder: true }] as const) {
+    for (const shot of [{ kind: 'head', distance: 'medium' }, { kind: 'head', distance: 'close' }, { kind: 'stage' }, { kind: 'conjunction' }, { kind: 'conjunction', occluder: true }, { kind: 'corridor' }, { kind: 'crane' }] as const) {
       const f = shotFraming(shot, full, OPTS)
       expect(f).not.toBeNull()
       expect(isFiniteFraming(f!)).toBe(true)

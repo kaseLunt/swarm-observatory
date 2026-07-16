@@ -12,11 +12,22 @@
 //                     sensing-lens relationship shots that make the FOV gap / the crossing / the eclipse legible
 //                     (f2a b1/b2, and b3 with the occluder). Resolves to null on a non-sensing run (falls through
 //                     to the prefix-fit default).
-//   • 'stage'       — the whole-instrument stage fit (the load / bookend vantage): the sensing scope (f2a b5).
+//   • 'stage'       — the whole-instrument stage fit (the load / bookend vantage): the sensing scope (f2a b5),
+//                     and the e0 query core theatre (e0 b5 — the runaway-excluded core keeps the closing CLEAR
+//                     sightline's far runaway end OUTSIDE the framed theatre: "clean passage", the bookend).
+//   • 'corridor'    — e0 (query stage): fit the FIRST BLOCKED sightline's origin→occluder→contact corridor, so
+//                     the ray dying at the occluder is the frame's event (e0 b2). Resolves to null on a run with
+//                     no query blocked sightline (falls through to the prefix-fit default).
+//   • 'crane'       — e0 (query stage): the crane that STAGES the Observer's-Eye POV — behind + above the drawn
+//                     observer, aimed at the interrogated theatre, so the eye reads in the foreground with the
+//                     world it questions ahead, down the SAME axis the O key later dollies into (e0 b4). null on
+//                     a run with no drawn observer / theatre.
 export type TourShot =
   | { kind: 'head'; distance: 'medium' | 'close' }
   | { kind: 'conjunction'; occluder?: boolean }
   | { kind: 'stage' }
+  | { kind: 'corridor' }
+  | { kind: 'crane' }
 
 export interface TourStep {
   tick?: number                 // scrub here (paused) before the step body

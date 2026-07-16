@@ -319,6 +319,14 @@ export interface ShotAnchors {
   sensorRadius?: number
   occluder: { center: readonly [number, number, number]; radius: number } | null
   stageBounds: Bounds | null
+  // e0 query-stage authored shots (v0.8 W7). Both are DECODE-TRUE, composed in queryScene from the parsed draws
+  // (basis B) and threaded here as anchors — the SAME "grammar picks the shot, the run supplies the geometry"
+  // split as the sensing anchors. `corridor` is a fittable three-space Bounds (the first blocked sightline's
+  // origin→occluder→contact box), framed by the shared house fit; `crane` is a complete directed Framing (the
+  // observer-crane vantage, like povFraming — a directed vantage, not a box). Absent / null on any non-e0 run,
+  // so the 'corridor'/'crane' shots resolve to null there and fall through, exactly like 'conjunction' does.
+  corridor?: Bounds | null
+  crane?: Framing | null
 }
 // The framing knobs an authored shot composes with, threaded from the caller (they live in cameraRig/Scene; a
 // param keeps camera.ts dependency-free and unit-testable). `fit` is the uncapped fit opts shared by 'conjunction'
@@ -383,6 +391,16 @@ export function shotFraming(shot: TourShot, a: ShotAnchors, o: ShotOpts, aspect?
       const bounds = boundsFromPositions(new Float32Array(pts), pts.length / 3)
       return bounds === null ? null : frameFor(bounds, o.fit, aspect)
     }
+    case 'corridor':
+      // e0 SHOT 1 — the first blocked sightline's corridor, framed on the house octant with the aspect-aware fit
+      // (a relationship shot, like 'conjunction', not a bookend). queryScene.blockedCorridorBounds already fitted
+      // the decoded {eye, occluder body, contact} into this three-space box. Null (no blocked sightline) falls through.
+      return a.corridor == null ? null : frameFor(a.corridor, o.fit, aspect)
+    case 'crane':
+      // e0 SHOT 2 — the observer crane. A complete DIRECTED vantage (queryScene.observerCraneFraming, the povFraming
+      // idiom): behind + above the drawn observer, aimed at the interrogated theatre. No fit to compose — it is
+      // returned verbatim (the consume's isFiniteFraming guard still stands). Null (no observer/theatre) falls through.
+      return a.crane ?? null
   }
 }
 

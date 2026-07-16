@@ -3,6 +3,7 @@ import { catalogDetOnly } from '../decode/runCatalog'
 import { EVENT_KIND_NAMES } from '../decode/payloads'
 import { categoryOf } from './categorize'
 import type { BadgeState } from './badges'
+import { badgeGlyph } from './voices'
 import type { CategoryKey } from './theme'
 import { ASSUMED_DT_US } from '../state/transport'
 
@@ -107,9 +108,13 @@ export function cardVerdict(runId: string, status: SealStatus): CardVerdict {
   return { state: 'attested', label: detOnly ? 'det-only golden · self-checks on open' : 'certified · on record' }
 }
 
-// Voice glyphs — the panel's exact set (ProvenancePanel GLYPH), mirrored here so the Hangar speaks the
-// identical grammar. attested/verified/mismatch are reachable from cardVerdict; the full map documents intent.
-export const VOICE_GLYPH: Record<BadgeState, string> = { pending: '○', verified: '✓', mismatch: '✗', attested: '•' }
+// Voice glyphs — sourced from the single voices module so the Hangar speaks the identical grammar as every
+// other surface (no per-surface literal to drift). attested/verified/mismatch are reachable from cardVerdict;
+// the full BadgeState map documents intent (pending → the ○ self-check).
+export const VOICE_GLYPH: Record<BadgeState, string> = {
+  pending: badgeGlyph('pending'), verified: badgeGlyph('verified'),
+  mismatch: badgeGlyph('mismatch'), attested: badgeGlyph('attested'),
+}
 
 // ── SESSION-SEAL STATE MACHINE (D4 Ruling 1 / NEVER #12; closure item 1) ─────────────────────────
 // Session-verified state lives in the store, never localStorage/URL. A seal record names the run AND the

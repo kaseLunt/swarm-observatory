@@ -122,7 +122,7 @@ R=bench critique rulings, U=unconstrained horizon, G=résumé-sweep gaps.
 | Item | Source | Status |
 |---|---|---|
 | T0 debt wave: duplicate index fetch, eventsByTick EMPTY const, stale-dist smoke guard | S-cut / T5b | SHIPPED (3ccb7b0 / 21d225b / 2f423c5 + 273786a — dup index fetch + eventsByTick EMPTY const + stale-dist smoke guard; the identity.json stale-critical guard-input catch landed 273786a) |
-| T1 V8→V9 CONTRACT RE-SYNC: `contract/identity.json` v8/s3 → the 07-09 drop's v9/s4; worktree-isolated `chore/contract-resync-v9` per the 40a48cc precedent; ONE re-sync, contract law | relay #12 / contract law | REPORT-DELIVERED / HELD (drop verified, scope defined; the v9 flip is ATOMIC across all six published runs → HELD on the owner's relay #2 answer; EXPLICIT-CARRY to v0.8-open if unanswered — never a silent drop) |
+| T1 V8→V9 CONTRACT RE-SYNC: `contract/identity.json` v8/s3 → the 07-09 drop's v9/s4; worktree-isolated `chore/contract-resync-v9` per the 40a48cc precedent; ONE re-sync, contract law | relay #12 / contract law | DONE — the atomic v9/s4 resync landed, main @ `766981b`, 2026-07-15 (all six published runs flip v8/s3→v9/s4 in one merge with `contract/identity.json`; relay #2 Bucket A — the atomic six-run flip — COMPLETE; Bucket B — the 50-seed robust sidecar — RE-EARNED 2026-07-15: verdict_level=2 ROBUST, 50 variants × 3 attempts, gates 31/31, live identity == precommitted pins; outputs cached for the v0.8 Wall's vendoring decision) |
 | C1 twin consults: (a) registry provenance metadata (standing rule, binds T2's start); (b) entity identity language (G19) | U11/S5 + G19 | DONE (`.superpowers/sdd/consult-v07-c1.md` — (a) registry provenance metadata + (b) entity identity language; both bound T2's start) |
 | T2 THE SENSING GAUNTLET: f2a lens per D2, grounded in the delivered scene+sensing excerpt; four-gate strip; LAW-4 declaration; 60-second tour; legend multi-kind rider | D2 | SHIPPED (3cc070f; codex 4-round — the sensing gauntlet centerpiece; UI naming = OWNER-GATE G5) |
 | T3 THE HORIZON: miniwave §§1–2 + §1.4 generic (HORIZON_HOPS / HOP_DECAY / ambient yield / chainmeta chip / bounded arcs); S7 forge SPEC rider (design-owed, spec-first) | critic R1 + S7 | SHIPPED (94bbac8 — the wash is dead: HORIZON_HOPS=3 + HOP_DECAY + root/N-hops chip, rest-state SHA-identical proof-protected; S7 forge SPEC authored at `docs/superpowers/specs/2026-07-09-synthetic-forge-spec.md`, §6 build-vs-defer decision gate OPEN; HOP_DECAY symmetry = OWNER-GATE G4) |
@@ -155,7 +155,29 @@ R=bench critique rulings, U=unconstrained horizon, G=résumé-sweep gaps.
 > - **README method-section counts** — truth-fixed to 894 unit / 28 smoke / 81 conformance this wave;
 >   regenerate at the flip window alongside the hero-GIF regen (both drift every cycle).
 
-## v0.8 — THE CERTIFICATION WALL + THE CAMPAIGN (re-targeted v0.7→v0.8 at the 2026-07-09 cycle open — the approved scope (b) took v0.7; the Wall's existence condition MET at 1367433)
+## v0.8 — THE WALL, IN PUBLIC (cycle opened 2026-07-15; plan of record `docs/superpowers/plans/2026-07-15-swarm-observatory-v0.8-the-wall-in-public.md`; branch `dev/v0.8`; scope approved as filed on the owner's filed defaults — G-1 scope, G-2 public flip [scrub-conditional], G-3 Bucket B [DONE — ROBUST re-earned same night], G-4 LICENSE [MIT + `contract/` carve-out]; re-targeted v0.7→v0.8 at the 2026-07-09 cycle open — the Wall's existence condition MET at 1367433)
+
+**THE LADDER (approved as filed; per-wave detail lives in the plan of record above):**
+
+| Item | Source | Status |
+|---|---|---|
+| W0 FLIP-PREP polish (week 1, no feature budget): README counts truth-fix (894→1111/88/28 drift), ARCHITECTURE.md + public process receipts, LICENSE (MIT + `contract/` carve-out), the Pages flip itself | portfolio 1/6/9 | IN-FLIGHT tonight, scrub-conditional (G-2: a clean scrub of relay #13's `dirty: true` flag → flip; a blocker → prep-only + a morning flag) |
+| W0' A3 branded ticks (parallel): EventTick/StateFrame/TransportTick brands at the RunModel boundary; ONE resolveCursor (zero-alloc out-param form); store/URL tick NOT branded | arch 2 | DISPATCHED |
+| W1 VOICES module (thin): two-family taxonomy (VERDICTS ✓○•✗ / NO-VERDICT ·?NOT-YET), single-source in theme.ts idiom, the 4-surface attested drift fixed; ev99 folds in as a note-level `basis` ruling | design 7/8 | QUEUED |
+| W2 I5 CausalNeighborhood: causalNeighborhood(seq,{maxHop,maxPerHop}), pinned truncation order, count-true chainmeta; causalChain demoted | arch 3 | QUEUED |
+| W3 A1 witness union: closed two-arm union (basis live-inputs \| decoded-consistency IS the tag); tokens resolved by buildLensRegistry; comparand excluded from InputToken at the type level; NO interpreter | arch 4 | QUEUED |
+| W4 Campaign spine: persistent worker, hash-and-discard verify, RunSummary (never useRun×N); decode-cancellation debt lands here; RUN_CATALOG build-time generation trigger (>~12 citizens) | arch 5/6 | QUEUED |
+| W5 THE WALL (hero): D4 execution + design rails — green-is-a-receipt (rest state zero-green zero-bloom screenshot = review gate), real timing or a cut, 5-acquirable/45-on-record split honest, verify-all choreography in true completion order | design 1-4, portfolio 3/4 | QUEUED |
+| W6 THE TAMPER MOMENT: the ✗ path demonstrated — one byte flipped, the fold refuses on screen, the skeptic's ten seconds | portfolio 9 | QUEUED |
+| W7 e0 authored beats (rider): The first block (tk39), The second observer (crane n=−601), Clean passage (tk74); + N2 shot-reset carry | design 5/6 | QUEUED |
+| R3 visual-delta seam (capture-aware delta through the r3f frame loop) | arch 9, design 9 | DEFERRED — own trigger: no frame-loop co-scheduling with a new-surface cycle |
+| CSR event-store | arch 7 | DEFERRED — trigger restated: ≥10^5 events |
+
+CUT: the A1 interpreter ("DSL" half) — echo unrepresentable per the arch verdict; the
+campaign-sibling pipeline stays bounded to stream-and-discard beyond W4.
+
+**Pre-ladder v0.8 backlog** (tracked before the candidate ladder synthesized the cycle;
+kept per the anti-forgetting protocol — the ladder above is the executing plan):
 
 | Item | Source | Status |
 |---|---|---|

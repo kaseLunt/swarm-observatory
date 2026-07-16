@@ -5,6 +5,9 @@
 // must never ride into the verification surface.
 import { SPHERE, BOX, TRIANGLE, QUERY_KIND, type Vec3 } from './queryScenario'
 import type { QueryDraw, LosComposite } from './queryStage'
+// TYPE-ONLY (erased under verbatimModuleSyntax — the runtime closure stays {showMath, queryScenario}, the
+// no-transcendental scan unaffected). Only the AgreeSource witness types + the branded outcome ride in.
+import type { AgreementResult, AgreeCapability } from './agreeSource'
 
 // ── SHOW THE MATH — the verdict-recompute layer (v0.6 T4a) ─────────────────────────────────────────────
 // A PURE, three-free module that re-derives each kind-23 verdict IN THE BROWSER from the decoded numbers,
@@ -168,6 +171,25 @@ export function recomputeRange(o: Vec3, g: Vec3): number {
   return Math.sqrt(dot(dl, dl))
 }
 
+// ── W3 (audit A1) — the AgreeSource capability THIS executor's recomputes actually back (PER-FORM, F2) ────
+// Tokens are DATA naming existing legs of this module — a LOOKUP TABLE the boot guard resolves against, never
+// an evaluator. Each FORM maps to the EXACT input tuple its leg consumes (F2 — one truth per form, not two
+// flat sets): point-in-region re-derives from `query:probe-point`; ray-occluder from `query:ray-geometry`;
+// los-composition from the `query:component-segments`; range-scalar from `query:range-endpoints`. Each
+// comparand (the engine's own verdict / stored range_m) is a ComparandToken — un-nameable as an input, so no
+// e0 recompute can echo the engine's bit against itself. No decoded-consistency check lives here, so `decoded`
+// is empty. The boot guard set-compares a declared arm's inputs against ITS form's tuple: a mismatched pairing
+// (the Cartesian counterexample) fails loud, where the old independent-membership check waved it through.
+export const SHOWMATH_AGREE_CAPABILITY: AgreeCapability = {
+  forms: {
+    'form:point-in-region': ['query:probe-point'],
+    'form:ray-occluder': ['query:ray-geometry'],
+    'form:los-composition': ['query:component-segments'],
+    'form:range-scalar': ['query:range-endpoints'],
+  },
+  decoded: [],
+}
+
 // ── aggregate: recompute EVERY event's checkable quantity and count the agreements (the "all 75" payoff) ─
 // Kinds 1/3/4 recompute the boolean VERDICT vs the engine's; kind 2 has no verdict (result_flag is constant
 // true — carries no meaning), so its checkable recomputation is the RANGE scalar (matched to the stored
@@ -176,7 +198,7 @@ export interface RecomputeSummary { total: number; agreed: number; disagreements
 export function recomputeAll(
   draws: readonly (QueryDraw | null)[],
   composites: ReadonlyMap<number, LosComposite>,
-): RecomputeSummary {
+): AgreementResult<RecomputeSummary> {
   let total = 0, agreed = 0
   const disagreements: number[] = []
   for (const d of draws) {
@@ -204,8 +226,20 @@ export function recomputeAll(
     if (ok) agreed++
     else disagreements.push(d.seq)
   }
-  return { total, agreed, disagreements }
+  // THE MINT — this executor actually RAN the live comparison, so it (and only it) brands the outcome an
+  // AgreementResult. A lens cannot fabricate this: the brand carries lib/brand's private symbol, so the
+  // summary cannot be written as static registration data (an object literal is a type error). Phantom brand,
+  // zero runtime cost — the same recompute, re-declared.
+  const summary: RecomputeSummary = { total, agreed, disagreements }
+  return summary as AgreementResult<RecomputeSummary>
 }
+
+// THE PER-ROW MINT (F4) — this executor RAN the comparison, so it (and only it) brands each row's agreement,
+// not just the aggregate above. `agrees` is the sanctioned boolean mint: the brand rides MathCard.agree to the
+// Inspector's mark resolver, which DEMANDS it — so a plain boolean can never enter a verdict mark, and this
+// mint cannot be deleted without breaking the type flow. Phantom brand, zero runtime cost. (The `as
+// AgreementResult` here + the summary mint above are the ONLY two in this file; the F4 sweep allowlists it.)
+const agrees = (matched: boolean): AgreementResult<boolean> => matched as AgreementResult<boolean>
 
 // Range agreement: EXACT equality — no tolerance. The recompute forms are operand-order-faithful to the
 // engine (the pinned left-to-right f64 dot + IEEE sqrt — decision-forms excerpt, doctrine §1.6), so JS f64
@@ -224,11 +258,16 @@ export interface MathCard {
   lines: MathLine[]     // the decoded numbers substituted into that form
   verdict: string       // OUR recomputed conclusion (INSIDE/HIT/CLEAR/…, or the recomputed range)
   engine: string        // the engine's conclusion (from result_flag) — for the mismatch voice on disagreement
-  agree: boolean        // recomputed-and-matched → the ✓ (verified voice); else the ✗ (mismatch voice)
+  agree: AgreementResult<boolean> | null // recomputed-and-matched (BRANDED — F4): the executor MINTS this per
+                        // row, so the Inspector's mark resolver DEMANDS the brand; a plain boolean cannot flow
+                        // into a verdict mark, and deleting the mint is a COMPILE error. → ✓/✗. NULL = NO
+                        // comparison ran (a missing LOS composite): UNBRANDABLE (F1), so a no-comparison state
+                        // can never mint a false ✗ — the type forces the unverifiable '?' path first.
   claims: MathLine[]    // display-only rows (the pinned bearing bits) — the CLAIM voice, NEVER a ✓
   claimNote?: string
-  unverifiable?: boolean // we could NOT recompute (e.g. a LOS row with no composite) → the neutral '?' voice:
-                         // agree is false-BY-INABILITY, not an engine mismatch — never a ✓, never a false ✗.
+  unverifiable?: boolean // we could NOT recompute (e.g. a LOS row with no composite) → the neutral '?' voice
+                         // and the DISPLAY driver; agree is null (no comparison ran), not an engine mismatch —
+                         // never a ✓, and no brandable false to be misread as a ✗ (F1).
 }
 
 // Compact number formatting: exact integers (the lattice fixtures) read bare; others get 4 decimals trimmed.
@@ -253,7 +292,7 @@ export function showMath(d: QueryDraw, composite: LosComposite | null): MathCard
             { label: 'p', value: vec(d.point) }, { label: 'c', value: vec(SPHERE.center) },
             { label: 'd²', value: num(r.d2) }, { label: 'r²', value: num(SPHERE.r2) },
           ],
-          verdict, engine: d.verdict, agree: r.inside === (d.verdict === 'INSIDE'), claims: [],
+          verdict, engine: d.verdict, agree: agrees(r.inside === (d.verdict === 'INSIDE')), claims: [],
         }
       }
       const r = recomputeBox(d.point)
@@ -264,7 +303,7 @@ export function showMath(d: QueryDraw, composite: LosComposite | null): MathCard
           { label: 'p', value: vec(d.point) },
           { label: 'min', value: vec(BOX.min) }, { label: 'max', value: vec(BOX.max) },
         ],
-        verdict, engine: d.verdict, agree: r.inside === (d.verdict === 'INSIDE'), claims: [],
+        verdict, engine: d.verdict, agree: agrees(r.inside === (d.verdict === 'INSIDE')), claims: [],
       }
     }
     case QUERY_KIND.RANGE_BEARING: {
@@ -276,7 +315,7 @@ export function showMath(d: QueryDraw, composite: LosComposite | null): MathCard
           { label: 'range', value: `${num(ours)} m` },
         ],
         verdict: `${num(ours)} m`, engine: `${num(d.rangeM)} m`,
-        agree: rangeMatches(ours, d.rangeM),
+        agree: agrees(rangeMatches(ours, d.rangeM)),
         // The bearing is an atan2 value — a pinned vendored-libm KAT bit, DISPLAYED, never recomputed here.
         claims: [{ label: 'bearing', value: `${num(d.bearingRad)} rad · ${num(d.bearingDeg)}°` }],
         claimNote: 'pinned vendored-libm bits — displayed, not recomputed',
@@ -299,23 +338,26 @@ export function showMath(d: QueryDraw, composite: LosComposite | null): MathCard
       }
       return {
         form: `ray ∩ ${kindName}`, lines, verdict, engine: d.verdict,
-        agree: r.hit === (d.verdict === 'HIT'), claims: [],
+        agree: agrees(r.hit === (d.verdict === 'HIT')), claims: [],
       }
     }
     case QUERY_KIND.LOS: {
       const form = 'line of sight · clear = ¬(any occluder segment-hits)'
       const sightline: MathLine = { label: 'sightline', value: `${vec(d.o)} → ${vec(d.g)}` }
       // A LOS verdict is checkable ONLY from its 3 component rays' OWN geometry. With NO composite there is
-      // nothing to recompute, so we DECLINE to vouch: the unverifiable voice (agree:false) — never a ✓, and
-      // never the tautology the old else-branch fell into (derive `clear` FROM the engine's verdict, then
-      // "agree" with it → a false green). In production the publish-time triplet validation guarantees the
-      // composite (losComponents never returns null for a real kind-4 draw), so this is the honest answer to
-      // a should-never-happen, not a live path — but a false-green must not EXIST, reachable or not.
+      // nothing to recompute, so NO comparison runs — and an unbrandable state cannot mint an AgreementResult:
+      // agree is NULL (F1), never a branded false. That IS the brand's contract — it PROVES a comparison
+      // occurred — so a missing composite cannot manufacture a brandable false that a consumer (recomputedVerdict)
+      // would read as a ✗ MISMATCH where the honest state is UNVERIFIABLE. unverifiable:true stays the display
+      // driver, and this also forecloses the old tautology (derive `clear` FROM the engine's verdict, then "agree"
+      // with it → a false green). In production the publish-time triplet validation guarantees the composite
+      // (losComponents never returns null for a real kind-4 draw), so this is the honest answer to a
+      // should-never-happen — but a false ✗/✓ must not be REPRESENTABLE, reachable or not.
       if (!composite) {
         return {
           form, lines: [sightline],
           verdict: 'unverifiable — composite missing', engine: d.verdict,
-          agree: false, unverifiable: true, claims: [],
+          agree: null, unverifiable: true, claims: [],
         }
       }
       // EVERY assertion the card makes about this sightline derives from ONE recomputed source — the per-
@@ -339,7 +381,7 @@ export function showMath(d: QueryDraw, composite: LosComposite | null): MathCard
       })
       return {
         form, lines, verdict, engine: d.verdict,
-        agree: clear === (d.verdict === 'LOS_CLEAR'), claims: [],
+        agree: agrees(clear === (d.verdict === 'LOS_CLEAR')), claims: [],
       }
     }
   }

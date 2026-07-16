@@ -1,4 +1,5 @@
 import type { TrustVerdict } from '../decode/verify'
+import { markClass, requireGlyph } from './voices'
 
 // Pure text/state helpers for the ZERO-CLICK THESIS card (v0.6 T6, P2 — the cold-open share surface).
 // Dependency-free (no DOM, no store, no React) so the verdict-aware wording is unit-testable without a
@@ -13,10 +14,11 @@ import type { TrustVerdict } from '../decode/verify'
 // "verified"/"self-consistent", never "certified" — the tour captions hold the same line.
 export interface ThesisVerdict { glyph: string; headline: string; cls: 'verified' | 'mismatch' | 'self' }
 export function thesisVerdict(verdict: TrustVerdict): ThesisVerdict {
+  // glyph + cls sourced from the single voices module (never a card-local literal).
   switch (verdict) {
-    case 'manifest-verified': return { glyph: '✓', headline: 'verified', cls: 'verified' }
-    case 'self-consistent': return { glyph: '○', headline: 'self-consistent — no external manifest', cls: 'self' }
-    case 'mismatch': return { glyph: '✗', headline: 'hash mismatch — integrity claim failed', cls: 'mismatch' }
+    case 'manifest-verified': return { glyph: requireGlyph('verified'), headline: 'verified', cls: markClass('verified') }
+    case 'self-consistent': return { glyph: requireGlyph('selfConsistent'), headline: 'self-consistent — no external manifest', cls: markClass('selfConsistent') }
+    case 'mismatch': return { glyph: requireGlyph('mismatch'), headline: 'hash mismatch — integrity claim failed', cls: markClass('mismatch') }
   }
 }
 

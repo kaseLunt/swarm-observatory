@@ -4,10 +4,16 @@ import { useViewStore } from '../state/viewStore'
 import { PALETTE, CATEGORY, hexToThree } from './theme'
 import type { Trail } from './trail'
 import { TARGET_FRAME_OFFSET, evaluatedFrame, type SensingStageData, type SensingDraw } from './sensingStage'
+import { resolveCursorInto, eventTickOf, type FrameCursor } from './cursor'
+import type { EventTick, StateFrame, TransportTick } from '../lib/brand'
 import {
   SENSOR_O, R_MAX, FOV_HALF_RAD, OCCLUDER_C, OCCLUDER_R2,
 } from './sensingScenario'
 import { nedToThree } from './placement'
+
+// The sensing head's frame-loop cursor: reused every fraction-rate write (§8). lerpHeadPosition runs
+// synchronously to completion, so a single module-scope cursor is reentrancy-safe.
+const headCursor: FrameCursor = { t0: 0 as StateFrame, t1: 0 as StateFrame }
 
 // ── The Sensing Gauntlet stage (Task v07-2) — f2a's stage voice ────────────────────────────────────────
 // The instrument voice is the four-gate strip (Inspector); THIS is the drama on the 3D stage (LAW 3). It
@@ -214,10 +220,15 @@ export function tintedTrailGeometry(trail: Trail, byFrame: readonly (SensingDraw
 // and the drawRange REVEAL stay integer-frame (a kind-22 verdict is a per-tick fact; it does not
 // interpolate) — ONLY the pose follows the fraction. Pure (no WebGL), zero allocation: writes into the
 // caller's vector (the view passes head.position directly). Exported for the bundle-level parity test.
-export function lerpHeadPosition(out: THREE.Vector3, trail: Trail, tick: number, fraction: number): void {
-  const last = trail.count - 1
-  const f0 = evaluatedFrame(tick, TARGET_FRAME_OFFSET, last)
-  const f1 = Math.min(f0 + 1, last)
+export function lerpHeadPosition(out: THREE.Vector3, trail: Trail, tick: EventTick, fraction: number): void {
+  // The head rides the SAME cursor Scene's interactive cone and ChainLinks resolve — resolveCursor is the ONE
+  // home of the (t0, t1) offset/clamp shape (it composes evaluatedFrame). `tick` arrives ALREADY in the event
+  // domain (F1): every caller brands the plain store playhead at ITS OWN ingestion (eventTickOf), so this
+  // wrapper never re-brands a bare number — a StateFrame (an already-offset frame) is now a compile error here,
+  // which is what makes the double-application of TARGET_FRAME_OFFSET uncompilable. The terminal vertex is
+  // branded StateFrame at this single lastFrame ingestion. Zero alloc: the module-scope headCursor scratch (§8).
+  resolveCursorInto(headCursor, tick, TARGET_FRAME_OFFSET, (trail.count - 1) as StateFrame)
+  const f0 = headCursor.t0, f1 = headCursor.t1
   const p = trail.positions
   out.set(
     p[f0 * 3]! + (p[f1 * 3]! - p[f0 * 3]!) * fraction,
@@ -314,8 +325,11 @@ export function SensingStage({ trail, data }: { trail: Trail; data: SensingStage
     const place = () => {
       const head = headRef.current
       if (!head) return
-      const { tick, fraction } = useViewStore.getState()
-      lerpHeadPosition(head.position, trail, tick, fraction)
+      // A3 ingestion (F1): viewStore.tick is a plain TransportTick (a bare scrub coordinate); brand it into the
+      // event domain HERE, at this surface's own store read, exactly as Scene/ChainLinks do — lerpHeadPosition
+      // now demands an EventTick and applies TARGET_FRAME_OFFSET itself, so this is the ONE offset application.
+      const vs = useViewStore.getState()
+      lerpHeadPosition(head.position, trail, eventTickOf(vs.tick as TransportTick), vs.fraction)
     }
     build(); place()
     return useViewStore.subscribe((s, prev) => {

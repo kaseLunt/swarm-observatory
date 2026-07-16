@@ -2,6 +2,7 @@ import type { GeometryQuery } from '../decode/payloads'
 import { boundsFromPositions, type Bounds } from './camera'
 import { QUERY_KIND, SPHERE, BOX, TRIANGLE, type Vec3 } from './queryScenario'
 import { validateRegistration, type LensRegistration, type PixelClass } from './lensContract'
+import { makeWitnessInputs } from './agreeSource'
 
 // ── The Query Stage — e0 kind-23 model layer (Task v06-2) ─────────────────────────────────────────────
 //
@@ -435,13 +436,17 @@ const E0_LEDGER: readonly PixelClass[] = [
   // instrument's independent recheck of it. Scoped to the Inspector so ask-any-pixel returns the surface's true
   // authority — a live check where the recompute actually runs, a decoded bit where the stage actually paints.
   { id: 'region-verdict', tier: 'recomputed', source: `${FORMS} (point-in-ball d² ≤ r² · point-in-box min ≤ p ≤ max)`,
-    answer: 'in the Inspector, a region point\'s INSIDE/OUTSIDE is re-derived in-browser (point-in-ball d² ≤ r², or the box slab test) and matched live against the engine bit' },
+    answer: 'in the Inspector, a region point\'s INSIDE/OUTSIDE is re-derived in-browser (point-in-ball d² ≤ r², or the box slab test) and matched live against the engine bit',
+    agree: { basis: 'live-inputs', inputs: makeWitnessInputs('query:probe-point'), form: 'form:point-in-region' } },
   { id: 'occluder-verdict', tier: 'recomputed', source: `${FORMS} (ray/segment ∩ sphere · AABB slab · triangle Möller–Trumbore)`,
-    answer: 'in the Inspector, a ray or segment HIT/MISS is re-derived in-browser against the named occluder and matched live against the engine bit' },
+    answer: 'in the Inspector, a ray or segment HIT/MISS is re-derived in-browser against the named occluder and matched live against the engine bit',
+    agree: { basis: 'live-inputs', inputs: makeWitnessInputs('query:ray-geometry'), form: 'form:ray-occluder' } },
   { id: 'los-verdict', tier: 'recomputed', source: `${GEO} §1 (LOS composition — the 3 component segments) · ${FORMS} (los_clear = ¬any component segment-hit)`,
-    answer: 'in the Inspector, a sightline\'s CLEAR/BLOCKED is re-derived as ¬(any of its three component segments hits) from the components\' own geometry, and matched live against the engine bit' },
+    answer: 'in the Inspector, a sightline\'s CLEAR/BLOCKED is re-derived as ¬(any of its three component segments hits) from the components\' own geometry, and matched live against the engine bit',
+    agree: { basis: 'live-inputs', inputs: makeWitnessInputs('query:component-segments'), form: 'form:los-composition' } },
   { id: 'range-scalar', tier: 'recomputed', source: `${FORMS} (range_m = √(dot(g−o, g−o)), pinned left-to-right f64 dot)`,
-    answer: 'in the Inspector, the range readout is re-derived in-browser as √(dot(g−o, g−o)) and matched bit-exact against the stored range_m' },
+    answer: 'in the Inspector, the range readout is re-derived in-browser as √(dot(g−o, g−o)) and matched bit-exact against the stored range_m',
+    agree: { basis: 'live-inputs', inputs: makeWitnessInputs('query:range-endpoints'), form: 'form:range-scalar' } },
   { id: 'bearing-claim', tier: 'pinned-bits', source: `${FORMS} (bearing = atan2 via the vendored pure-Rust libm, pinned KAT bits)`,
     answer: 'the bearing is shown in the claim voice — an atan2 value from the vendored libm with pinned KAT bits, surfaced verbatim and never recomputed here' },
   { id: 'tiebreak-badge', tier: 'decoded', source: `${GEO} §4 (tiebreak_applied — the one registry semantic pair on kind 23; D-017 closed boundaries)`,

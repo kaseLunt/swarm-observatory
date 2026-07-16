@@ -14,6 +14,7 @@ import { nedToThree } from './placement'
 import { FOV_HALF_RAD, R_MAX, OCCLUDER_R2, SENSOR_O, OCCLUDER_C } from './sensingScenario'
 import { decodeBundle } from '../decode/decodeBundle'
 import { RunModel } from '../model/runModel'
+import { asEventTick, asStateFrame } from '../lib/brand'
 
 // tintedTrailGeometry is pure THREE.BufferGeometry work (no WebGL, no DOM), so its born-hidden drawRange (W3)
 // and its per-vertex tint indexing (W1) are unit-testable in the node env. The colours mirror the module's
@@ -323,18 +324,29 @@ describe('F3 — the apparatus transform chain is BOUND to its defect class (a d
 describe('lerpHeadPosition — the head follows the evaluated (t0, t1, fraction) sample', () => {
   test('fraction 0 sits on the evaluated frame; 0.5 sits halfway to its successor', () => {
     const v = new THREE.Vector3()
-    lerpHeadPosition(v, fakeTrail(4), 1, 0)   // tick 1 → frame 2 (offset 1)
+    lerpHeadPosition(v, fakeTrail(4), asEventTick(1), 0)   // tick 1 → frame 2 (offset 1)
     expect(v.z).toBe(4)
-    lerpHeadPosition(v, fakeTrail(4), 1, 0.5) // halfway frame 2 → 3
+    lerpHeadPosition(v, fakeTrail(4), asEventTick(1), 0.5) // halfway frame 2 → 3
     expect(v.z).toBe(5)
   })
 
   test('at the terminal frame both endpoints clamp — no fraction can push the head past the trajectory', () => {
     const v = new THREE.Vector3()
     for (const fraction of [0, 0.5, 0.99]) {
-      lerpHeadPosition(v, fakeTrail(4), 3, fraction) // tick 3 → frame 4 clamps to last (3); t1 clamps too
+      lerpHeadPosition(v, fakeTrail(4), asEventTick(3), fraction) // tick 3 → frame 4 clamps to last (3); t1 clamps too
       expect(v.z).toBe(6)
     }
+  })
+
+  // F1 — the brand forbids the double-offset. lerpHeadPosition applies TARGET_FRAME_OFFSET itself, so its `tick`
+  // must be an EventTick (the raw playhead), NEVER a StateFrame (an already-evaluated frame): passing a resolved
+  // frame would shift it a SECOND time. Typing `tick: EventTick` makes that a compile error at the primary named
+  // cursor surface. The runtime call still runs (brands erase) — the @ts-expect-error alone locks the domain.
+  test('a StateFrame cannot pass where lerpHeadPosition expects an EventTick (the double-offset the brand bars)', () => {
+    const v = new THREE.Vector3()
+    // @ts-expect-error a StateFrame is not an EventTick — an already-offset frame must not re-enter the offset
+    lerpHeadPosition(v, fakeTrail(4), asStateFrame(3), 0)
+    expect(v.z).toBe(6) // frame 3 clamps to the terminal vertex (fakeTrail(4)) — the erased runtime still resolves
   })
 })
 

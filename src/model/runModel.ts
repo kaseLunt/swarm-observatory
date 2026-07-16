@@ -1,5 +1,6 @@
 import type { DecodedRun } from '../decode/decodeBundle'
 import type { RunManifest } from '../decode/manifest'
+import type { EventTick, StateFrame } from '../lib/brand'
 import {
   GEOMETRY_QUERY_RESOLVED, ELIGIBILITY_EVALUATED, DETECTION_MADE, decodeEvent, decodeEntityV2,
   decodeGeometryQuery, decodeEligibility, decodeDetection, decodeStateTick,
@@ -63,7 +64,9 @@ export class RunModel {
   kindAt(seq: number): number { return this.run.kind[seq]! }
   parentOf(seq: number): number | null { const c = this.run.causation[seq]!; return c >= 0 ? c : null }
   childrenOf(seq: number): readonly number[] { return this.children[seq]! }
-  eventsByTick(tick: number): readonly number[] { return this.byTick[tick] ?? EMPTY }
+  // ACCEPTS the EVENT domain (v0.8 A3): events are indexed by the tick the engine committed them at — never a
+  // StateFrame. A raw playhead must be branded (cursor.eventTickOf) before it can index here.
+  eventsByTick(tick: EventTick): readonly number[] { return this.byTick[tick] ?? EMPTY }
 
   /** First tick (0..tickCount inclusive) whose namespace-1 entity map is non-empty; -1 if none ever.
    *  Lazy + cached: worst case (a truly positionless run like e0) is one full state scan at load
@@ -85,8 +88,10 @@ export class RunModel {
   firstPopulatedTick(): number {
     if (this.firstPopulated === null) {
       let found = -1
+      // The scan counter is a plain frame index (internal arrays stay unbranded — A3); brand it StateFrame at
+      // the accessor boundary it crosses.
       for (let t = 0; t <= this.tickCount; t++) {
-        if (this.entityStatesAt(t).size > 0) { found = t; break }
+        if (this.entityStatesAt(t as StateFrame).size > 0) { found = t; break }
       }
       this.firstPopulated = found
     }
@@ -99,13 +104,17 @@ export class RunModel {
    *  deliberate choice for current content (documented in trail.ts). */
   entityKeys(): readonly string[] {
     const f = this.firstPopulatedTick()
-    return f < 0 ? [] : [...this.entityStatesAt(f).keys()]
+    return f < 0 ? [] : [...this.entityStatesAt(f as StateFrame).keys()]
   }
-  entityStatesAt(tick: number): ReadonlyMap<string, EntityV2> {
-    const hit = this.stateCache.get(tick)
-    if (hit) { this.stateCache.delete(tick); this.stateCache.set(tick, hit); return hit }
-    const m = this.decodeState(tick)
-    this.stateCache.set(tick, m)
+  // ACCEPTS the STATE-FRAME domain (v0.8 A3): the decoded per-frame entity map is indexed by state-frame index,
+  // NOT by a raw event/transport tick. On a sensing run a tick-k verdict rides frame (k + TARGET_FRAME_OFFSET),
+  // so callers resolve the frame through evaluatedFrame / resolveCursor before reading here — the brand makes
+  // "read the pose at the raw tick" (the verdict-vs-pose off-by-one) a compile error at this seam.
+  entityStatesAt(frame: StateFrame): ReadonlyMap<string, EntityV2> {
+    const hit = this.stateCache.get(frame)
+    if (hit) { this.stateCache.delete(frame); this.stateCache.set(frame, hit); return hit }
+    const m = this.decodeState(frame)
+    this.stateCache.set(frame, m)
     if (this.stateCache.size > RunModel.CACHE_CAP)
       this.stateCache.delete(this.stateCache.keys().next().value!)
     return m
@@ -134,6 +143,12 @@ export class RunModel {
   detectionAt(seq: number): Detection | null {
     return this.run.kind[seq] !== DETECTION_MADE ? null : decodeDetection(this.eventAt(seq).payload)
   }
+  /** The FULL, UNBOUNDED causal chain of a seq — every ancestor (nearest-first) and every transitive descendant.
+   *  EXPORT-TIER (v0.8 W2): kept for tests/tools that genuinely need the whole chain (the W3 causalHops oracle,
+   *  runModel's own pins). The RENDER PLANE must NOT call this — it uses chain.ts `causalNeighborhood` (the bounded,
+   *  count-true traversal every pixel surface shares), so the links, the timeline lights, the stage, and the
+   *  chainmeta chip can never disagree and a wide chain can never enumerate unbounded. A migration guard in
+   *  chain.test.ts asserts no render-plane file imports this. */
   causalChain(seq: number): { ancestors: readonly number[]; descendants: readonly number[] } {
     const ancestors: number[] = []
     let p = this.parentOf(seq)

@@ -5,6 +5,9 @@
 // into the verification surface.
 import { SENSOR_O, R2MAX, OCCLUDER_C, OCCLUDER_R2, FOV_HALF_RAD, type Vec3 } from './sensingScenario'
 import type { SensingDraw } from './sensingStage'
+// TYPE-ONLY (erased under verbatimModuleSyntax — the runtime closure stays {sensingMath, sensingScenario},
+// the no-transcendental scan unaffected). Only the AgreeSource witness types + the branded outcome ride in.
+import type { AgreementResult, AgreeCapability, InputToken } from './agreeSource'
 
 // ── SHOW THE MATH (sensing) — the verdict-recompute layer for f2a (Task v07-2) ─────────────────────────
 // A PURE, three-free module that re-derives each recomputable kind-22 gate IN THE BROWSER from the decoded
@@ -67,6 +70,38 @@ export function recomputeEligible(inRange: boolean, inFov: boolean, losClear: bo
   return inRange && inFov && losClear
 }
 
+// ── W3 (audit A1) — the AgreeSource capability THIS executor's live legs actually back ───────────────────
+// Tokens are DATA naming existing legs of this module — a LOOKUP TABLE the boot guard resolves against, never
+// an evaluator. The eligible conjunction's inputs are exported as ONE constant so the f2a flagship
+// registration and this executor cannot drift on what the LIVE conjunction really consumes: the two LIVE legs
+// (in_range, los_clear — re-derived from the decoded pose) AND the in_fov leg carried as the DECODED CLAIM
+// (a pinned vendored-libm angle, no bearing in the bundle to recompute). The comparand — the engine's
+// eligible bit — is deliberately absent (it is a ComparandToken, un-nameable as an input: the echo exclusion).
+export const ELIGIBLE_CONJUNCTION_INPUTS: readonly InputToken[] =
+  ['sensing:in-range-live', 'sensing:los-clear-live', 'sensing:in-fov-claim']
+
+// The PER-FORM witness tuples sensingMath's live legs back (F2 — one truth per form). form:in-range and
+// form:los-clear each re-derive from `sensing:pose`; form:eligible-conjunction consumes exactly the three
+// ELIGIBLE_CONJUNCTION_INPUTS — and its tuple IS that same exported constant (reference identity), so the
+// flagship registration and this executor cannot drift on what the LIVE conjunction really consumes: the boot
+// guard set-compares the declared arm against THIS tuple. No decoded-consistency check lives here, so `decoded`
+// is empty (a declared decoded-consistency arm would fail the boot guard, honestly: this executor backs none).
+export const SENSING_AGREE_CAPABILITY: AgreeCapability = {
+  forms: {
+    'form:in-range': ['sensing:pose'],
+    'form:los-clear': ['sensing:pose'],
+    'form:eligible-conjunction': ELIGIBLE_CONJUNCTION_INPUTS,
+  },
+  decoded: [],
+}
+
+// THE PER-ROW MINT (F4) — mirrors showMath's. This executor RAN the comparison, so `agrees` brands each gate's
+// live agreement; the brand rides GateLine.agree to the SensingStrip's mark resolver, which DEMANDS it, so a
+// plain boolean can never enter a verdict mark and the mint cannot be deleted without a compile error. Phantom
+// brand, zero cost. (This `as AgreementResult` + the summary mint below are the ONLY two in this file — the F4
+// sweep allowlists it.)
+const agrees = (matched: boolean): AgreementResult<boolean> => matched as AgreementResult<boolean>
+
 // ── The four-gate view for the strip / Inspector (the voice split, as data) ─────────────────────────────
 export type GateVoice = 'recompute' | 'claim'
 export type GateId = 'in_range' | 'in_fov' | 'los_clear' | 'eligible'
@@ -75,7 +110,9 @@ export interface GateLine {
   label: string            // small-caps at the consumer
   decoded: boolean         // the decoded gate bit (the lane) — always shown
   voice: GateVoice         // 'recompute' → live ✓/✗ ; 'claim' → pinned, never a ✓
-  agree: boolean | null    // recompute-vs-engine agreement; null for the claim voice or a poseless draw
+  agree: AgreementResult<boolean> | null // recompute-vs-engine agreement, BRANDED per row (F4 — the executor
+                           // mints it; the strip's mark resolver demands the brand). null for the claim voice
+                           // or a poseless draw (no comparison was formed — nothing to brand).
   form: string             // the pinned decision form (verbatim-ish, doctrine §1.6)
   note?: string            // claim-voice note
 }
@@ -96,7 +133,7 @@ export function sensingGates(d: SensingDraw): GateLine[] {
   return [
     {
       id: 'in_range', label: 'in range', decoded: d.inRange, voice: 'recompute',
-      agree: range ? range.inRange === d.inRange : null,
+      agree: range ? agrees(range.inRange === d.inRange) : null,
       form: 'in_range = d² ≤ r²max',
     },
     {
@@ -106,12 +143,12 @@ export function sensingGates(d: SensingDraw): GateLine[] {
     },
     {
       id: 'los_clear', label: 'los clear', decoded: d.losClear, voice: 'recompute',
-      agree: los ? los.losClear === d.losClear : null,
+      agree: los ? agrees(los.losClear === d.losClear) : null,
       form: 'los_clear = ¬(sensor→target segment hits occluder Q)',
     },
     {
       id: 'eligible', label: 'eligible', decoded: d.eligible, voice: 'recompute',
-      agree: eligibleOurs === null ? null : eligibleOurs === d.eligible,
+      agree: eligibleOurs === null ? null : agrees(eligibleOurs === d.eligible),
       form: 'eligible = in_range ∧ in_fov ∧ los_clear',
       note: 'conjunction recomputed live on in_range and los_clear (from the decoded pose); in_fov enters as the decoded claim (•), never a live leg',
     },
@@ -138,7 +175,7 @@ export interface SensingRecomputeSummary {
   conjunctionAgreed: number
   disagreements: number[]
 }
-export function recomputeAllSensing(draws: readonly (SensingDraw | null)[]): SensingRecomputeSummary {
+export function recomputeAllSensing(draws: readonly (SensingDraw | null)[]): AgreementResult<SensingRecomputeSummary> {
   let total = 0, poseless = 0, inRangeAgreed = 0, losClearAgreed = 0, conjunctionAgreed = 0
   const disagreements: number[] = []
   for (const d of draws) {
@@ -161,5 +198,10 @@ export function recomputeAllSensing(draws: readonly (SensingDraw | null)[]): Sen
     }
     if (!ok) disagreements.push(d.seq)
   }
-  return { total, poseless, inRangeAgreed, losClearAgreed, conjunctionAgreed, disagreements }
+  // THE MINT — this executor actually RAN the live comparison, so it (and only it) brands the outcome an
+  // AgreementResult. A lens cannot fabricate this: the brand carries lib/brand's private symbol, so the
+  // summary cannot be written as static registration data (an object literal is a type error). Phantom brand,
+  // zero runtime cost — the same recompute, re-declared.
+  const summary: SensingRecomputeSummary = { total, poseless, inRangeAgreed, losClearAgreed, conjunctionAgreed, disagreements }
+  return summary as AgreementResult<SensingRecomputeSummary>
 }

@@ -1,5 +1,6 @@
 import type { RunPhase } from './useRun'
 import type { TrustVerdict } from '../decode/verify'
+import { markClass, requireGlyph, type MarkKey } from './voices'
 
 // Pure formatting/state helpers for the verification ceremony (spec §6), extracted from Ceremony.tsx
 // so the phase→line state table, the short-hex elision, and the outcome-bound tick are unit-testable
@@ -21,8 +22,9 @@ export function lineState(represents: RunPhase, phase: RunPhase): LineState {
 }
 
 // Per-line-state glyph for the ceremony's step marks. Relocated here (with stepMark) from Ceremony.tsx so
-// the mark vocabulary lives in the pure format module beside lineState; Ceremony.tsx imports both.
-export const MARK: Record<LineState, string> = { pending: '▪', active: '▸', done: '✓' }
+// the mark vocabulary lives in the pure format module beside lineState; Ceremony.tsx imports both. ▪/▸ are
+// PHASE glyphs (not trust-voice marks); the `done` ✓ IS the verified voice, so it is sourced from voices.ts.
+export const MARK: Record<LineState, string> = { pending: '▪', active: '▸', done: requireGlyph('verified') }
 
 // ── VERDICT-AWARE CEREMONY TICKS (A2 — the seal fold, made visible without collapsing its voices) ────────
 // The ceremony's two hash rows and its step mark carry the TrustVerdict, so a self-consistent det-only run is
@@ -31,12 +33,15 @@ export const MARK: Record<LineState, string> = { pending: '▪', active: '▸', 
 // "recomputed, but no external oracle"); 'mismatch' is ✗.
 export interface Tick { glyph: string; cls: string }
 
+// A ceremony tick, sourced from the single voices module — glyph + class from ONE place, never a site literal.
+const tick = (id: MarkKey): Tick => ({ glyph: requireGlyph(id), cls: markClass(id) })
+
 // The result_id row + the step mark bind to the whole verdict: ✓ manifest-verified · ○ self-consistent · ✗ mismatch.
 export function verdictTick(verdict: TrustVerdict): Tick {
   switch (verdict) {
-    case 'manifest-verified': return { glyph: '✓', cls: 'verified' }
-    case 'self-consistent': return { glyph: '○', cls: 'self' }
-    case 'mismatch': return { glyph: '✗', cls: 'mismatch' }
+    case 'manifest-verified': return tick('verified')
+    case 'self-consistent': return tick('selfConsistent')
+    case 'mismatch': return tick('mismatch')
   }
 }
 
@@ -46,8 +51,8 @@ export function verdictTick(verdict: TrustVerdict): Tick {
 // tampered termination_reason: matchesTrailer stays true, result_id breaks) this stays ✓ beside result_id's ✗ —
 // the honest A2 picture (the bytes reproduced; the sealed identity did not).
 export function trailerTick(verdict: TrustVerdict, matchesTrailer: boolean): Tick {
-  if (!matchesTrailer) return { glyph: '✗', cls: 'mismatch' }
-  return verdict === 'self-consistent' ? { glyph: '○', cls: 'self' } : { glyph: '✓', cls: 'verified' }
+  if (!matchesTrailer) return tick('mismatch')
+  return verdict === 'self-consistent' ? tick('selfConsistent') : tick('verified')
 }
 
 // ── PER-PIN CEREMONY GRADING (F3 — a NAMED hash row reflects its OWN comparison, never the aggregate) ──────
@@ -64,9 +69,9 @@ export function trailerTick(verdict: TrustVerdict, matchesTrailer: boolean): Tic
 //   • pinMatch true → ✓ manifest-matched · pinMatch false → ✗ (THIS pin disagrees with the manifest).
 // The AGGREGATE verdict still drives the step mark (stepMark) + the seal; only the per-row glyphs move to per-field.
 export function pinTick(pinMatch: boolean | null, trailerReproduced: boolean): Tick {
-  if (!trailerReproduced) return { glyph: '✗', cls: 'mismatch' }
-  if (pinMatch === null) return { glyph: '○', cls: 'self' }
-  return pinMatch ? { glyph: '✓', cls: 'verified' } : { glyph: '✗', cls: 'mismatch' }
+  if (!trailerReproduced) return tick('mismatch')
+  if (pinMatch === null) return tick('selfConsistent')
+  return pinMatch ? tick('verified') : tick('mismatch')
 }
 
 // ── result_id in the CEREMONY (F1) — a DERIVATION with an oracle ONLY under a manifest ──────────────────────
@@ -78,8 +83,8 @@ export function pinTick(pinMatch: boolean | null, trailerReproduced: boolean): T
 // ATTESTED derived voice (•, matching the ProvenancePanel's det-only result_id badge), NEVER the ○ the trailer-
 // reproduced hashes legitimately earn.
 export function resultIdTick(pinMatch: boolean | null): Tick {
-  if (pinMatch === null) return { glyph: '•', cls: 'attested' }
-  return pinMatch ? { glyph: '✓', cls: 'verified' } : { glyph: '✗', cls: 'mismatch' }
+  if (pinMatch === null) return tick('attested')
+  return pinMatch ? tick('verified') : tick('mismatch')
 }
 
 // Step-level mark carries the VERDICT, not just completion, so the outer mark can never disagree with its rows:
@@ -87,10 +92,12 @@ export function resultIdTick(pinMatch: boolean | null): Tick {
 // is null until it is known — a not-yet-completed step keeps its neutral phase mark.
 export function stepMark(confirm: LineState, verdict: TrustVerdict | null): { glyph: string; cls: string } {
   if (confirm !== 'done' || verdict === null) return { glyph: MARK[confirm], cls: confirm }
+  // A done step wears the verdict mark's glyph over the phase-`done` class (the compound `done <mark>` keeps
+  // the phase class AND the verdict class so the settle animation and the verdict hue both apply).
   switch (verdict) {
-    case 'manifest-verified': return { glyph: '✓', cls: 'done' }
-    case 'self-consistent': return { glyph: '○', cls: 'done self' }
-    case 'mismatch': return { glyph: '✗', cls: 'done mismatch' }
+    case 'manifest-verified': return { glyph: requireGlyph('verified'), cls: 'done' }
+    case 'self-consistent': return { glyph: requireGlyph('selfConsistent'), cls: `done ${markClass('selfConsistent')}` }
+    case 'mismatch': return { glyph: requireGlyph('mismatch'), cls: `done ${markClass('mismatch')}` }
   }
 }
 

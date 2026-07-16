@@ -1,5 +1,6 @@
 import { entityPosition } from './placement'
 import type { BoundsSource } from './camera'
+import type { StateFrame } from '../lib/brand'
 
 // ── Trajectory trail ────────────────────────────────────────────────────────────────────────────────
 // Precompute the subject's WHOLE recorded path ONCE at model load (Task 2 §3). It's recorded data — the
@@ -67,7 +68,8 @@ export function buildTrail(source: BoundsSource, subjectKey?: string): Trail {
   let minx = Infinity, miny = Infinity, minz = Infinity
   let maxx = -Infinity, maxy = -Infinity, maxz = -Infinity
   for (let t = 0; t < n; t++) {
-    const e = source.entityStatesAt(t).get(subject)
+    // Load-path walk (once at model publish); brand the integer counter at the frame-domain boundary (F2).
+    const e = source.entityStatesAt(t as StateFrame).get(subject)
     if (e) {
       entityPosition(scratch, e, 0)
       if (first < 0) first = t

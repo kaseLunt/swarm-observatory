@@ -8,7 +8,7 @@ import {
   SPHERE, BOX, TRIANGLE, type QueryStageData, type QueryDraw, type Vec3, type LosComposite,
 } from './queryStage'
 import { actOf, lineFadeFactor, solidRevealSeqs, observerPoint, missRayEndpoint, ghostVisible, ACT_III_START } from './queryScene'
-import { HORIZON_HOPS, causalHops } from './chain'
+import { HORIZON_HOPS, HORIZON_OPTS, causalNeighborhood } from './chain'
 
 // ── The Query Stage (v0.6 T3) — e0 kind-23 geometric replay ────────────────────────────────────────────
 // The release's heart, and the LENS CONSTITUTION's first LAW-4 citizen (the declaration is filed in
@@ -513,7 +513,7 @@ export function QueryStage({ model, data }: { model: RunModel; data: QueryStageD
   // the instance buffers currently hold so a tick can write only the CHANGED range.
   const rt = useRef({
     geom: null as Precomp | null,               // precompute the static buffers are initialised for
-    hop: null as Map<number, number> | null,    // cached bounded causal hop map (causalHops) of `hopEv`
+    hop: null as ReadonlyMap<number, number> | null,    // cached bounded causal hop map (causalNeighborhood, HORIZON_OPTS) of `hopEv`
     hopEv: undefined as number | null | undefined,
     conSelEv: null as number | null,            // selection whose colours the contacts currently hold (null = unselected)
     conSelColored: 0,                            // extent of contacts painted for `conSelEv`
@@ -555,7 +555,7 @@ export function QueryStage({ model, data }: { model: RunModel; data: QueryStageD
       // in accent and everything beyond HORIZON_HOPS back in the ambient law. CONTACTS never take a role hue —
       // they keep their VERDICT identity and yield only chroma via CONTACT_DIM; BADGES stay neutral. Passing
       // ev + st.hop keeps the tick path closure-free: no per-tick colour allocation.)
-      if (selecting && st.hopEv !== ev) { st.hop = causalHops(model, ev!, HORIZON_HOPS); st.hopEv = ev }
+      if (selecting && st.hopEv !== ev) { st.hop = causalNeighborhood(model, ev!, HORIZON_OPTS).hop; st.hopEv = ev }
 
       // ── CONTACTS — static geometry; per tick only `count`, plus a selection-edge recolour of the visible
       // prefix (rare). Under a standing unselected play the base colours already sit in the buffer → no write.

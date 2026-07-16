@@ -3,6 +3,7 @@ import {
   voiceFor, voiceGlyph, chipAgreesWithLedger, validateRegistration,
   type LensRegistration, type PixelClass, type ProvenanceTier,
 } from './lensContract'
+import { makeWitnessInputs } from './agreeSource'
 
 // The lens contract is the LAW-4 declaration graduated to typed data. These pin the pinned tier vocabulary
 // (tier→voice, and which voices MUST NOT wear a glyph), and the fail-loud registration validation (every
@@ -99,5 +100,49 @@ describe('validateRegistration — fail loud, never coerce', () => {
     expect(() => validateRegistration(baseReg({
       honestyChip: 'everything here is decoded-real', // claims decoded, names no constants — but ledger HAS constants
     }))).toThrow(/honesty chip disagrees/)
+  })
+})
+
+describe('validateRegistration — the W3 witness gate (a recomputed class must witness HOW it agrees)', () => {
+  // A ledger that keeps its decoded + scenario-constant classes (so the chip still agrees) plus one recomputed
+  // class whose AgreeSource we vary. PREMISE-FIRST: the old prose-only recomputed declaration (no agree) passed
+  // before W3; now it is refused.
+  // `agree` is spread in only when present — exactOptionalPropertyTypes forbids setting it `undefined`, which
+  // is exactly the prose-only (no-witness) shape W3 refuses.
+  const withRecomputed = (agree?: PixelClass['agree']): LensRegistration => baseReg({
+    provenance: [
+      cls('a', 'decoded', 'contract/x.md §1'),
+      cls('b', 'scenario-constant', 'contract/x.md §2'),
+      { id: 'r', tier: 'recomputed', source: 'contract/x.md §3', answer: 'a recompute', ...(agree ? { agree } : {}) },
+      cls('c', 'presentational', null),
+    ],
+  })
+
+  test('a recomputed class with NO AgreeSource throws (the prose-only declaration no longer passes)', () => {
+    expect(() => validateRegistration(withRecomputed(undefined))).toThrow(/no AgreeSource/)
+  })
+  test('a recomputed class WITH a live-inputs AgreeSource passes and returns itself', () => {
+    const reg = withRecomputed({ basis: 'live-inputs', inputs: makeWitnessInputs('query:probe-point'), form: 'form:point-in-region' })
+    expect(validateRegistration(reg)).toBe(reg)
+  })
+  test('a recomputed class WITH a decoded-consistency AgreeSource passes (the honest downgrade)', () => {
+    const reg = withRecomputed({ basis: 'decoded-consistency', decoded: 'query:los-vs-decoded-components' })
+    expect(validateRegistration(reg)).toBe(reg)
+  })
+  test('a live-inputs arm naming NO input tokens throws (a re-derivation from nothing)', () => {
+    // makeWitnessInputs() is permissive on COUNT (an empty witness is constructible); validateRegistration owns
+    // the "a live re-derivation must name what it re-derives from" rule and refuses it — one owner of that law.
+    expect(() => validateRegistration(withRecomputed({ basis: 'live-inputs', inputs: makeWitnessInputs(), form: 'form:point-in-region' })))
+      .toThrow(/naming NO input tokens/)
+  })
+  test('an AgreeSource on a NON-recomputed class throws (a category error — only a recompute agrees)', () => {
+    expect(() => validateRegistration(baseReg({
+      provenance: [
+        { id: 'd', tier: 'decoded', source: 'contract/x.md §1', answer: 'a',
+          agree: { basis: 'live-inputs', inputs: makeWitnessInputs('query:probe-point'), form: 'form:point-in-region' } },
+        cls('b', 'scenario-constant', 'contract/x.md §2'),
+        cls('c', 'presentational', null),
+      ],
+    }))).toThrow(/only the recomputed tier/)
   })
 })

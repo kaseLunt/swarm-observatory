@@ -5,7 +5,7 @@ import { RunModel } from '../model/runModel'
 import { PALETTE, CATEGORY } from './theme'
 import {
   buildSensingStage, hasSensingEvents, sensingStageApplies, sensingSubjectRef, F2A_REGISTRATION, SENSING_HONESTY,
-  TARGET_FRAME_OFFSET, evaluatedFrame, type SensingDraw,
+  TARGET_FRAME_OFFSET, evaluatedFrame, type SensingDraw, type SensingSource,
 } from './sensingStage'
 import { chipAgreesWithLedger } from './lensContract'
 import { buildTrail } from './trail'
@@ -13,6 +13,8 @@ import { boundsFromPositions } from './camera'
 import { entityPosition, lerp3 } from './placement'
 import { NORTH_STEP } from './sensingScenario'
 import { lerpHeadPosition } from './sensingStageView'
+import { resolveCursor } from './cursor'
+import { asEventTick, asStateFrame } from '../lib/brand'
 import * as THREE from 'three'
 
 // f2a/f3a/f4 are dir fixtures (one attempt dir holding bundle.det); e0/f0/f1 are flat .det.
@@ -204,7 +206,7 @@ describe('paused-tick pose parity — the interactive drone rides the frame the 
   const interactivePose = (tick: number): [number, number, number] => {
     const f = evaluatedFrame(tick, OFFSET, model.tickCount)
     const out: [number, number, number] = [0, 0, 0]
-    entityPosition(out, model.entityStatesAt(f).get(subject)!, 0)
+    entityPosition(out, model.entityStatesAt(asStateFrame(f)).get(subject)!, 0)
     return out
   }
   // The sensing head's pose: trail.positions at the head frame — exactly where SensingStage places the head.
@@ -232,7 +234,7 @@ describe('paused-tick pose parity — the interactive drone rides the frame the 
     // f2a flight is n(k)=n0+2k with E,D constant, so the whole gap is on three-z.
     const tick = 55
     const stale: [number, number, number] = [0, 0, 0]
-    entityPosition(stale, model.entityStatesAt(tick).get(subject)!, 0) // offset 0 — the bug
+    entityPosition(stale, model.entityStatesAt(asStateFrame(tick)).get(subject)!, 0) // offset 0 — the bug
     const head = headPose(tick)
     expect(Math.abs(head[2] - stale[2])).toBeCloseTo(NORTH_STEP, 6) // 2.0 m — the exact stale-pose offset
     expect(head[0]).toBeCloseTo(stale[0], 6) // east unchanged frame-to-frame (the gap is purely the N step)
@@ -255,8 +257,9 @@ describe('fractional pose parity — the head lerps the same (t0, t1, fraction) 
   // successor t1, lerped by the fraction — the exact derivation the frame loop writes into the cone /
   // raycast hit-target matrix (Scene.tsx useFrame).
   const conePose = (tick: number, fraction: number): [number, number, number] => {
-    const t0 = evaluatedFrame(tick, OFFSET, model.tickCount)
-    const t1 = Math.min(t0 + 1, model.tickCount)
+    // The test mirror of the cursor idiom now routes through the ONE resolver (A3) — the same (t0, t1) pair
+    // Scene.Entities lerps the interactive cone with, so this parity oracle can never drift from the shipped shape.
+    const { t0, t1 } = resolveCursor(asEventTick(tick), OFFSET, asStateFrame(model.tickCount))
     const a: [number, number, number] = [0, 0, 0], b: [number, number, number] = [0, 0, 0]
     const p: [number, number, number] = [0, 0, 0]
     entityPosition(a, model.entityStatesAt(t0).get(subject)!, 0)
@@ -267,7 +270,7 @@ describe('fractional pose parity — the head lerps the same (t0, t1, fraction) 
   // The sensing head's pose: the view's own exported lerp, into a vector exactly as place() writes it.
   const headPoseF = (tick: number, fraction: number): [number, number, number] => {
     const v = new THREE.Vector3()
-    lerpHeadPosition(v, trail, tick, fraction)
+    lerpHeadPosition(v, trail, asEventTick(tick), fraction)
     return [v.x, v.y, v.z]
   }
 
@@ -353,5 +356,28 @@ describe('sensingSubjectRef (F3) — the subject key + index name the entity the
     expect(sensingSubjectRef(keys, [null, null])).toBeNull()                              // no kind-22 verdicts
     expect(sensingSubjectRef(keys, [mkDraw(0, '1:0'), mkDraw(1, '1:7')])).toBeNull()      // multi-subject → withheld
     expect(sensingSubjectRef(['1:0'], [mkDraw(0, '1:9')])).toBeNull()                     // subject absent from entityKeys
+  })
+})
+
+// F2 — SensingSource.entityStatesAt reads the STATE-FRAME domain. buildSensingStage looks up the target pose at
+// the EVALUATED frame (tick + TARGET_FRAME_OFFSET); typing the accessor's parameter StateFrame closes the
+// method-bivariance hole that let a raw number — or, worse, a raw EVENT tick (substituting the un-shifted tick is
+// the exact historical verdict-vs-pose off-by-one) — index this map through the structural seam. Both directives
+// fire at typecheck; the runtime calls still return the (empty) Map, so the pin locks the domain both ways.
+describe('SensingSource.entityStatesAt — the frame-domain seam rejects raw ticks (F2)', () => {
+  // Annotated as SensingSource (not `satisfies`) so `src.entityStatesAt` carries the interface's DECLARED
+  // (frame: StateFrame) signature — the pins below then fail specifically on the brand mismatch, not on arity.
+  const src: SensingSource = {
+    eventCount: 0, tickCount: 0, ticks: [] as readonly number[],
+    kindAt: () => -1, eligibilityAt: () => null, detectionAt: () => null,
+    entityStatesAt: () => new Map<string, { pos: number[] }>(),
+  }
+  test('a bare number cannot index the state-frame accessor', () => {
+    // @ts-expect-error a raw number is not a StateFrame
+    expect(src.entityStatesAt(0)).toBeInstanceOf(Map)
+  })
+  test('an EventTick cannot index the state-frame accessor (the un-shifted-tick substitution)', () => {
+    // @ts-expect-error an EventTick is not a StateFrame
+    expect(src.entityStatesAt(asEventTick(0))).toBeInstanceOf(Map)
   })
 })

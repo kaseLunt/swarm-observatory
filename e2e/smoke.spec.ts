@@ -18,7 +18,7 @@ test('boots, verifies F0, renders scene, restores deep link', async ({ page }) =
 
 test('E0 det-only run decodes, verifies trailer, shows claims-absent provenance', async ({ page }) => {
   await page.goto('/?run=e0')
-  await expect(page.locator('.provenance')).toContainText('trailer consistent ✓', { timeout: 15000 })
+  await expect(page.locator('.provenance')).toContainText('trailer self-consistent ○', { timeout: 15000 })
   await expect(page.locator('.provenance')).toContainText('(det-only)')
   await expect(page.locator('.counts')).toContainText('75 events · 75 ticks')
   await expect(page.locator('.readout')).toHaveText('tick 0 / 75')
@@ -108,7 +108,7 @@ test('keyboard grammar drives the transport', async ({ page }) => {
 
 test('guided tour starts on ?run=e0 and a user interrupt (ArrowRight) closes it while the transport still advances', async ({ page }) => {
   await page.goto('/?run=e0')
-  await expect(page.locator('.provenance')).toContainText('trailer consistent ✓', { timeout: 15000 })
+  await expect(page.locator('.provenance')).toContainText('trailer self-consistent ○', { timeout: 15000 })
   await page.getByRole('button', { name: '▶ tour' }).click()
   // Step 1's caption (tours.ts, e0-hero): stable substring, not the full sentence.
   await expect(page.locator('.tour-caption')).toContainText('A real run bundle')
@@ -121,7 +121,7 @@ test('guided tour starts on ?run=e0 and a user interrupt (ArrowRight) closes it 
 
 test('guided tour auto-advances to step 2 after the step-1 hold elapses, then Escape stops it cleanly', async ({ page }) => {
   await page.goto('/?run=e0')
-  await expect(page.locator('.provenance')).toContainText('trailer consistent ✓', { timeout: 15000 })
+  await expect(page.locator('.provenance')).toContainText('trailer self-consistent ○', { timeout: 15000 })
   await page.getByRole('button', { name: '▶ tour' }).click()
   await expect(page.locator('.tour-caption')).toContainText('A real run bundle')
   // The advance into the 'exact replay' caption is gated by the FIRST caption's holdMs (tours.ts e0-hero,
@@ -329,7 +329,7 @@ test('a run switch closes the cold-open thesis card (no prior run’s ✓ under 
 // the design invariant that the deep-link path shows NO zero-click card / auto-tour.
 test('a first-visit deep link shows the tour-nudge treatment (pulse CTA + dismiss ×) and NO zero-click open (W4)', async ({ page }) => {
   await page.goto('/?run=e0')
-  await expect(page.locator('.provenance')).toContainText('trailer consistent ✓', { timeout: 15000 })
+  await expect(page.locator('.provenance')).toContainText('trailer self-consistent ○', { timeout: 15000 })
   // A deep link is not a cold open: neither the thesis card nor the auto-tour ever fires here.
   await expect(page.locator('.thesis-card')).toHaveCount(0)
   await expect(page.locator('.tour-overlay')).toHaveCount(0)
@@ -357,7 +357,7 @@ test('plain-clicking the timeline selects the nearest event (no drag → select,
 
 test('a tour play step plays VISIBLY — the playhead sweeps through intermediate ticks, not an instant jump', async ({ page }) => {
   await page.goto('/?run=e0')
-  await expect(page.locator('.provenance')).toContainText('trailer consistent ✓', { timeout: 15000 })
+  await expect(page.locator('.provenance')).toContainText('trailer self-consistent ○', { timeout: 15000 })
   await page.getByRole('button', { name: '▶ tour' }).click()
   // Step 2 (tours.ts e0-hero) is a play step from tick 0 → 20. Under the witness-normalized base (1× covers
   // a whole run in ~WITNESS_RUN_SECONDS), that step sweeps visibly on BOTH counts: the base rate alone plays
@@ -839,7 +839,7 @@ test('the e0 POV preset moves the camera and the query tour reframes the stage (
   const errors: string[] = []
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()) })
   await page.goto('/?run=e0')
-  await expect(page.locator('.provenance')).toContainText('trailer consistent ✓', { timeout: 15000 })
+  await expect(page.locator('.provenance')).toContainText('trailer self-consistent ○', { timeout: 15000 })
   // The e0 CameraRig frames the core-theatre stage at load; latch that vantage as the reset target.
   await page.waitForFunction('!!window.__scene', undefined, { timeout: 15000 })
   await waitForCameraStable(page)
@@ -961,8 +961,84 @@ test('f4 (positionless, no kind-23) wears NO honesty chip and speaks the honest 
   // CONTRAST — e0 IS a real query stage: the honesty chip is present with its exact wording, proving the gate
   // NARROWS the chip to runs that actually draw those bodies rather than removing it wholesale.
   await page.goto('/?run=e0')
-  await expect(page.locator('.provenance')).toContainText('trailer consistent ✓', { timeout: 15000 })
+  await expect(page.locator('.provenance')).toContainText('trailer self-consistent ○', { timeout: 15000 })
   await expect(page.locator('.scene-chip')).toContainText('occluder & region bodies are scenario constants')
 
   expect(errors, `no console errors: ${errors.join(' | ')}`).toEqual([])
+})
+
+// ── v0.8 W5: THE CERTIFICATION WALL — front-door entry, the zero-green rest state, and verify-all ──────────
+// The Wall opens by declaring what it has NOT verified: a dim field of attested dots, ZERO integrity green,
+// exact-integer census. The acceptance gate is a rest-state with no .verified dot. Then verify-all recomputes
+// every seed's bytes in a real worker and the dots flip in TRUE completion order at real timing.
+test('the Wall: front-door entry, a ZERO-GREEN rest state, then verify-all greens all 50 in true order', async ({ page }) => {
+  const errors: string[] = []
+  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()) })
+  await page.goto('/?run=e0')
+  await expect(page.locator('.readout')).toHaveText('tick 0 / 75', { timeout: 15000 })
+
+  // FRONT DOOR: the Wall is reachable from the Hangar's campaign entry (the campaign expansion, D4 6.4).
+  await page.getByRole('button', { name: 'hangar', exact: true }).click()
+  await expect(page.locator('.hangar-panel')).toBeVisible()
+  const campaign = page.locator('.hangar-campaign-card[data-campaign="robust-f3a"]')
+  await expect(campaign).toBeVisible()
+  // The campaign entry NAMES the ROBUST campaign (correct); the f3a RUN card stays clean (no conflation).
+  await expect(campaign).toContainText(PROFILE_CONFLATION_RE)
+  await expect(page.locator('.hangar-card[data-run="f3a"]')).not.toContainText(PROFILE_CONFLATION_RE)
+  await campaign.getByRole('button', { name: 'open the wall →' }).click()
+
+  // REST STATE — the acceptance gate: the Wall is up, ZERO integrity-green dots, the census declares 0 of 50.
+  await expect(page.locator('.wall-panel')).toBeVisible()
+  await expect(page.locator('.wall-dot')).toHaveCount(50)
+  await expect(page.locator('.wall-dot.verified')).toHaveCount(0) // NEGATIVE: not one green before interaction
+  await expect(page.locator('.wall-census')).toContainText('0 of 50 recomputed and matched here · 50 on record · 0 contradicted')
+  // The ROBUST verdict rides the attested voice (on record), and the two gauges rendered from the manifest.
+  await expect(page.locator('.wall-verdict.attested')).toContainText('ROBUST')
+  await expect(page.locator('.wall-gauge')).toHaveCount(2)
+  await page.waitForTimeout(300) // let the modal settle for a clean capture
+  await page.screenshot({ path: '.superpowers/sdd/w5-wall-rest.png' })
+
+  // VERIFY-ALL — the hero moment. Real worker, real bytes, real timing.
+  await page.getByRole('button', { name: /verify all 50/ }).click()
+  // Mid-verify: catch a frame where SOME (not all) dots have flipped — true completion order is visible as a
+  // ragged fill, not a smooth cascade. Best-effort capture (the window is real work); not a gate assertion.
+  try {
+    // String form: the e2e tsconfig has no DOM lib (the house pattern — see the __scene wait above).
+    await page.waitForFunction(
+      '(function(){var v=document.querySelectorAll(".wall-dot.verified").length; return v>=3 && v<50})()',
+      undefined, { timeout: 15000 })
+    await page.screenshot({ path: '.superpowers/sdd/w5-wall-midverify.png' })
+  } catch { /* verification outran the mid-frame window — the completed assertion below is the real gate */ }
+
+  // COMPLETION: every seed recomputed-and-matched THIS session → 50 green receipts, census counts to 50.
+  await expect(page.locator('.wall-census')).toContainText('50 of 50 recomputed and matched here', { timeout: 30000 })
+  await expect(page.locator('.wall-dot.verified')).toHaveCount(50)
+  await expect(page.locator('.wall-dot.mismatch')).toHaveCount(0)
+  await page.waitForTimeout(200)
+  await page.screenshot({ path: '.superpowers/sdd/w5-wall-complete.png' })
+
+  // Esc closes the Wall (App's keydown owner modal-captures it, like the Hangar).
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.wall-panel')).toHaveCount(0)
+  expect(errors, `no console errors: ${errors.join(' | ')}`).toEqual([])
+})
+
+// The Wall re-earns from zero: reopening after a completed verify shows a fresh ZERO-GREEN rest state (a ✓
+// dies when you leave and is re-earned — no persisted/cached receipts).
+test('the Wall re-earns: reopening after a full verify is back to zero green (receipts are session-only)', async ({ page }) => {
+  await page.goto('/?run=e0')
+  await expect(page.locator('.readout')).toHaveText('tick 0 / 75', { timeout: 15000 })
+  await page.getByRole('button', { name: 'hangar', exact: true }).click()
+  await page.locator('.hangar-campaign-card[data-campaign="robust-f3a"]').getByRole('button', { name: 'open the wall →' }).click()
+  await expect(page.locator('.wall-panel')).toBeVisible()
+  await page.getByRole('button', { name: /verify all 50/ }).click()
+  await expect(page.locator('.wall-census')).toContainText('50 of 50 recomputed and matched here', { timeout: 30000 })
+  // Leave the view (cancels + resets the campaign store) and reopen → a true rest state, zero green.
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.wall-panel')).toHaveCount(0)
+  await page.getByRole('button', { name: 'hangar', exact: true }).click()
+  await page.locator('.hangar-campaign-card[data-campaign="robust-f3a"]').getByRole('button', { name: 'open the wall →' }).click()
+  await expect(page.locator('.wall-panel')).toBeVisible()
+  await expect(page.locator('.wall-dot.verified')).toHaveCount(0)
+  await expect(page.locator('.wall-census')).toContainText('0 of 50 recomputed and matched here')
 })

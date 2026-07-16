@@ -16,6 +16,7 @@ import {
 import { FOLLOW_BIAS_MAX } from './Scene'
 // W3: the marker sizing comes from the RENDERER, not a local literal — the crop test moves if production sizing moves.
 import { HEAD_R, SENSOR_MARKER_R, HEAD_CONE_H, lerpHeadPosition } from './sensingStageView'
+import { asEventTick, asStateFrame } from '../lib/brand'
 
 const ent = (pos: number[]): EntityV2 => ({ value: 0n, alive: true, pos, vel: [], headingRad: 0, speedMps: 0, turnRateRadps: 0, fuel: 0, setpoint: [] })
 
@@ -68,9 +69,9 @@ describe('heldSubjectPose — the sensing camera anchors on the EVIDENCE subject
     // frame 0 present at x=200; frame 1 the subject dropped out, so buildTrail HELD the previous vertex (x=200).
     const trail = trailView([200, 0, 0, /* held */ 200, 0, 0], 0)
     const h = out()
-    expect(heldSubjectPose(h, trail, 0)).toBe(true)
+    expect(heldSubjectPose(h, trail, asStateFrame(0))).toBe(true)
     expect(h).toEqual({ has: true, x: 200, y: 0, z: 0 })
-    expect(heldSubjectPose(h, trail, 1)).toBe(true)        // the dropout frame…
+    expect(heldSubjectPose(h, trail, asStateFrame(1))).toBe(true)        // the dropout frame…
     expect(h).toEqual({ has: true, x: 200, y: 0, z: 0 })   // …still anchored on the held pose, NOT the remaining centroid
     const useSubjectAnchor = h.has // hasSensing true on this run
     expect(cameraAnchor(DROPOUT_CX, 0, 0, DROPOUT_COUNT, h.x, h.y, h.z, useSubjectAnchor)).toEqual([200, 0, 0])
@@ -83,9 +84,9 @@ describe('heldSubjectPose — the sensing camera anchors on the EVIDENCE subject
     // playhead-indexed lookup has no direction: heldSubjectPose(frame 1) is x=10, matching exactly what the trail renders.
     const trail = trailView([10, 0, 0, /* held */ 10, 0, 0, 99, 0, 0], 0)
     const h = out()
-    heldSubjectPose(h, trail, 2)                      // "forward play" landed on the post-gap pose…
+    heldSubjectPose(h, trail, asStateFrame(2))                      // "forward play" landed on the post-gap pose…
     expect(h.x).toBe(99)
-    expect(heldSubjectPose(h, trail, 1)).toBe(true)   // …now scrub BACKWARD into the gap
+    expect(heldSubjectPose(h, trail, asStateFrame(1))).toBe(true)   // …now scrub BACKWARD into the gap
     expect(h.x).toBe(10)                              // the PRE-gap pose — == trail.positions[1], what the trail draws
     expect(h.x).toBe(trail.positions[3])              // bound to the very buffer vertex the head renders at frame 1
   })
@@ -97,11 +98,11 @@ describe('heldSubjectPose — the sensing camera anchors on the EVIDENCE subject
     const runA = trailView([777, 0, 0, 777, 0, 0], 0) // a prior run whose subject sat at x=777
     const runB = trailView([0, 0, 0, /* first present */ 5, 0, 0], 1)
     const h = out()
-    heldSubjectPose(h, runA, 1)                        // run A left the scratch at x=777…
+    heldSubjectPose(h, runA, asStateFrame(1))                        // run A left the scratch at x=777…
     expect(h.x).toBe(777)
-    expect(heldSubjectPose(h, runB, 0)).toBe(false)    // …run B at a pre-appearance frame: suppress, NOT run A's 777
+    expect(heldSubjectPose(h, runB, asStateFrame(0))).toBe(false)    // …run B at a pre-appearance frame: suppress, NOT run A's 777
     expect(h.has).toBe(false)
-    expect(heldSubjectPose(h, runB, 1)).toBe(true)     // run B's own subject, once it appears
+    expect(heldSubjectPose(h, runB, asStateFrame(1))).toBe(true)     // run B's own subject, once it appears
     expect(h.x).toBe(5)
   })
 
@@ -109,20 +110,20 @@ describe('heldSubjectPose — the sensing camera anchors on the EVIDENCE subject
     const h = out()
     // first = 2: frames 0 and 1 precede the subject's first appearance — no present pose ≤ k, so no anchor.
     const preSpawn = trailView([0, 0, 0, 0, 0, 0, 42, 0, 0], 2)
-    expect(heldSubjectPose(h, preSpawn, 0)).toBe(false)
-    expect(heldSubjectPose(h, preSpawn, 1)).toBe(false)
+    expect(heldSubjectPose(h, preSpawn, asStateFrame(0))).toBe(false)
+    expect(heldSubjectPose(h, preSpawn, asStateFrame(1))).toBe(false)
     const suppressDirected = !h.has // hasSensing true on this run
     expect(suppressDirected).toBe(true)               // the finale/head/follow suppress rather than aim at a remaining entity
-    expect(heldSubjectPose(h, preSpawn, 2)).toBe(true) // …then the anchor lights up at first appearance
+    expect(heldSubjectPose(h, preSpawn, asStateFrame(2))).toBe(true) // …then the anchor lights up at first appearance
     expect(h.x).toBe(42)
     // An empty trail (count 0 / first −1 — a static or positionless subject) also suppresses.
-    expect(heldSubjectPose(h, trailView([], -1), 0)).toBe(false)
+    expect(heldSubjectPose(h, trailView([], -1), asStateFrame(0))).toBe(false)
   })
 
   test('the frame index is clamped to the last vertex — a terminal-frame query never reads past the buffer', () => {
     const trail = trailView([1, 0, 0, 2, 0, 0], 0)
     const h = out()
-    expect(heldSubjectPose(h, trail, 5)).toBe(true) // beyond count−1 → clamps to the last vertex
+    expect(heldSubjectPose(h, trail, asStateFrame(5))).toBe(true) // beyond count−1 → clamps to the last vertex
     expect(h.x).toBe(2)
   })
 
@@ -142,11 +143,11 @@ describe('heldSubjectPose — the sensing camera anchors on the EVIDENCE subject
     const trail = trail4([10, 0, 0, /* held */ 10, 0, 0, /* recovery */ 99, 0, 0, 99, 0, 0], 0)
     // PREMISE-FIRST: the OLD anchor was the integer held pose at t0=1 — heldSubjectPose reads exactly trail[1] = 10.
     const h = out()
-    expect(heldSubjectPose(h, trail, 1)).toBe(true)
+    expect(heldSubjectPose(h, trail, asStateFrame(1))).toBe(true)
     expect(h.x).toBe(10)                                  // the stale pre-gap pose the old integer fallback anchored on
     // THE FIX: the anchor now uses the head's fractional sample — mid-fraction it spans the gap→recovery jump.
     const v = new THREE.Vector3()
-    lerpHeadPosition(v, trail, 0, 0.5)
+    lerpHeadPosition(v, trail, asEventTick(0), 0.5)
     expect(v.x).toBe(54.5)                                // lerp(10, 99, .5) — the drone's live mid-motion pose
     expect(v.x).not.toBe(h.x)                             // …and it is NOT the integer held pose (the defect)
     // cameraAnchor consumes it verbatim under useSubject (h.has) — never the remaining-entity centroid (cx/count).
@@ -159,11 +160,11 @@ describe('heldSubjectPose — the sensing camera anchors on the EVIDENCE subject
     // the fractional anchor is scoped to frames the subject has already appeared in (t0 ≥ first). At t0=1 it opens.
     const trail = trail4([0, 0, 0, /* first present */ 5, 0, 0, 40, 0, 0], 1)
     const h = out()
-    expect(heldSubjectPose(h, trail, 0)).toBe(false)      // pre-spawn: no valid hold → suppress, no anchor read
+    expect(heldSubjectPose(h, trail, asStateFrame(0))).toBe(false)      // pre-spawn: no valid hold → suppress, no anchor read
     expect(!h.has).toBe(true)                             // suppressDirected (hasSensing true on this run)
-    expect(heldSubjectPose(h, trail, 1)).toBe(true)       // …the gate opens at first appearance
+    expect(heldSubjectPose(h, trail, asStateFrame(1))).toBe(true)       // …the gate opens at first appearance
     const v = new THREE.Vector3()
-    lerpHeadPosition(v, trail, 0, 0.5)                    // tick 0 → f0=1, f1=2 → lerp(5, 40, .5) = 22.5, well-defined
+    lerpHeadPosition(v, trail, asEventTick(0), 0.5)                    // tick 0 → f0=1, f1=2 → lerp(5, 40, .5) = 22.5, well-defined
     expect(v.x).toBe(22.5)
   })
 
@@ -186,6 +187,22 @@ function stub(keys: string[], perTick: Record<string, number[]>[]): BoundsSource
     },
   }
 }
+
+// F2 — entityStatesAt reads the STATE-FRAME domain. RunModel's accessor is branded StateFrame; typing the
+// structural BoundsSource accessor to match closes the method-bivariance hole that let a raw number — or a raw
+// EVENT tick (the historical verdict-vs-pose off-by-one) — index this frame-domain map. Both @ts-expect-error
+// directives fire at typecheck; the runtime calls still return a Map (brands erase), so the pin locks the domain.
+describe('BoundsSource.entityStatesAt — the frame-domain seam rejects raw ticks (F2)', () => {
+  const src: BoundsSource = stub(['1:0'], [{ '1:0': [0, 0, 0] }, { '1:0': [1, 0, 0] }])
+  test('a bare number cannot index the state-frame accessor', () => {
+    // @ts-expect-error a raw number is not a StateFrame
+    expect(src.entityStatesAt(0)).toBeInstanceOf(Map)
+  })
+  test('an EventTick cannot index the state-frame accessor (the substitution the historical bug made)', () => {
+    // @ts-expect-error an EventTick is not a StateFrame
+    expect(src.entityStatesAt(asEventTick(0))).toBeInstanceOf(Map)
+  })
+})
 
 describe('trajectoryBounds', () => {
   test('single entity travelling along N (three z): center + radius from the swept box', () => {

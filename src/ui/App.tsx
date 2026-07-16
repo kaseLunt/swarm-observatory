@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { RunModel } from '../model/runModel'
 import type { TrustVerdict } from '../decode/verify'
 import { loadRunIndex, useRun, type RunEntry } from './useRun'
@@ -14,6 +14,9 @@ import { HelpOverlay } from './HelpOverlay'
 import { ErrorBoundary } from './ErrorBoundary'
 import { TourOverlay } from './TourOverlay'
 import { Hangar } from './hangarView'
+import { CertificationWall, type CertificationWallHandle } from './wallView'
+import { ROBUST_F3A, campaignSeedIds } from '../decode/campaignCatalog'
+import { useCampaignStore } from '../state/campaignStore'
 import { loadIsCurrent, readyTreeVisible, shouldBreakSeal, shouldSealRun } from './hangar'
 import { mapKey, SPEEDS, shareSpeed } from './keyboard'
 import { probeStorage, shouldArmZeroClick, type ZeroClickScope } from './coldOpen'
@@ -139,6 +142,17 @@ export default function App() {
   // The Hangar (T5b): a modal run-library front door reachable from the header — never a takeover of the
   // default view (owner-gate posture: DEFAULT_RUN is f1 post-hero-switch; the landing-route option is flagged, not taken).
   const [hangarOpen, setHangarOpen] = useState(false)
+  // The Certification Wall (v0.8 W5): a modal campaign surface, peer to the Hangar (the same overlay idiom).
+  // Reached from the Hangar's campaign entry; closing it cancels any in-flight verify (the Wall's own effect
+  // cleanup fences the queue). z-index/keyboard modality mirror the Hangar exactly.
+  const [wallOpen, setWallOpen] = useState(false)
+  // OPEN-GENERATION counter (W5 F5). Bumped on every open so the Wall is KEYED to a fresh generation and REMOUNTS
+  // each session — its component-local state (the gauge load, the verifying flag) starts fresh, so the first paint
+  // after a reopen can never show a prior session's gauges or a stale cancel button.
+  const [wallGen, setWallGen] = useState(0)
+  // A handle to the mounted Wall's synchronous stop routine (abort the fetch, fence the queue, reset the store),
+  // so the Esc close path can invoke the SAME teardown the close button + backdrop use — before `open` flips.
+  const wallRef = useRef<CertificationWallHandle>(null)
   // Pending Hangar → tour handoff: a tour-card click switches the run and parks its id here; once that
   // run's model is ready the authored tour auto-starts (the effect below). null = no pending tour.
   const [pendingTour, setPendingTour] = useState<string | null>(null)
@@ -182,6 +196,14 @@ export default function App() {
   // Same ref pattern for the Hangar so the window keydown owner can modal-capture without re-registering.
   const hangarOpenRef = useRef(false)
   useEffect(() => { hangarOpenRef.current = hangarOpen }, [hangarOpen])
+  // …and for the Wall (v0.8 W5): while it is open the transport keyboard is inert beneath it and Esc closes it.
+  const wallOpenRef = useRef(false)
+  useEffect(() => { wallOpenRef.current = wallOpen }, [wallOpen])
+  // The unified Wall CLOSE (Esc + any programmatic close): run the mounted Wall's synchronous stop routine FIRST
+  // (abort the in-flight fetch, fence the verify queue, reset the store), THEN flip `open`. Doing the teardown
+  // synchronously — rather than leaning on the unmount cleanup alone — closes the window in which a late verify
+  // 'done' could still write the store after close. Stable identity (the keydown owner closes over it).
+  const closeWall = useCallback(() => { wallRef.current?.stop(); setWallOpen(false) }, [])
   const runId = useViewStore(s => s.runId)
   // Session-seal set (T5b): drives which Hangar cards wear the earned ✓. Event-rate (changes once per
   // newly-sealed run), so this App re-render never touches the frame path.
@@ -388,6 +410,14 @@ export default function App() {
       // backdrop click and the close button are the pointer paths; this is the keyboard path.
       if (hangarOpenRef.current) {
         if (e.key === 'Escape') { e.preventDefault(); setHangarOpen(false) }
+        return
+      }
+      // Wall modal capture (W5): the campaign surface is a modal too — the transport keyboard is inert beneath
+      // it, and Esc closes it THROUGH the same synchronous stop routine the close button + backdrop use (F5):
+      // closeWall tears the session down (abort/fence/reset) before flipping `open`, never leaving it to the
+      // passive unmount cleanup alone. The next open remounts a fresh Wall (the wallGen key).
+      if (wallOpenRef.current) {
+        if (e.key === 'Escape') { e.preventDefault(); closeWall() }
         return
       }
       const t = e.target as HTMLElement
@@ -603,7 +633,24 @@ export default function App() {
         onClose={() => setHangarOpen(false)}
         onOpenRun={openRunFromHangar}
         onOpenTour={openTourFromHangar}
+        onOpenWall={() => {
+          setHangarOpen(false)
+          // Seed the campaign store AT THE OPEN ACTION — synchronously, BEFORE the keyed Wall mounts (W5). Render 1
+          // of that fresh mount then reads a store already at 0-of-50 in ANY lane, so the first painted frame is
+          // correct with no dependence on effect timing (the Wall's layout-effect seed can't own the first frame:
+          // zustand subscribes in a passive effect, so a default/transition-lane mount would paint 0-of-0 for one
+          // frame). The Wall keeps its layout-effect seed as the StrictMode-replay backstop; both are idempotent.
+          useCampaignStore.getState().init(campaignSeedIds(ROBUST_F3A))
+          setWallGen(g => g + 1)
+          setWallOpen(true)
+        }}
       />
+      {/* The Certification Wall (W5): the campaign surface. DOM/React only — no WebGL, no frame loop (§8). Peer
+          modal to the Hangar. Rendered ONLY while open AND keyed on the open-generation counter, so each open is
+          a fresh MOUNT (F5): the first paint after a reopen shows the loading state + 0-of-50 census + verify-all
+          CTA, never a prior session's gauges or cancel button. Esc/close route through closeWall (synchronous
+          stop); the Wall's own button + backdrop stop it directly, so every close path fences the queue. */}
+      {wallOpen && <CertificationWall key={wallGen} ref={wallRef} onClose={() => setWallOpen(false)} />}
       {/* Run-scoped guard: runId flips synchronously on selectRun, but useTour's dispose effect is
           keyed on `model` (not runId), so it only tears the old driver down one effect-pass later —
           when useRun's runId-keyed effect re-fires and nulls model IMMEDIATELY (at decode START, before

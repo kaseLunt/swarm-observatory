@@ -5,21 +5,69 @@ import { useViewStore, syncUrl } from '../state/viewStore'
 import { usePlayheadSample } from './usePlayheadSample'
 import { categoryOf } from './categorize'
 import { CATEGORY } from './theme'
-import { buildQueryDraws, losComponents, queryStageApplies } from './queryStage'
-import { showMath, recomputeAll } from './showMath'
+import { buildQueryDraws, losComponents, queryStageApplies, E0_REGISTRATION, type QueryDraw } from './queryStage'
+import { showMath, recomputeAll, type MathCard } from './showMath'
 import { buildSensingStage } from './sensingStage'
 import { SensingStrip } from './sensingStrip'
+import { recomputedVerdict } from './lensContract'
+import type { AgreeSource } from './agreeSource'
 import { identityPlate, fullPlate } from './identityPlate'
-import { HORIZON_HOPS } from './chain'
+import { HORIZON_HOPS, HORIZON_OPTS, causalNeighborhood, type NeighborhoodSummary } from './chain'
+import type { StateFrame } from '../lib/brand'
+import { markClass, requireGlyph, type MarkKey } from './voices'
 
-// The Inspector's chainmeta declaration (consult-legibility-miniwave §1.3) — the ONE place the collapsed
-// ancestry is declared, and it lives in EXISTING chrome (no new surface). The exact up/down counts stay
-// data-true; " · nearest N shown" is appended IFF the chain actually extends beyond the horizon on either
-// side — so it never overclaims aggregation when the whole chain is already lit (e.g. a root/leaf selection).
-// "nearest N shown" covers BOTH the stage and the timeline, which share the one HORIZON_HOPS constant. Pure.
-export function chainMetaText(ancestors: number, descendants: number): string {
-  const base = `${ancestors} up · ${descendants} down`
-  return ancestors > HORIZON_HOPS || descendants > HORIZON_HOPS ? `${base} · nearest ${HORIZON_HOPS} shown` : base
+// draw.kind → the e0 recomputed pixel-class whose DECLARED AgreeSource arm a ShowTheMath card's verdict wears
+// (W3 F3). Resolved ONCE at module load, fail-loud if a class or its arm drifted (the registry discipline at
+// the render boundary). The verdict mark is then derived from the arm, not a bare boolean, so a
+// decoded-consistency arm would wear the ○ ring — never the ✓ — and render its basis note beside the mark.
+const queryArmOf = (classId: string): AgreeSource => {
+  const a = E0_REGISTRATION.provenance.find(p => p.id === classId)?.agree
+  if (!a) throw new Error(`Inspector: e0 class '${classId}' declares no AgreeSource — its verdict mark cannot derive a witness`)
+  return a
+}
+const QUERY_VERDICT_ARM: Record<QueryDraw['kind'], AgreeSource> = {
+  1: queryArmOf('region-verdict'),
+  2: queryArmOf('range-scalar'),
+  3: queryArmOf('occluder-verdict'),
+  4: queryArmOf('los-verdict'),
+}
+
+// The verdict mark + basis note for a ShowTheMath card, derived from the class's DECLARED arm (W3 F3). An
+// unverifiable card (no basis to recompute — a missing LOS composite) stays the ? no-verdict state; otherwise
+// the mark comes from recomputedVerdict, which DEMANDS card.agree's brand (F4) and HONORS agree.basis (✓ for a
+// live-inputs agreement, ○ for a decoded-consistency one, ✗ on disagreement).
+export function showMathMark(card: MathCard, arm: AgreeSource): { mark: MarkKey; note: string } {
+  // A null agree = NO comparison ran (a missing LOS composite) → the '?' no-verdict state. Narrowing on it
+  // reduces card.agree from AgreementResult<boolean> | null to the branded boolean recomputedVerdict DEMANDS,
+  // so a null can NEVER reach a verdict mark — the typecheck forces this branch first (F1). card.unverifiable
+  // is the display driver and coincides with agree===null (the executor sets both in the missing-composite arm).
+  if (card.agree === null) return { mark: 'unverifiable', note: '' }
+  return recomputedVerdict(arm, card.agree)
+}
+
+// What the chainmeta chip needs — sourced ENTIRELY from the SAME causalNeighborhood traversal the pixels come
+// from (never a second walk that could disagree). `up`/`down` are the RETAINED neighbourhood counts (≤ HORIZON_HOPS
+// each), NOT whole-chain totals — presenting a bounded count as the total would be the exact lie this wave kills.
+export interface ChainMeta {
+  up: number
+  down: number
+  upBeyond: boolean                                    // the chain continues past the ancestor horizon
+  downBeyond: boolean                                  // the chain continues past the descendant horizon
+  truncated: NeighborhoodSummary['truncated']          // a per-hop breadth cut, if any
+}
+
+// The Inspector's chainmeta declaration (consult-legibility-miniwave §1.3; v0.8 W2) — the ONE place the collapsed
+// ancestry is declared, and it lives in EXISTING chrome (no new surface). The counts are the horizon-bounded
+// neighbourhood's RETAINED up/down — the same members the stage and timeline light. " · nearest N shown" is
+// appended IFF the chain actually extends beyond the horizon on either side (a cheap boundary probe), so it never
+// overclaims aggregation when the whole chain is already lit (a root/leaf/short selection stays bare). If a hop was
+// truncated by the per-hop cap, " · N dropped" says so honestly — the count-true summary made visible, never a
+// silent drop. Pure.
+export function chainMetaText(m: ChainMeta): string {
+  const parts = [`${m.up} up · ${m.down} down`]
+  if (m.upBeyond || m.downBeyond) parts.push(`nearest ${HORIZON_HOPS} shown`)
+  if (m.truncated) parts.push(`${m.truncated.dropped} dropped`)
+  return parts.join(' · ')
 }
 
 // Referentially-stable empty list for the unselected branch: keeping ONE identity means the
@@ -80,8 +128,12 @@ export function Inspector({ model, open = false }: { model: RunModel; open?: boo
       </p>
     </aside>
   )
+  // The state panel reads the entity at the RAW playhead frame — offset 0, the committed integer tick (this is
+  // the data panel's own semantics; the rendered cone applies the sensing offset separately). Brand the clamped
+  // frame StateFrame at this accessor boundary (A3). NOTE: on a sensing run this frame is one step behind the
+  // cone's evaluated frame (k vs k+1) — a deliberate divergence, flagged for the bench, not changed here.
   const t = Math.min(tick, model.tickCount)
-  const st = sel ? model.entityStatesAt(t).get(sel) : undefined
+  const st = sel ? model.entityStatesAt(t as StateFrame).get(sel) : undefined
   return (
     <aside className={open ? 'inspector open' : 'inspector'}>
       {sel && (
@@ -133,7 +185,16 @@ const EventDetail = memo(function EventDetail({ model, seq, onPick }: { model: R
   // strip is the Q5 "can I trust this pixel?" answer for a sensing verdict, as ShowTheMath is for a query.
   const sensingDraw = useMemo(
     () => (model.eligibilityAt(seq) ? buildSensingStage(model).draws[seq] ?? null : null), [model, seq])
-  const { ancestors, descendants } = model.causalChain(seq)
+  // The chainmeta counts come from the SAME bounded neighbourhood the stage/timeline/links draw (HORIZON_OPTS),
+  // probeHorizon = true so the chip can honestly say whether the chain extends past the horizon. The nav buttons
+  // read the immediate cause (envelope causationId) and nearest effect (first child) directly — O(1), no full chain.
+  const nb = causalNeighborhood(model, seq, HORIZON_OPTS, true)
+  const firstEffect = model.childrenOf(seq)[0]
+  const meta: ChainMeta = {
+    up: nb.ancestors, down: nb.descendants,
+    upBeyond: nb.ancestorsBeyond, downBeyond: nb.descendantsBeyond,
+    truncated: nb.summary.truncated,
+  }
   return (
     <section>
       <h2>event #{seq}</h2>
@@ -148,8 +209,8 @@ const EventDetail = memo(function EventDetail({ model, seq, onPick }: { model: R
       </tbody></table>
       <p className="chainnav">
         {e.causationId !== null && <button onClick={() => onPick(e.causationId!)}>← cause #{e.causationId}</button>}
-        {descendants.length > 0 && <button onClick={() => onPick(descendants[0]!)}>effect #{descendants[0]} →</button>}
-        <span className="chainmeta">{chainMetaText(ancestors.length, descendants.length)}</span>
+        {firstEffect !== undefined && <button onClick={() => onPick(firstEffect)}>effect #{firstEffect} →</button>}
+        <span className="chainmeta">{chainMetaText(meta)}</span>
       </p>
       {q && <ShowTheMath model={model} seq={seq} />}
       {sensingDraw && <SensingStrip draw={sensingDraw} />}
@@ -172,6 +233,11 @@ function ShowTheMath({ model, seq }: { model: RunModel; seq: number }) {
   const draw = stage.draws[seq]
   if (!draw) return null
   const card = showMath(draw, draw.kind === 4 ? losComponents(seq, stage) : null)
+  // The verdict mark is derived from the class's DECLARED AgreeSource arm (W3 F3), not re-decided from a bare
+  // boolean: ? unverifiable (recompute impossible — a no-verdict state, never a false ✗) · ✓ verified /
+  // ○ self-consistent (per the arm's basis) · ✗ mismatch (disagreed). card.agree's brand (F4) makes this
+  // load-bearing — a plain boolean cannot flow into the mark resolver.
+  const { mark: vmark, note } = showMathMark(card, QUERY_VERDICT_ARM[draw.kind])
   return (
     <section className="showmath">
       <h2>show the math</h2>
@@ -181,12 +247,16 @@ function ShowTheMath({ model, seq }: { model: RunModel; seq: number }) {
           <tr key={l.label}><td>{l.label}</td><td>{l.value}</td></tr>
         ))}
       </tbody></table>
-      <p className={card.unverifiable ? 'showmath-verdict unverifiable' : card.agree ? 'showmath-verdict agree' : 'showmath-verdict disagree'}>
-        <span className="showmath-glyph">{card.unverifiable ? '?' : card.agree ? '✓' : '✗'}</span>
+      <p className={`showmath-verdict ${markClass(vmark)}`}>
+        <span className="showmath-glyph">{requireGlyph(vmark)}</span>
         <span>{card.unverifiable
           ? card.verdict
           : `recompute ${card.verdict}${card.agree ? ' · matches engine' : ` · engine ${card.engine}`}`}</span>
       </p>
+      {/* W3 F3 — the arm's basis note, visible beside the mark (ev99's note convention): a live-inputs row
+          reads "recomputed from live decoded inputs"; a decoded-consistency row would read "…no external
+          oracle" beside its ○ ring, so the union is worn at the mark, never demoted to prose. */}
+      {note && <p className="showmath-note showmath-basis">{note}</p>}
       {card.claims.map(c => (
         <p className="showmath-claim" key={c.label}>
           <span className="showmath-claim-val">{c.label} {c.value}</span>

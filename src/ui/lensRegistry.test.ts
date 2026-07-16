@@ -1,10 +1,13 @@
 import { describe, expect, test } from 'vitest'
 import {
-  LENSES, lensById, honestyChipFor, askPixel, pixelVoice,
+  LENSES, lensById, honestyChipFor, askPixel, pixelVoice, assertAgreeSourcesBacked,
 } from './lensRegistry'
 import { E0_REGISTRATION, QUERY_STAGE_HONESTY } from './queryStage'
 import { F2A_REGISTRATION, SENSING_HONESTY } from './sensingStage'
 import { validateRegistration, voiceFor, type LensRegistration, type PixelClass } from './lensContract'
+import { SHOWMATH_AGREE_CAPABILITY } from './showMath'
+import { SENSING_AGREE_CAPABILITY, ELIGIBLE_CONJUNCTION_INPUTS } from './sensingMath'
+import { makeWitnessInputs, type AgreeCapability, type WitnessInputs, type FormToken } from './agreeSource'
 
 // The registry is the MECHANISM extracted from the two live lenses (query stage + sensing gauntlet). These
 // pin: both citizens are held and reachable by id; the honesty-chip line is the registration's projection
@@ -94,5 +97,96 @@ describe('the cross-citizen invariants fail LOUD (what a single registration can
   })
   test('the two DISTINCT live citizens build cleanly (no false positive across lenses)', () => {
     expect(() => build([E0_REGISTRATION, F2A_REGISTRATION])).not.toThrow()
+  })
+})
+
+describe('the witness boot guard resolves declared arms against the PER-FORM executor capability (W3 F2)', () => {
+  // A recomputed class's declared arm must name a form the executor backs AND declare EXACTLY that form's
+  // required input tuple. The token union is CLOSED at compile time; this is the RUNTIME vouching that the
+  // declared (form + inputs) matches the executor's per-form truth — the hole a closed type cannot close (an
+  // executor that dropped a leg, a token declared against the wrong FORM — the Cartesian hole below).
+  const mkRecomputed = (inputs: WitnessInputs, form: FormToken = 'form:in-range'): LensRegistration => ({
+    id: 'x-lens', question: { primary: 'q', adjacent: [] }, surfaces: { stage: 'S', instrument: 'I' },
+    borrowedHues: ['accent'], dims: 'd', emptyState: 'e', honestyChip: 'c', tourId: null, mountGate: 'g',
+    provenance: [{
+      id: 'r', tier: 'recomputed', source: 'contract/x.md §1', answer: 'a',
+      agree: { basis: 'live-inputs', inputs, form },
+    }],
+  })
+  // An executor that backs form:in-range (consuming exactly [sensing:pose]) and form:eligible-conjunction.
+  const cap: AgreeCapability = {
+    forms: {
+      'form:in-range': ['sensing:pose'],
+      'form:eligible-conjunction': ['sensing:in-range-live', 'sensing:los-clear-live', 'sensing:in-fov-claim'],
+    },
+    decoded: [],
+  }
+
+  test('a fully-backed arm passes (form backed, inputs set-equal the form tuple)', () => {
+    expect(() => assertAgreeSourcesBacked(mkRecomputed(makeWitnessInputs('sensing:pose')), cap)).not.toThrow()
+  })
+  test('a form the executor does not back fails loud', () => {
+    expect(() => assertAgreeSourcesBacked(mkRecomputed(makeWitnessInputs('sensing:pose'), 'form:los-clear'), cap))
+      .toThrow(/names form 'form:los-clear'/)
+  })
+  test('inputs that do not set-equal the form tuple fail loud (an extra leg, or a missing one)', () => {
+    // form:in-range consumes exactly [sensing:pose] — an extra live leg is a mismatch, not a superset that passes.
+    expect(() => assertAgreeSourcesBacked(mkRecomputed(makeWitnessInputs('sensing:pose', 'sensing:in-range-live')), cap))
+      .toThrow(/but that form's live leg consumes exactly/)
+    // a missing token (an empty witness that still names the form) likewise fails the set-equality.
+    expect(() => assertAgreeSourcesBacked(mkRecomputed(makeWitnessInputs()), cap))
+      .toThrow(/but that form's live leg consumes exactly/)
+  })
+  test('THE CARTESIAN COUNTEREXAMPLE — in-fov-claim paired with form:in-range fails the NEW guard [F2]', () => {
+    // PREMISE-FIRST: BOTH 'sensing:in-fov-claim' (a backed input of this executor) and 'form:in-range' (a backed
+    // form) are legitimate TOKENS, so the OLD guard — which checked input membership and form membership
+    // INDEPENDENTLY — waved this pairing through, even though form:in-range re-derives from the pose and never
+    // consumes in_fov. The per-form guard rejects it: form:in-range's tuple is [sensing:pose], not [in-fov-claim].
+    expect(() => assertAgreeSourcesBacked(mkRecomputed(makeWitnessInputs('sensing:in-fov-claim'), 'form:in-range'), cap))
+      .toThrow(/but that form's live leg consumes exactly \[sensing:pose\]/)
+  })
+  test('a recomputed lens with NO executor capability fails loud (it cannot be vouched)', () => {
+    expect(() => assertAgreeSourcesBacked(mkRecomputed(makeWitnessInputs('sensing:pose')), undefined))
+      .toThrow(/names no executor capability/)
+  })
+  test('both live citizens resolve against their real executor capabilities (registry boot green)', () => {
+    expect(() => assertAgreeSourcesBacked(E0_REGISTRATION, SHOWMATH_AGREE_CAPABILITY)).not.toThrow()
+    expect(() => assertAgreeSourcesBacked(F2A_REGISTRATION, SENSING_AGREE_CAPABILITY)).not.toThrow()
+  })
+})
+
+describe('the recomputed classes migrated to the AgreeSource witness (W3, audit A1)', () => {
+  test('every e0 recomputed class declares a live-inputs AgreeSource', () => {
+    const recomputed = E0_REGISTRATION.provenance.filter(p => p.tier === 'recomputed')
+    expect(recomputed.map(p => p.id).sort())
+      .toEqual(['los-verdict', 'occluder-verdict', 'range-scalar', 'region-verdict'])
+    for (const p of recomputed) {
+      expect(p.agree, p.id).toBeDefined()
+      expect(p.agree!.basis, p.id).toBe('live-inputs')
+    }
+  })
+  test('every f2a recomputed class declares a live-inputs AgreeSource', () => {
+    const recomputed = F2A_REGISTRATION.provenance.filter(p => p.tier === 'recomputed')
+    expect(recomputed.map(p => p.id).sort())
+      .toEqual(['eligible-conjunction', 'in-range-recompute', 'los-clear-recompute'])
+    for (const p of recomputed) expect(p.agree!.basis, p.id).toBe('live-inputs')
+  })
+  test('the f2a eligible flagship arm set-EQUALS the executor\'s conjunction tuple (one truth — no drift)', () => {
+    const flag = F2A_REGISTRATION.provenance.find(p => p.id === 'eligible-conjunction')!
+    const agree = flag.agree
+    expect(agree).toBeDefined()
+    if (agree && agree.basis === 'live-inputs') {
+      // The arm is MINTED (copied/frozen/validated by makeWitnessInputs) FROM sensingMath's OWN exported
+      // constant, so it VALUE-equals it — the two LIVE legs + the DECODED in_fov claim (the fov leg expressed
+      // honestly as a claim-voice input, never the engine's eligible bit, a comparand un-nameable here).
+      expect([...agree.inputs]).toEqual([...ELIGIBLE_CONJUNCTION_INPUTS])
+      expect([...agree.inputs]).toEqual(['sensing:in-range-live', 'sensing:los-clear-live', 'sensing:in-fov-claim'])
+      expect(agree.form).toBe('form:eligible-conjunction')
+      // The EXECUTOR capability's form tuple IS that same exported constant (reference identity); the per-form
+      // boot guard set-compares the arm against it, so the declaration and the real conjunction cannot drift.
+      expect(SENSING_AGREE_CAPABILITY.forms['form:eligible-conjunction']).toBe(ELIGIBLE_CONJUNCTION_INPUTS)
+    } else {
+      throw new Error('the flagship must declare a live-inputs arm')
+    }
   })
 })

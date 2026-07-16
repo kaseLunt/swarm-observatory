@@ -1,13 +1,15 @@
 import type { RunModel } from '../model/runModel'
-import { type BadgeState } from './badges'
 import { verdictAgainstManifest } from '../decode/verify'
 import { PROV_GROUPS, provenanceFooter, provenanceRows, type ProvRow } from './provenanceFormat'
+import { requireGlyph } from './voices'
 
-// ○ (self-check ring) replaces the bare ⋯ for pending: a recomputed-but-unsealed voice, not "loading".
-// • (v0.5d bench R2, two-voice discipline) is the ATTESTED mark: a manifest claim on record but not
-// recomputed — filled (a claim exists) where pending's ring is open (nothing to seal against), and
-// pointedly NOT the ✓, which is reserved for recomputed-and-matched rows only.
-const GLYPH: Record<BadgeState, string> = { pending: '○', verified: '✓', mismatch: '✗', attested: '•' }
+// The row glyph is the row's THREADED semantic mark (F1), sourced from the single voices module — NOT re-derived
+// off the BadgeState through the badge seam. That seam maps every 'pending' to the ○ self-check, which is right
+// for a trailer-reproduced hash row but WRONG for a det-only no-claim row (scenario/seed/registries/…): those
+// carry `mark: null` and render NO glyph (an honest no-verdict), so a verdict ring never lands on an
+// unadjudicated row. The tr keeps its BadgeState class as the CSS hook (this panel is the most load-bearing
+// integrity surface and already wears the canonical attested token, `--pending`); every mark's hue matches
+// its BadgeState, and a null-mark row's glyph cell is simply empty.
 
 export function ProvenancePanel({ model, open = false }: { model: RunModel; open?: boolean }) {
   const m = model.manifest
@@ -32,7 +34,7 @@ export function ProvenancePanel({ model, open = false }: { model: RunModel; open
                 // ticked (event_hash / result_id) for the settle-in animation — the confirmed lines settling
                 // into their rows. Inert (a plain data attribute) for every other consumer.
                 <tr key={r.k} data-prov-key={r.k} className={r.b}>
-                  <td className="prov-glyph">{GLYPH[r.b]}</td>
+                  <td className="prov-glyph">{r.mark === null ? '' : requireGlyph(r.mark)}</td>
                   <td>{r.k}</td>
                   <td title={r.title ?? r.val} className={r.cls ? `prov-val ${r.cls}` : 'prov-val'}>
                     {r.val}

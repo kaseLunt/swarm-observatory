@@ -78,13 +78,17 @@ header h1 { margin: 0; text-transform: uppercase; color: var(--text-dim); white-
    does; the pinned form + the bearing CLAIM row wear the quieter dim/faint voices (a claim on record, no ✓). */
 .showmath-form { margin: 0 0 0.4rem; font-family: var(--type-mono); font-size: var(--fs-label); color: var(--text-dim); }
 .showmath-verdict { display: flex; gap: 0.4rem; align-items: baseline; margin: 0.5rem 0 0; font-variant-numeric: tabular-nums; }
-.showmath-verdict.agree { color: var(--verified); }
-.showmath-verdict.disagree { color: var(--mismatch); }
-.showmath-verdict.unverifiable { color: var(--text-dim); } /* neutral: could not recompute — never the verified/mismatch pair (no new colour) */
+/* Voice classes are the module's canonical names (src/ui/voices.ts): verified ✓ / mismatch ✗ / unverifiable ?
+   — retiring the old showmath-only agree/disagree aliases so this surface names the same marks as every other. */
+.showmath-verdict.verified { color: var(--verified); }
+.showmath-verdict.mismatch { color: var(--mismatch); }
+.showmath-verdict.unverifiable { color: var(--text-dim); } /* no-verdict: could not recompute — never the verified/mismatch pair (stays dim) */
+.showmath-verdict.self { color: var(--pending); } /* ○ self-consistent — a decoded-consistency arm's ring (no external oracle), NEVER the ✓ (W3 F3) */
 .showmath-glyph { flex: none; }
 .showmath-claim { margin: 0.4rem 0 0; font-family: var(--type-mono); font-size: var(--fs-label); color: var(--text-dim); }
 .showmath-claim-val { display: block; }
 .showmath-note { display: block; font-family: var(--type-family); font-size: var(--fs-label); color: var(--text-faint); letter-spacing: 0.01em; margin-top: 1px; }
+.showmath-basis { color: var(--text-dim); } /* the arm's basis note beside the verdict mark (W3 F3 — ev99's note convention) */
 .showmath-agg { margin: 0.6rem 0 0; font-size: var(--fs-label); color: var(--text-faint); letter-spacing: 0.04em; }
 
 /* THE FOUR-GATE SENSING STRIP (Task v07-2) — f2a's instrument voice. The two-voice grammar as a strip:
@@ -97,13 +101,21 @@ header h1 { margin: 0; text-transform: uppercase; color: var(--text-dim); white-
 .gate-strip td { padding: 1px 0.4rem 1px 0; vertical-align: baseline; }
 .gate-label { font-variant-caps: all-small-caps; letter-spacing: 0.06em; color: var(--text-primary); }
 .gate-mark { flex: none; font-weight: 700; text-align: center; }
-.gate-mark.v-ok { color: var(--verified); }
-.gate-mark.v-bad { color: var(--mismatch); }
-.gate-mark.v-claim { color: var(--text-dim); }
+/* Voice classes are the module's canonical names (src/ui/voices.ts). The old v-ok/v-bad/v-claim aliases are
+   retired; v-claim in particular CONFLATED two families — the attested • (a verdict mark) and the withheld ·
+   (a no-verdict state) both wore it. They split here: attested carries the canonical `--pending` slate (the
+   4-surface attested-token drift fixed — this gate was on `--text-dim`), withheld STAYS dim (`--text-dim`,
+   the two-family law: a no-verdict state never borrows a verdict hue). */
+.gate-mark.verified { color: var(--verified); }
+.gate-mark.mismatch { color: var(--mismatch); }
+.gate-mark.attested { color: var(--pending); }
+.gate-mark.withheld { color: var(--text-dim); }
+.gate-mark.self { color: var(--pending); } /* ○ self-consistent — a decoded-consistency arm's ring, NEVER the ✓ (W3 F3) */
 .gate-form { font-family: var(--type-mono); font-size: var(--fs-label); color: var(--text-faint); }
+.gate-basis { display: block; font-size: var(--fs-label); color: var(--text-dim); letter-spacing: 0.01em; margin-top: 1px; } /* the arm's basis note beside the gate mark (W3 F3) */
 .gate-tiebreak { margin: 0.4rem 0 0; font-size: var(--fs-label); color: var(--text-dim); letter-spacing: 0.02em; }
 .gate-note { margin: 0.4rem 0 0; font-size: var(--fs-label); color: var(--text-faint); letter-spacing: 0.01em; line-height: 1.4; }
-.gate-note .v-claim { color: var(--text-dim); }
+.gate-note .attested { color: var(--pending); } /* the in-fov claim word, in the canonical attested slate */
 /* Provenance information architecture: a flex column so the row clusters scroll in the middle while the
    counts + trailer verdict pin as a footer — the summary is always in view, never scrolled past. */
 .provenance { grid-area: panel; display: flex; flex-direction: column; overflow: hidden; border-left: 1px solid var(--border); padding: 1rem; font-size: 0.8rem; }
@@ -206,8 +218,10 @@ button.active { border-color: var(--accent); color: var(--accent); }
    no external oracle backs it, so never the manifest-grade green ✓ (the ProvenancePanel ○ idiom). */
 .ctick.self { color: var(--pending); }
 /* Attested/derived hash tick (F1): the • result_id wears on a det-only run — DERIVED from the sealed inputs
-   with no in-bundle oracle, so the quiet attested hue, never the ○ self-check ring (mirrors the panel's • ). */
-.ctick.attested { color: var(--text-faint); }
+   with no in-bundle oracle. It now truly MIRRORS THE PANEL'S • (v0.8 W1 drift fix): the canonical attested
+   token is `--pending` (the ProvenancePanel's), converged here from the old `--text-faint` — one attested
+   voice across all four surfaces. Never the ✓; ○ and • share the slate, distinguished by glyph. */
+.ctick.attested { color: var(--pending); }
 @keyframes ctick { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: none; } }
 /* Settle beat (Task v04-7): a one-shot confident pop on the completed ✓ marks during the ~400ms payoff
    hold before the ceremony dissolves — the "verified" landing is felt, not just held. Reduced-motion
@@ -361,12 +375,14 @@ button.active { border-color: var(--accent); color: var(--accent); }
 .hangar-card.current { border-color: var(--border-bright); }
 .hangar-card-head { display: flex; flex-direction: column; gap: 0.25rem; }
 .hangar-card-head h3 { margin: 0; font-size: var(--fs-body); color: var(--text-primary); line-height: 1.3; }
-/* Earned verdict voice: the glyph carries the integrity hue (verified green / attested faint); the
-   label stays quiet text. ✓ only appears when the store says this run sealed green this session. */
+/* Earned verdict voice: the glyph carries the integrity hue (verified green / attested slate); the
+   label stays quiet text. ✓ only appears when the store says this run sealed green this session. The
+   attested • uses the canonical `--pending` slate (v0.8 W1 drift fix — converged from the old `--text-faint`
+   so the Hangar's • matches the ProvenancePanel's, the single attested voice). */
 .hangar-verdict { display: inline-flex; align-items: baseline; gap: 0.35rem; font-size: var(--fs-label); color: var(--text-dim); letter-spacing: 0.02em; }
 .hangar-glyph { flex: none; font-size: 0.9rem; line-height: 1; }
 .hangar-verdict.verified .hangar-glyph { color: var(--verified); }
-.hangar-verdict.attested .hangar-glyph { color: var(--text-faint); }
+.hangar-verdict.attested .hangar-glyph { color: var(--pending); }
 /* BROKEN seal (closure item 1): a session-sealed run whose later re-load mismatched wears the full alarm
    register — glyph AND label in the house --mismatch token (the .showmath-verdict.disagree precedent;
    zero new tokens) so a revoked ✓ can never be mistaken for quiet attested chrome. */
@@ -440,3 +456,102 @@ button.active { border-color: var(--accent); color: var(--accent); }
 .thesis-chip-verdict.self { color: var(--pending); }
 .thesis-chip-dismiss { flex: none; width: 1.5rem; height: 1.5rem; padding: 0; border-radius: 50%; line-height: 1; font-size: 0.95rem; color: var(--text-dim); }
 .thesis-chip-dismiss:hover, .thesis-chip-dismiss:focus-visible { border-color: var(--accent); color: var(--accent); }
+
+/* ── THE CERTIFICATION WALL (v0.8 W5) — the campaign certification surface. Reuses the Hangar's modal
+   grammar (backdrop / panel / focus trap) — the app's established overlay idiom, not new chrome. Instrument
+   posture: bgPanel/border registers, NO glow, NO bloom (DOM only, no canvas). At rest a DIM field of
+   attested dots — zero integrity green, zero glow — every ✓ a session-earned receipt. Two colour systems,
+   never cross-spent: integrity voices (green/slate/red/dim) on the seeds; the R3 verdict pair on the
+   gauges' statistical decisions only. ──────────────────────────────────────────────────────────────── */
+.wall-backdrop { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(5, 8, 12, 0.6); z-index: 50; animation: fade-in var(--dur-base) var(--ease-out); }
+.wall-panel {
+  display: flex; flex-direction: column; gap: 0.9rem;
+  width: min(56rem, 92vw); max-height: 88vh; overflow-y: auto;
+  background: var(--bg-panel); border: 1px solid var(--border-bright); border-radius: 8px;
+  padding: 1.2rem 1.4rem; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  animation: rise var(--dur-base) var(--ease-out);
+}
+.wall-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.wall-title { display: flex; flex-direction: column; gap: 0.15rem; }
+.wall-title h2 { margin: 0; font-size: var(--fs-h2); letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); font-variant-numeric: tabular-nums; }
+.wall-subtitle { margin: 0; font-size: var(--fs-label); color: var(--text-dim); letter-spacing: 0.03em; }
+/* The ROBUST verdict wears the ATTESTED voice — the glyph in the canonical slate, on record, never green. */
+.wall-verdict { display: inline-flex; align-items: baseline; gap: 0.35rem; font-size: var(--fs-label); color: var(--text-dim); letter-spacing: 0.04em; text-transform: uppercase; }
+.wall-glyph { flex: none; font-size: 0.9rem; line-height: 1; }
+.wall-verdict.attested .wall-glyph { color: var(--pending); }
+.wall-plan { margin: 0; font-size: var(--fs-label); color: var(--text-faint); letter-spacing: 0.02em; }
+.wall-mono { font-family: var(--type-mono); }
+
+/* GAUGES — the statistical instrument row. The pass mark's HUE is the verdict pair (a certified decision),
+   its GLYPH the attested • (on record) — the two colour systems kept distinct (D4 Ruling 5/6). */
+.wall-gauges { list-style: none; margin: 0; padding: 0.6rem 0; display: flex; flex-direction: column; gap: 0.55rem; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.wall-gauge { display: grid; grid-template-columns: 3.2rem 4.5rem 1fr auto auto; align-items: center; gap: 0.7rem; }
+.wall-gauge-kind { font-size: var(--fs-label); color: var(--text-primary); letter-spacing: 0.04em; }
+.wall-gauge-stat { font-family: var(--type-mono); font-variant-numeric: tabular-nums; color: var(--text-primary); font-size: var(--fs-label); text-align: right; }
+.wall-gauge-band { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.4rem; }
+.wall-gauge-lo, .wall-gauge-hi { font-family: var(--type-mono); font-variant-numeric: tabular-nums; color: var(--text-faint); font-size: var(--fs-mono); }
+.wall-gauge-track { position: relative; height: 0.28rem; border-radius: 2px; background: var(--border-bright); }
+.wall-gauge-tick { position: absolute; top: 50%; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--text-primary); transform: translate(-50%, -50%); }
+.wall-gauge-meta { font-size: var(--fs-mono); color: var(--text-dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wall-gauge-pass, .wall-gauge-fail { display: inline-flex; align-items: baseline; gap: 0.3rem; font-size: var(--fs-label); letter-spacing: 0.04em; }
+.wall-gauge-pass { color: var(--verdict-affirm); }
+.wall-gauge-fail { color: var(--verdict-negate); }
+.wall-gauge-empty, .wall-gauges-empty { margin: 0; font-size: var(--fs-label); color: var(--text-dim); }
+.wall-gauges-empty code { font-family: var(--type-mono); color: var(--text-faint); }
+/* FAIL-CLOSED gauge state (F3): the manifest fetched but did not validate as this campaign's verdict. The '?'
+   is the no-verdict unverifiable mark — DIM (two-family law), never a verdict hue. A reason rides beside it. */
+.wall-gauges-invalid { margin: 0; padding: 0.6rem 0; display: flex; align-items: baseline; gap: 0.4rem; font-size: var(--fs-label); color: var(--text-dim); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.wall-gauges-invalid code { font-family: var(--type-mono); color: var(--text-faint); }
+.wall-gauges-invalid .wall-glyph { color: var(--text-dim); }
+
+/* THE SEED FIELD — a seed-ordered 10×5 grid (earned geometry, no fake scatter). At rest every cell is the
+   attested slate •; a cell greens ONLY on the store's session-verified phase. */
+.wall-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 0.35rem; }
+@media (max-width: 640px) { .wall-grid { grid-template-columns: repeat(5, 1fr); } }
+.wall-dot {
+  display: flex; flex-direction: column; align-items: center; gap: 0.1rem;
+  padding: 0.4rem 0.2rem; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-void);
+  transition: border-color var(--dur-base) var(--ease-out);
+}
+.wall-dot-glyph { font-size: 1rem; line-height: 1; color: var(--pending); transition: color var(--dur-base) var(--ease-out); }
+.wall-dot-seed { font-size: var(--fs-mono); font-variant-numeric: tabular-nums; color: var(--text-faint); }
+/* Integrity voices — green ONLY on a session receipt; slate on record; red on contradiction; dim on the
+   availability ? (a fetch failure is NOT a ✗). */
+.wall-dot.attested .wall-dot-glyph { color: var(--pending); }
+.wall-dot.verified .wall-dot-glyph { color: var(--verified); }
+.wall-dot.verified { border-color: var(--verified); }
+.wall-dot.mismatch .wall-dot-glyph { color: var(--mismatch); }
+.wall-dot.mismatch { border-color: var(--mismatch); }
+.wall-dot.unverifiable .wall-dot-glyph { color: var(--text-dim); }
+/* In-flight posture (running): the dot stays attested slate, quietly pulsing — not an eighth voice. Under
+   reduced motion the pulse is a cut (no animation); the census aria-live is the narration. */
+.wall-dot.running .wall-dot-glyph { animation: wall-pulse 1s ease-in-out infinite; }
+@keyframes wall-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .wall-dot.running .wall-dot-glyph { animation: none; opacity: 0.6; } }
+
+.wall-footer { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+/* The census — exact integers, tabular, no rings/percentages. The headline that opens by declaring the
+   unverified. */
+.wall-census { margin: 0; font-size: var(--fs-body); color: var(--text-primary); font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+.wall-cta { border-color: var(--border-bright); color: var(--accent); letter-spacing: 0.04em; }
+.wall-cta:hover, .wall-cta:focus-visible { border-color: var(--accent); background: var(--bg-elevated); }
+.wall-cancel { border-color: var(--border-bright); color: var(--text-dim); letter-spacing: 0.04em; }
+.wall-cancel:hover, .wall-cancel:focus-visible { border-color: var(--accent); color: var(--accent); }
+.wall-disclaimer { margin: 0; text-align: center; font-size: var(--fs-label); color: var(--text-faint); letter-spacing: 0.02em; }
+.wall-close { align-self: center; color: var(--text-dim); }
+.wall-close:hover, .wall-close:focus-visible { border-color: var(--accent); color: var(--accent); }
+
+/* ── THE HANGAR → WALL ENTRY (v0.7/v0.8 front door) — a campaign entry inside the run library, following
+   the card/CTA grammar. NAMES the ROBUST campaign correctly (it IS the robust campaign); the correct-profile
+   f3a run card stays untouched (the profile-conflation tripwire). A distinct class from `.hangar-card` so the
+   six-run card count is unchanged. ──────────────────────────────────────────────────────────────────────── */
+.hangar-campaigns { display: flex; flex-direction: column; gap: 0.5rem; border-top: 1px solid var(--border); padding-top: 0.8rem; }
+.hangar-campaigns-label { margin: 0; font-size: var(--fs-label); color: var(--text-dim); letter-spacing: 0.14em; text-transform: uppercase; }
+.hangar-campaign-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; background: var(--bg-void); border: 1px solid var(--border); border-radius: 6px; padding: 0.7rem 0.9rem; }
+.hangar-campaign-info { display: flex; flex-direction: column; gap: 0.2rem; }
+.hangar-campaign-info h4 { margin: 0; font-size: var(--fs-body); color: var(--text-primary); }
+.hangar-campaign-note { margin: 0; font-size: var(--fs-label); color: var(--text-faint); }
+.hangar-campaign-verdict { display: inline-flex; align-items: baseline; gap: 0.3rem; font-size: var(--fs-label); color: var(--text-dim); letter-spacing: 0.04em; text-transform: uppercase; }
+.hangar-campaign-verdict .hangar-glyph { color: var(--pending); }
+.hangar-campaign-open { border-color: var(--border-bright); color: var(--accent); letter-spacing: 0.03em; white-space: nowrap; }
+.hangar-campaign-open:hover, .hangar-campaign-open:focus-visible { border-color: var(--accent); background: var(--bg-elevated); }

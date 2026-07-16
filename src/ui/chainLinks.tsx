@@ -6,7 +6,10 @@ import type * as THREE from 'three'
 import type { RunModel } from '../model/runModel'
 import { useViewStore } from '../state/viewStore'
 import { entityPosition, lerp3 } from './placement'
+import { resolveCursorInto, eventTickOf, type FrameCursor } from './cursor'
+import type { StateFrame, TransportTick } from '../lib/brand'
 import { PALETTE } from './theme'
+import { causalNeighborhood, HORIZON_OPTS } from './chain'
 
 // Module-scope scratch OWNED by this file (v0.6 T0 Wave B): the link-endpoint interpolation below reuses
 // these tuples every frame with zero allocation (§8). Before the split ChainLinks borrowed Scene's scratch,
@@ -15,8 +18,14 @@ import { PALETTE } from './theme'
 const scratchA: [number, number, number] = [0, 0, 0]
 const scratchB: [number, number, number] = [0, 0, 0]
 const scratchP: [number, number, number] = [0, 0, 0]
+// The link frame-loop cursor: reused every frame (§8, file-local like the tuples above).
+const linkCursor: FrameCursor = { t0: 0 as StateFrame, t1: 0 as StateFrame }
 
-const MAX_LINKS = 256
+// The worst-case member count of the HORIZON_OPTS neighbourhood: self + maxHop single-parent ancestors +
+// maxHop levels each capped at maxPerHop descendants. Every cross-entity link segment is owned by one member
+// (its parent edge), so links ≤ members − 1 ≤ this — the buffer holds the whole bounded neighbourhood and there
+// is NO second, buffer-level drop: the neighbourhood's maxPerHop is the ONE bound, and its summary declares any cut.
+const MAX_LINK_MEMBERS = 1 + HORIZON_OPTS.maxHop * (1 + HORIZON_OPTS.maxPerHop)
 export function ChainLinks({ model }: { model: RunModel }) {
   const geoRef = useRef<THREE.BufferGeometry>(null)
   // Flat parallel arrays (not an array of [a, b] tuples): useFrame below iterates this by index,
@@ -26,7 +35,7 @@ export function ChainLinks({ model }: { model: RunModel }) {
   const chainRef = useRef<{ a: string[]; b: string[] } | null>(null)
   // Stable buffer identity: allocate the positions buffer once so re-renders can't churn the
   // attribute (a `new Float32Array(...)` inline in the JSX below would reallocate on every render).
-  const positions = useMemo(() => new Float32Array(MAX_LINKS * 2 * 3), [])
+  const positions = useMemo(() => new Float32Array(MAX_LINK_MEMBERS * 2 * 3), [])
   // Zero-fill the buffer's drawRange at mount: the geometry mounts with MAX_LINKS*2 zero-filled
   // vertices and Three's default drawRange (Infinity) would draw all of them — a flash of
   // degenerate lines at the origin — before the first useFrame tick narrows it down.
@@ -36,21 +45,21 @@ export function ChainLinks({ model }: { model: RunModel }) {
   useEffect(() => {
     const compute = (ev: number | null) => {
       if (ev === null) { chainRef.current = null; return }
-      const { ancestors, descendants } = model.causalChain(ev)
-      const members = [...ancestors, ev, ...descendants]
+      // ONE bounded neighbourhood (HORIZON_OPTS) — the SAME call the timeline overlay (chainTicks) and the stage
+      // route through, so the 3D links can never draw an edge the horizon lights don't (the disagreement class is
+      // dead by construction). A cross-entity segment is drawn ONLY when BOTH endpoints are members, exactly the
+      // both-endpoints rule chainTicks uses for its arcs — a boundary member whose parent fell past the horizon
+      // draws no dangling link. The old unbounded causalChain + silent 256-cap drop is gone: membership is bounded
+      // by maxPerHop and any cut is COUNTED into the neighbourhood summary (surfaced by the Inspector chainmeta chip).
+      const { members } = causalNeighborhood(model, ev, HORIZON_OPTS)
       const a: string[] = []
       const b: string[] = []
-      let total = 0
       for (const m of members) {
         const p = model.parentOf(m)
-        if (p === null) continue
+        if (p === null || !members.has(p)) continue
         const sa = model.subjectOf(p); const sb = model.subjectOf(m)
         if (!sa || !sb || sa === sb) continue
-        total++
-        if (a.length < MAX_LINKS) { a.push(sa); b.push(sb) }
-      }
-      if (total > MAX_LINKS) {
-        console.warn(`ChainLinks: dropped ${total - MAX_LINKS} link(s) beyond MAX_LINKS=${MAX_LINKS} for event ${ev}`)
+        a.push(sa); b.push(sb)
       }
       chainRef.current = { a, b }
     }
@@ -66,11 +75,16 @@ export function ChainLinks({ model }: { model: RunModel }) {
     // Interpolate link endpoints identically to the cones (same t0→t1 by the same `fraction`) so the
     // links track moving cones exactly rather than snapping to tick-exact positions a fraction behind.
     // Reuses this file's OWN module scratch vectors (see top of file) — zero alloc, no cross-component ordering.
-    const { tick, fraction } = useViewStore.getState()
-    const t0 = Math.min(tick, model.tickCount)
-    const t1 = Math.min(t0 + 1, model.tickCount)
-    const s0 = model.entityStatesAt(t0)
-    const s1 = model.entityStatesAt(t1)
+    const vs = useViewStore.getState()
+    const fraction = vs.fraction
+    // A3 boundary: brand the store playhead (a plain TransportTick) into the event domain, then resolve the
+    // cursor. ChainLinks tracks cross-entity links at the raw tick's committed frame — offset 0 (no sensing
+    // evaluation shift; the links follow the SAME poses the non-sensing cone renders). This retires the second
+    // copy of the hand-rolled successor-clamp cursor idiom (now owned solely by resolveCursor).
+    const tick = eventTickOf(vs.tick as TransportTick)
+    resolveCursorInto(linkCursor, tick, 0, model.tickCount as StateFrame)
+    const s0 = model.entityStatesAt(linkCursor.t0)
+    const s1 = model.entityStatesAt(linkCursor.t1)
     let n = 0
     for (let i = 0; i < chain.a.length; i++) {
       const a0 = s0.get(chain.a[i]!); const b0 = s0.get(chain.b[i]!)

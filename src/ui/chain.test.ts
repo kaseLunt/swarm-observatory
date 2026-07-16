@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, test } from 'vitest'
-import { activeChain, causalHops, chainTicks, HORIZON_HOPS } from './chain'
+import {
+  activeChain, causalHops, causalNeighborhood, chainTicks, HORIZON_HOPS, HORIZON_OPTS, type NeighborhoodOpts,
+} from './chain'
 import { decodeBundle } from '../decode/decodeBundle'
 import { RunModel } from '../model/runModel'
 
@@ -140,5 +142,179 @@ describe('activeChain — the selection gate', () => {
     expect(c).not.toBeNull()
     expect(c!.arcs.length).toBeGreaterThan(0)                       // a real selection DOES light arcs
     expect(c!.members.size).toBeLessThanOrEqual(2 * HORIZON_HOPS + 1) // but bounded to the neighborhood
+  })
+})
+
+// ══ v0.8 W2 — THE CausalNeighborhood API (the honesty-tier ruling) ═══════════════════════════════════════════
+// ONE bounded traversal, a COUNT-TRUE summary, a PINNED truncation order, and the two-surface disagreement class
+// dead by construction. These pins guard the four properties the wave rests on.
+
+describe('causalNeighborhood — the count-true bounded traversal (E0)', () => {
+  test('E0 seq 40: retained up/down + a clean (untruncated) summary; total === members', () => {
+    const nb = causalNeighborhood(e0, 40, HORIZON_OPTS, true)
+    expect(nb.ancestors).toBe(HORIZON_HOPS)                 // 39, 38, 37
+    expect(nb.descendants).toBe(HORIZON_HOPS)               // 41, 42, 43
+    expect(nb.members.size).toBe(2 * HORIZON_HOPS + 1)      // 7
+    expect(nb.ancestorsBeyond).toBe(true)                   // 36 exists past the ancestor horizon
+    expect(nb.descendantsBeyond).toBe(true)                 // 44 exists past the descendant horizon
+    expect(nb.summary.truncated).toBeNull()                 // a linear chain never trips maxPerHop
+    expect(nb.summary.total).toBe(nb.members.size)          // nothing dropped ⇒ total === retained
+    expect(nb.summary.byHop).toEqual([1, 2, 2, 2])          // self; {39,41}; {38,42}; {37,43}
+  })
+  test('root/leaf: the short side reports beyond=false (no overclaim), long side beyond=true', () => {
+    const root = causalNeighborhood(e0, 0, HORIZON_OPTS, true)
+    expect(root.ancestors).toBe(0); expect(root.ancestorsBeyond).toBe(false) // no ancestors, nothing hidden
+    expect(root.descendants).toBe(HORIZON_HOPS); expect(root.descendantsBeyond).toBe(true)
+    const leaf = causalNeighborhood(e0, 74, HORIZON_OPTS, true)
+    expect(leaf.descendants).toBe(0); expect(leaf.descendantsBeyond).toBe(false)
+    expect(leaf.ancestors).toBe(HORIZON_HOPS); expect(leaf.ancestorsBeyond).toBe(true)
+  })
+  test('probeHorizon defaults OFF — the geometry/link consumers never pay the boundary peek', () => {
+    const nb = causalNeighborhood(e0, 40, HORIZON_OPTS)
+    expect(nb.ancestorsBeyond).toBe(false)                  // unprobed ⇒ conservative false (never claims hidden)
+    expect(nb.descendantsBeyond).toBe(false)
+    expect(nb.members.size).toBe(2 * HORIZON_HOPS + 1)      // members are identical whether or not we probe
+  })
+})
+
+// PINNED TRUNCATION ORDER — a synthetic node with more children than maxPerHop. The survivors must be the
+// SMALLEST-seq maxPerHop (premise-first), and — the point of pinning — INDEPENDENT of childrenOf enumeration order:
+// feed the same candidates shuffled and the identical members survive.
+describe('causalNeighborhood — pinned truncation order (smallest seq survives, order-independent)', () => {
+  // A star: seq 100 has 10 children (200..209); each child is a leaf. childrenOf returns them in a caller-supplied
+  // order so we can prove the survivor set does not depend on it.
+  const star = (childOrder: number[]): RunModel => ({
+    childrenOf(seq: number): readonly number[] { return seq === 100 ? childOrder : [] },
+    parentOf(seq: number): number | null { return seq >= 200 && seq <= 209 ? 100 : null },
+  } as unknown as RunModel)
+  const opts: NeighborhoodOpts = { maxHop: HORIZON_HOPS, maxPerHop: 4 }
+  const ascending = [200, 201, 202, 203, 204, 205, 206, 207, 208, 209]
+  const shuffled = [207, 202, 209, 200, 205, 203, 208, 201, 206, 204]
+
+  test('survivors are the smallest maxPerHop seqs regardless of input order', () => {
+    const survivors = (order: number[]) =>
+      [...causalNeighborhood(star(order), 100, opts).members].filter(s => s !== 100).sort((a, b) => a - b)
+    // premise-first: the 4 smallest (200..203) survive; 204..209 are dropped.
+    expect(survivors(ascending)).toEqual([200, 201, 202, 203])
+    expect(survivors(shuffled)).toEqual([200, 201, 202, 203]) // byte-identical to the ascending feed
+  })
+  test('count-true summary: total === rendered + dropped, and the cut hop is named', () => {
+    const nb = causalNeighborhood(star(shuffled), 100, opts)
+    expect(nb.summary.truncated).toEqual({ hop: 1, dropped: 6 })   // 10 candidates − 4 kept
+    expect(nb.members.size).toBe(5)                                // self + 4 retained
+    expect(nb.summary.total).toBe(nb.members.size + nb.summary.truncated!.dropped) // 5 + 6 === 11 (self + 10)
+    expect(nb.summary.total).toBe(11)
+    // F3 (superseded pin): a BREADTH cut is NOT a depth claim. This call is unprobed (probeHorizon defaults off)
+    // and the star's children are leaves — the chain ENDS at hop 1 — so descendantsBeyond is false. The old pin
+    // asserted `true` ("a cut always means more below"), conflating the per-hop drop with a horizon overrun; the
+    // dropped members are disclosed by summary.truncated, never by a false beyond-horizon flag.
+    expect(nb.descendantsBeyond).toBe(false)
+  })
+})
+
+// F2 — COMBINED PER-HOP CAP. The ancestor and the descendants at the SAME distance share ONE maxPerHop budget, so
+// the cap bounds byHop[d] (the RETAINED members at that hop), not each side independently. Before the fix the
+// ancestor was inserted unconditionally and the descendants then took another full maxPerHop, so one parent + four
+// children under maxPerHop 4 rendered byHop[1] = 5 (the public cap violated) with truncated = null (the drop
+// misstated). The pinned smallest-seq rule PROMISES the parent (smallest seq by the decode law) + the three
+// smallest children; the combined cap delivers exactly that, with the fifth member a COUNTED drop.
+describe('causalNeighborhood — combined per-hop cap (ancestor + descendants share maxPerHop) [F2]', () => {
+  // subject 10: parent 5 (an ancestor at hop 1) and four children 20..23 (descendants at hop 1); all else leaves.
+  const model = (): RunModel => ({
+    childrenOf(seq: number): readonly number[] { return seq === 10 ? [20, 21, 22, 23] : [] },
+    parentOf(seq: number): number | null { return seq === 10 ? 5 : null },
+  } as unknown as RunModel)
+  const opts: NeighborhoodOpts = { maxHop: HORIZON_HOPS, maxPerHop: 4 }
+
+  test('parent + 4 children under maxPerHop 4 → byHop[1] = 4, one dropped, parent survives (was 5 / null)', () => {
+    const nb = causalNeighborhood(model(), 10, opts)
+    // premise (pre-fix): byHop[1] === 5 (1 ancestor + 4 descendants, cap ignored) and truncated === null.
+    expect(nb.summary.byHop[1]).toBe(4)                          // the COMBINED cap holds — never 5
+    expect(nb.summary.truncated).toEqual({ hop: 1, dropped: 1 }) // the fifth member is COUNTED, not silently dropped
+    expect(nb.ancestors).toBe(1)                                 // the parent survives as smallest-seq — no exemption
+    expect(nb.descendants).toBe(3)                               // the three smallest children fill the remaining slots
+    expect(nb.members.has(5)).toBe(true)                         // the parent (smallest seq at hop 1) is in
+    expect([...nb.members].filter(s => s >= 20).sort((a, b) => a - b)).toEqual([20, 21, 22]) // 3 smallest children
+    expect(nb.members.has(23)).toBe(false)                       // the largest-seq child is the dropped one
+    expect(nb.summary.total).toBe(nb.members.size + 1)           // count-true: 5 retained + 1 dropped === 6
+  })
+})
+
+// F1 — BOUNDED SELECTION at high fan-out. The per-hop cap must bound the WORK, not just the result: a node with N
+// children retains O(maxPerHop) scratch (an ascending survivor buffer) and NEVER sorts the whole overflow. The
+// probe feeds children as a COUNTING iterable with no .length / index / .sort, in DESCENDING order — so the test
+// proves (a) the traversal consumes the fan-out as a pure stream (it cannot materialise or sort the input), (b) the
+// smallest-seq maxPerHop survive regardless of feed order, count-true, and (c) an identical repeat call is memoised
+// (single traversal per selection), the property the three unprobed HORIZON_OPTS surfaces rely on.
+describe('causalNeighborhood — bounded selection + memo at high fan-out [F1]', () => {
+  const FAN = 10_000
+  const SUBJECT = 500
+  // children 1000..(1000+FAN-1), all > SUBJECT (forward-only), fed DESCENDING — worst case for a naive "first-k".
+  const descChildren = Array.from({ length: FAN }, (_, i) => 1000 + (FAN - 1 - i))
+  // A counting iterable: NO .length, NO index, NO .sort. If the traversal tried to materialise/sort the fan-out it
+  // would read undefined or throw; iterating is the only way through, and every pull bumps `enumerated`.
+  const counting = (arr: number[], probe: { enumerated: number }): Iterable<number> => ({
+    [Symbol.iterator]() {
+      let i = 0
+      return { next: () => (i < arr.length ? (probe.enumerated++, { value: arr[i++]!, done: false }) : { value: 0, done: true }) }
+    },
+  })
+  const model = (probe: { enumerated: number }): RunModel => ({
+    childrenOf(seq: number): readonly number[] {
+      return (seq === SUBJECT ? counting(descChildren, probe) : []) as unknown as readonly number[]
+    },
+    parentOf(): number | null { return null },
+  } as unknown as RunModel)
+  const opts: NeighborhoodOpts = { maxHop: HORIZON_HOPS, maxPerHop: 64 }
+
+  test('10k children → the 64 smallest survive, count-true drop, single-pass streaming enumeration', () => {
+    const probe = { enumerated: 0 }
+    const nb = causalNeighborhood(model(probe), SUBJECT, opts)
+    // The bounded survivor set: self + the 64 SMALLEST seqs (1000..1063), independent of the descending feed.
+    expect(nb.members.size).toBe(65)
+    expect([...nb.members].filter(s => s !== SUBJECT).sort((a, b) => a - b))
+      .toEqual(Array.from({ length: 64 }, (_, i) => 1000 + i))
+    expect(nb.summary.byHop).toEqual([1, 64, 0, 0])              // retained scratch never exceeded the 64 budget
+    expect(nb.summary.truncated).toEqual({ hop: 1, dropped: FAN - 64 })
+    expect(nb.summary.total).toBe(FAN + 1)                       // count-true: every candidate was counted
+    expect(probe.enumerated).toBe(FAN)                           // single pass — each child pulled exactly once
+  })
+
+  test('single traversal per selection — an identical repeat call is served from the memo, not re-walked', () => {
+    const probe = { enumerated: 0 }
+    const m = model(probe)
+    causalNeighborhood(m, SUBJECT, opts)                         // first call computes, enumerates FAN children
+    causalNeighborhood(m, SUBJECT, opts)                         // identical (model, seq, opts, unprobed): memo HIT
+    // A re-walk would make enumerated 2·FAN. The three unprobed HORIZON_OPTS surfaces (ChainLinks, chainTicks,
+    // the query stage hop map) issue exactly this identical call, so they share the ONE cached traversal.
+    expect(probe.enumerated).toBe(FAN)
+  })
+})
+
+// THE TWO-SURFACE AGREEMENT PIN — the whole point of the wave. What the 3D links iterate (causalNeighborhood
+// members) and what the timeline overlay draws (chainTicks members) are the SAME set for every selection, because
+// both resolve through the ONE HORIZON_OPTS call. The old regime (ChainLinks on unbounded causalChain, the overlay
+// on the bounded walk) could disagree; that class is now dead by construction.
+describe('two-surface agreement — links members === horizon members (disagreement class dead)', () => {
+  test('across ALL 75 e0 selections, chainTicks members === causalNeighborhood(HORIZON_OPTS) members', () => {
+    for (let seq = 0; seq < e0.eventCount; seq++) {
+      const linkMembers = [...causalNeighborhood(e0, seq, HORIZON_OPTS).members].sort((a, b) => a - b)
+      const horizonMembers = [...chainTicks(e0, seq).members].sort((a, b) => a - b)
+      expect(linkMembers, `seq ${seq}`).toEqual(horizonMembers)
+    }
+  })
+})
+
+// MIGRATION GUARD (v0.8 W2) — the render plane must NOT reach for the unbounded RunModel.causalChain; it uses
+// causalNeighborhood. A cheap source-string assertion: no render-plane file may contain the call `.causalChain(`.
+// (The W3 oracle in THIS test file and runModel.test.ts keep the full chain — export-tier, not the render plane.)
+describe('render-plane migration guard — no causalChain in the pixel path', () => {
+  const RENDER_PLANE = [
+    'src/ui/chain.ts', 'src/ui/chainLinks.tsx', 'src/ui/Inspector.tsx',
+    'src/ui/Timeline.tsx', 'src/ui/queryStageView.tsx', 'src/ui/Scene.tsx',
+  ]
+  test.each(RENDER_PLANE)('%s does not call causalChain (uses the bounded neighbourhood)', (file) => {
+    const src = readFileSync(file, 'utf8')
+    expect(src).not.toContain('causalChain(')
   })
 })

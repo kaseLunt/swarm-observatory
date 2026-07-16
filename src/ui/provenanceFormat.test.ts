@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, test } from 'vitest'
 import { PROV_GROUPS, provenanceFooter, provenanceRows } from './provenanceFormat'
+import { badgeMark } from './voices'
 import { pinTick } from './ceremonyFormat'
 import { comparableManifestPins, foldAndVerify, verdictAgainstManifest, type VerifyResult } from '../decode/verify'
 import { FILE_HEADER_LEN, FrameTag } from '../decode/frames'
@@ -76,6 +77,49 @@ describe('provenanceRows — the counts are now VISIBLE comparison rows (F4)', (
   })
 })
 
+// ── F1 — the per-row SEMANTIC MARK splits the det-only 'pending' seam (a verdict ring never lands unadjudicated) ──
+// The BadgeState seam maps EVERY 'pending' to the ○ self-check. On a det-only run that collapses two different
+// things: a trailer-CHECKED-and-matched row (a self-check genuinely RAN) vs a NO-CLAIM row (scenario/seed/dt/
+// registries/commit/dirty — nothing recomputed, no manifest to attest). Threading an explicit `mark` per row
+// keeps the ○ where it was earned and gives the no-claim rows `mark: null` (glyphless), so the module's own
+// two-family law is not violated through its own seam.
+describe('provenanceRows — the threaded per-row mark (F1)', () => {
+  const NO_CLAIM = ['scenario', 'seed', 'dt', 'schema_registry', 'state_registry', 'commit', 'dirty']
+  const TRAILER_CHECKED = ['event_hash', 'state_trajectory_hash', 'event_count', 'tick_count']
+
+  test('PREMISE: the badge seam would ring every det-only no-claim row ○ (an unadjudicated verdict glyph)', () => {
+    for (const k of NO_CLAIM) {
+      const r = rowFor(null, k)
+      expect(r.b, k).toBe('pending')                    // still the neutral CSS/back-compat hook…
+      expect(badgeMark(r.b), k).toBe('selfConsistent')  // …which the seam maps to ○ — the latent collapse the fix undoes
+    }
+  })
+  test('THE FIX: a det-only no-claim row carries mark=null (glyphless — no verdict ring on an unadjudicated row)', () => {
+    for (const k of NO_CLAIM) expect(rowFor(null, k).mark, k).toBeNull()
+    // …and it says WHY (except the assumed-dt row, which already speaks through its own 'assumed' cls + value).
+    for (const k of ['scenario', 'seed', 'schema_registry', 'state_registry', 'commit', 'dirty'])
+      expect(rowFor(null, k).note, k).toMatch(/no manifest claim/)
+    expect(rowFor(null, 'dt').cls).toBe('assumed')
+    expect(rowFor(null, 'dt').note).toBeUndefined()
+  })
+  test('a det-only trailer-CHECKED-and-matched row keeps the ○ self-check it earned (mark selfConsistent)', () => {
+    for (const k of TRAILER_CHECKED) {
+      const r = rowFor(null, k)
+      expect(r.b, k).toBe('pending')
+      expect(r.mark, k).toBe('selfConsistent') // the check RAN and matched — the ring is earned here
+    }
+  })
+  test('a det-only trailer-sourced / derived row wears the attested • (mark attested), never a ○', () => {
+    for (const k of ['case_id', 'termination_reason', 'result_id']) expect(rowFor(null, k).mark, k).toBe('attested')
+  })
+  test('a full-manifest run threads the manifest voice unchanged: meta rows • attested, recomputed pins ✓', () => {
+    expect(rowFor(cleanManifest(), 'scenario').mark).toBe('attested') // a manifest CLAIM on record (•), not glyphless
+    expect(rowFor(cleanManifest(), 'commit').mark).toBe('attested')
+    expect(rowFor(cleanManifest(), 'event_hash').mark).toBe('verified')
+    expect(rowFor(cleanManifest(), 'case_id').mark).toBe('verified')
+  })
+})
+
 // ── F2 — FULL-MANIFEST, ONLY the TRAILER value corrupt: the row folds pin+trailer, agreeing with the ceremony ──
 // A full-manifest run whose TRAILER stored event_hash is corrupt (frames clean → the recomputed hash still matches
 // the MANIFEST pin; the bundle just failed to reproduce its OWN trailer → trailerPins.eventHash false,
@@ -146,6 +190,7 @@ describe('provenanceRows — det-only, ONLY the stored event hash tampered (F2)'
   })
   test('THE FIX: the event_hash row is RED (findable), no longer a false self-verified ○', () => {
     expect(detRow('event_hash').b).toBe('mismatch')
+    expect(detRow('event_hash').mark).toBe('mismatch') // the threaded mark reds too — ✗, not the ○ self-check
     expect(detRow('event_hash').note).not.toMatch(/self-verified/)
   })
   test('the sibling recomputed rows keep their honest self-check notes (the tamper is isolated to one field)', () => {
@@ -177,8 +222,11 @@ describe('provenanceFooter — the voice is the aggregate VERDICT, not bare matc
   test('an in-bundle reproduction failure (matchesTrailer false) reads the trailer refusal, not a manifest one', () => {
     expect(provenanceFooter({ ...verify, matchesTrailer: false }, 'mismatch')).toContain('trailer INCONSISTENT ✗')
   })
-  test('a clean full-manifest run keeps the trailer-consistent ✓; a det-only self-consistent run too', () => {
+  test('F2: the footer speaks the verdict’s OWN mark — manifest-verified ✓, self-consistent ○ (superseding ✓-for-both)', () => {
+    // manifest-verified keeps the trailer-consistent ✓ — the trailer IS consistent AND an external manifest backs it.
     expect(provenanceFooter(verify, verdictAgainstManifest(verify, cleanManifest()))).toBe('212 events · 96 ticks · trailer consistent ✓')
-    expect(provenanceFooter(verify, 'self-consistent')).toBe('212 events · 96 ticks · trailer consistent ✓')
+    // SUPERSEDE (the finding's own point): a det-only self-consistent run showed ○ in the ceremony/thesis but a
+    // site-local ✓ here — the migration missed this seam. It now reads the ○ self-check, scoped to the trailer.
+    expect(provenanceFooter(verify, 'self-consistent')).toBe('212 events · 96 ticks · trailer self-consistent ○')
   })
 })

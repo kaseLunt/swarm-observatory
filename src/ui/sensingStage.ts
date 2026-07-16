@@ -3,8 +3,11 @@ import {
   validateRegistration, type LensRegistration, type PixelClass,
 } from './lensContract'
 import { PLATE_LEDGER_ANSWER } from './identityPlate'
+import { ELIGIBLE_CONJUNCTION_INPUTS } from './sensingMath'
+import { makeWitnessInputs } from './agreeSource'
 import { MIN_EXTENT } from './trail'
 import type { Eligibility, Detection } from '../decode/payloads'
+import type { StateFrame } from '../lib/brand'
 
 // ── The Sensing Gauntlet — f2a kind-22 model layer (Task v07-2) ────────────────────────────────────────
 // A PURE, load-path model layer that turns each decoded EligibilityEvaluated (core kind 22) payload into a
@@ -58,7 +61,11 @@ export const evaluatedFrame = (tick: number, offset: number, lastFrame: number):
 // real; rendered as a persistent contact on the stage.
 export interface DetectionMark { seq: number; tick: number; pos: Vec3; snrDb: number }
 
-// The minimal shape buildSensingStage needs — RunModel satisfies it structurally (no import cycle).
+// The minimal shape buildSensingStage needs — RunModel satisfies it structurally (no import cycle). entityStatesAt
+// reads the STATE-FRAME domain: its parameter is StateFrame (F2), matching RunModel's branded accessor, so a raw
+// event tick — the exact historical verdict-vs-pose off-by-one — can no longer be substituted through this
+// structural seam (method bivariance would have let it). The one-pass build brands its derived frame index
+// (`frameTick as StateFrame`) at the call boundary below.
 export interface SensingSource {
   readonly eventCount: number
   readonly tickCount: number
@@ -66,7 +73,7 @@ export interface SensingSource {
   kindAt(seq: number): number
   eligibilityAt(seq: number): Eligibility | null
   detectionAt(seq: number): Detection | null
-  entityStatesAt(tick: number): ReadonlyMap<string, { pos: number[] }>
+  entityStatesAt(frame: StateFrame): ReadonlyMap<string, { pos: number[] }>
 }
 
 // Everything the stage + strip consume, built in one publish-time pass: the per-seq draws, a tick-indexed
@@ -116,7 +123,9 @@ export function buildSensingStage(source: SensingSource): SensingStageData {
     // g = the state frame the tick committed (excerpt: frame k+1). Clamp to the last frame so the terminal
     // tick never indexes past the trajectory (state frames are 0..tickCount inclusive).
     const frameTick = Math.min(tick + TARGET_FRAME_OFFSET, source.tickCount)
-    const frame = source.entityStatesAt(frameTick)
+    // frameTick is a non-negative integer by construction (ticks + integer offset, clamped) — brand it at this
+    // frame-domain boundary (F2, load-path).
+    const frame = source.entityStatesAt(frameTick as StateFrame)
     const st = frame.get(subject)
     const g = st ? toVec3(st.pos) : null
     const draw: SensingDraw = {
@@ -208,7 +217,8 @@ function subjectHasFlight(model: SensingSource, subject: string): boolean {
   let minN = Infinity, minE = Infinity, minD = Infinity, maxN = -Infinity, maxE = -Infinity, maxD = -Infinity
   const n = model.tickCount + 1
   for (let t = 0; t < n; t++) {
-    const st = model.entityStatesAt(t).get(subject)
+    // Load-path walk (the applicability gate, at model publish); brand the integer counter at the boundary (F2).
+    const st = model.entityStatesAt(t as StateFrame).get(subject)
     if (!st) continue
     const p = st.pos
     if (p.length < 3 || !Number.isFinite(p[0]) || !Number.isFinite(p[1]) || !Number.isFinite(p[2])) continue
@@ -264,11 +274,20 @@ const LEDGER: readonly PixelClass[] = [
   { id: 'gate-lanes', tier: 'decoded', source: K22,
     answer: 'each of the four gate lanes is the decoded boolean the engine recorded this tick (in_range / in_fov / los_clear / eligible)' },
   { id: 'in-range-recompute', tier: 'recomputed', source: `${SRC} (in_range: d² ≤ r²max)`,
-    answer: 'in-range re-derived in-browser — squared distance from the sensor vs the squared max range — compared live to the engine bit' },
+    answer: 'in-range re-derived in-browser — squared distance from the sensor vs the squared max range — compared live to the engine bit',
+    agree: { basis: 'live-inputs', inputs: makeWitnessInputs('sensing:pose'), form: 'form:in-range' } },
   { id: 'los-clear-recompute', tier: 'recomputed', source: `${SRC} (LOS: sensor→target segment vs occluder Q, discriminant form)`,
-    answer: 'line-of-sight re-derived in-browser — the sensor→drone segment tested against the occluder sphere — compared live to the engine bit' },
+    answer: 'line-of-sight re-derived in-browser — the sensor→drone segment tested against the occluder sphere — compared live to the engine bit',
+    agree: { basis: 'live-inputs', inputs: makeWitnessInputs('sensing:pose'), form: 'form:los-clear' } },
+  // THE FLAGSHIP (T2-W2, made a type). The live conjunction ANDs the two LIVE legs (in_range, los_clear —
+  // re-derived from the decoded pose) with the in_fov leg carried as the DECODED CLAIM, checked against the
+  // engine's eligible bit. The arm is MINTED (makeWitnessInputs — copied, frozen, validated) FROM sensingMath's
+  // OWN exported ELIGIBLE_CONJUNCTION_INPUTS, which is ALSO the executor capability's form:eligible-conjunction
+  // tuple; the per-form boot guard set-compares the two, so the declaration and the real recompute cannot drift.
+  // The engine's eligible bit is a comparand, un-nameable here — the echo cannot compile OR construct.
   { id: 'eligible-conjunction', tier: 'recomputed', source: `${SRC} (eligible = in_range ∧ in_fov ∧ los_clear)`,
-    answer: 'eligibility re-derived as the AND of the LIVE-recomputed in_range and los_clear (from the decoded pose) with the decoded in_fov claim, checked against the engine eligible bit — a genuine re-derivation on two of three legs, not an echo of the engine\'s own component bits' },
+    answer: 'eligibility re-derived as the AND of the LIVE-recomputed in_range and los_clear (from the decoded pose) with the decoded in_fov claim, checked against the engine eligible bit — a genuine re-derivation on two of three legs, not an echo of the engine\'s own component bits',
+    agree: { basis: 'live-inputs', inputs: makeWitnessInputs(...ELIGIBLE_CONJUNCTION_INPUTS), form: 'form:eligible-conjunction' } },
   { id: 'in-fov-claim', tier: 'pinned-bits', source: `${SRC} (in_FOV: |wrap(bearing−ψs)| ≤ half_fov; half_fov = vendored-libm atan2 bits)`,
     answer: 'in-FOV is shown in the claim voice — its threshold is a pinned vendored-libm angle and kind-22 stores no bearing scalar to recompute, so it is never a live check' },
   { id: 'tiebreak-badge', tier: 'decoded', source: `${K22} (tiebreak_applied, D-017 ties-reported)`,

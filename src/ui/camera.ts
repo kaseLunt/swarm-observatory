@@ -1,5 +1,6 @@
 import type { EntityV2 } from '../decode/payloads'
 import type { TourShot } from '../tour/tourTypes'
+import type { StateFrame } from '../lib/brand'
 import { entityPosition } from './placement'
 
 // ── Camera direction ──────────────────────────────────────────────────────────────────────────────
@@ -18,11 +19,15 @@ export const DEFAULT_FOV = 50
 export interface Bounds { center: [number, number, number]; radius: number }
 
 // Structural source: RunModel satisfies this (entityKeys/entityStatesAt/tickCount) without an import
-// cycle, and unit tests pass a lightweight stub. entityStatesAt is the decoded per-tick state map.
+// cycle, and unit tests pass a lightweight stub. entityStatesAt reads the decoded per-STATE-FRAME map — its
+// parameter is StateFrame (F2), not a raw number: RunModel.entityStatesAt is branded, and typing the structural
+// accessor to match closes the method-bivariance hole that let a raw event tick (the verdict-vs-pose off-by-one)
+// flow into this frame-domain consumer. The internal load-path walks brand their integer loop counter at the
+// call boundary (`t as StateFrame`).
 export interface BoundsSource {
   readonly tickCount: number
   entityKeys(): readonly string[]
-  entityStatesAt(tick: number): ReadonlyMap<string, EntityV2>
+  entityStatesAt(frame: StateFrame): ReadonlyMap<string, EntityV2>
 }
 
 const scratchPos: [number, number, number] = [0, 0, 0]
@@ -66,7 +71,11 @@ export function cameraAnchor(
 // (tick-quantized) pose across a dropout, where it equals exactly what the trail/head render.
 export interface SubjectHold { has: boolean; x: number; y: number; z: number }
 export interface TrailView { positions: Float32Array; first: number; count: number }
-export function heldSubjectPose(out: SubjectHold, trail: TrailView, frame: number): boolean {
+// `frame` is a StateFrame (F1, uniform with entityStatesAt): the anchor is looked up at the evaluated frame t0
+// the cursor resolved, a value already in the frame domain. Branding it blocks a raw event tick (a plain number)
+// from being read as a trail index here — the same laundering the lerpHeadPosition/entityStatesAt brands close.
+// The sole production caller passes the cursor's StateFrame t0, so this is a pure pass-through, no runtime change.
+export function heldSubjectPose(out: SubjectHold, trail: TrailView, frame: StateFrame): boolean {
   if (trail.count === 0 || trail.first < 0 || frame < trail.first) { out.has = false; return false }
   const k = frame < trail.count ? frame : trail.count - 1 // defensive clamp; callers pass frame ≤ count − 1
   const base = k * 3
@@ -86,7 +95,8 @@ export function trajectoryBounds(source: BoundsSource): Bounds | null {
   let maxx = -Infinity, maxy = -Infinity, maxz = -Infinity
   let seen = false
   for (let t = 0; t <= source.tickCount; t++) {
-    const states = source.entityStatesAt(t)
+    // Load-path walk (once at model publish); brand the integer counter at the frame-domain boundary (F2).
+    const states = source.entityStatesAt(t as StateFrame)
     for (let i = 0; i < keys.length; i++) {
       const e = states.get(keys[i]!)
       if (!e) continue

@@ -5,7 +5,9 @@ import { foldAndVerify } from './decode/verify'
 import { decodeBundle } from './decode/decodeBundle'
 import { gateManifest, parseManifest, type Identity } from './decode/manifest'
 import { resolveLoadPlan, RUN_CATALOG } from './decode/runCatalog'
+import { ROBUST_F3A } from './decode/campaignCatalog'
 import { PROFILE_CONFLATION_RE } from './ui/hangar'
+import { parseCampaignGauges, f64FromHexBits } from './ui/wall'
 import identity from '../contract/identity.json'
 
 // The v0.6 publication window (task v06-T5a). The three v8-certified KAT fixtures (f2a/f3a/f4
@@ -226,4 +228,219 @@ test('every published index entry is a certified catalog citizen with matching b
     // det-only in the index ⟺ manifest NOT required in the catalog (no silent det-only↔manifest divergence).
     expect(plan!.manifestRequired, `manifest policy for '${entry.id}'`).toBe(entry.detOnly !== true)
   }
+})
+
+// ── W4: THE ROBUST-F3A CAMPAIGN DRIFT GATE (catalog ⇄ vendored manifest ⇄ vendored bytes) ─────────────────
+// The campaign vendored 50 bundle.det + a campaign-manifest.json into public/campaigns/robust-f3a/, and pinned
+// the plan_id + 50 per-seed {case_id, result_id, sha256} IN THE APP BUNDLE (campaignCatalog.ts — the authority;
+// the fetched manifest is discovery only, the H1 lesson at birth). These three artifacts must agree exactly, or
+// a consumer could verify a seed against forged pins. This gate closes all three seams: the in-bundle catalog
+// vs the vendored manifest rows, and (spot-check) the catalog pins vs the ACTUAL vendored bundle bytes — the
+// same publish-time byte contract the single-run runs get above, at campaign scale.
+interface CampaignManifest {
+  verdict_pointer: { plan_id: string; verdict_level: number; verdict_level_name: string; n_seeds: number; attempts_per_variant: number }
+  seeds: { count: number; index: { seed: number; case_id: string; result_id: string; bundle_det_sha256: string; bundle_det_len: number }[] }
+}
+
+describe('robust-f3a campaign: the vendored manifest is present and well-formed', () => {
+  const man = json<CampaignManifest>('public/campaigns/robust-f3a/campaign-manifest.json')
+  test('the vendored manifest indexes 50 seeds (42..91)', () => {
+    expect(man.seeds.count).toBe(50)
+    expect(man.seeds.index).toHaveLength(50)
+    expect(man.seeds.index.map(r => r.seed)).toEqual(Array.from({ length: 50 }, (_, i) => 42 + i))
+  })
+  test('the catalog header agrees with the manifest verdict_pointer (plan_id, verdict, n_seeds)', () => {
+    expect(ROBUST_F3A.planId).toBe(man.verdict_pointer.plan_id)
+    expect(ROBUST_F3A.verdictLevel).toBe(man.verdict_pointer.verdict_level)
+    expect(ROBUST_F3A.verdictLevelName).toBe(man.verdict_pointer.verdict_level_name)
+    expect(ROBUST_F3A.nSeeds).toBe(man.verdict_pointer.n_seeds)
+    expect(ROBUST_F3A.attemptsPerVariant).toBe(man.verdict_pointer.attempts_per_variant)
+  })
+})
+
+describe('robust-f3a campaign: catalog pins ⇄ vendored manifest rows (exact, all 50)', () => {
+  const man = json<CampaignManifest>('public/campaigns/robust-f3a/campaign-manifest.json')
+  const rowBySeed = new Map(man.seeds.index.map(r => [r.seed, r]))
+  test.each(ROBUST_F3A.seeds.map(s => s.seed))('seed %d: catalog pin === manifest row', (seed) => {
+    const pin = ROBUST_F3A.seeds.find(s => s.seed === seed)!
+    const row = rowBySeed.get(seed)!
+    expect(pin.caseId).toBe(row.case_id)
+    expect(pin.resultId).toBe(row.result_id)
+    expect(pin.sha256).toBe(row.bundle_det_sha256)
+    expect(pin.len).toBe(row.bundle_det_len)
+  })
+})
+
+describe('robust-f3a campaign: catalog pins ⇄ ACTUAL vendored bundle bytes (all 50)', () => {
+  test.each(ROBUST_F3A.seeds.map(s => s.seed))('seed %d: vendored bundle.det matches its pinned sha256 + length', (seed) => {
+    const pin = ROBUST_F3A.seeds.find(s => s.seed === seed)!
+    const det = bytes(`public/campaigns/robust-f3a/${seed}/bundle.det`)
+    expect(sha256(det)).toBe(pin.sha256)
+    expect(det.byteLength).toBe(pin.len)
+  })
+  // A fold spot-check: an independent re-fold of the vendored bytes recovers the pinned identity (the
+  // decode-verify ritual) for a spread of seeds — the campaign analogue of the single-run re-fold above.
+  test.each([42, 46, 65, 84, 91])('seed %d: re-folded case_id/result_id recover the pinned identity', (seed) => {
+    const pin = ROBUST_F3A.seeds.find(s => s.seed === seed)!
+    const v = foldAndVerify(bytes(`public/campaigns/robust-f3a/${seed}/bundle.det`))
+    expect(v.caseIdHex).toBe(pin.caseId)
+    expect(v.resultIdHex).toBe(pin.resultId)
+    expect(v.matchesTrailer).toBe(true)
+  })
+})
+
+// ── W5: THE GAUGE DRIFT GATE (the Wall's statistical instrument reads the vendored manifest) ───────────────
+// The Wall renders the aggregate ROBUST verdict — NEES/NIS statistics + their precommitted critical bounds —
+// from the vendored campaign-manifest.json (the certifier's verdict.det is a distinct binary format the app's
+// frames/payloads infrastructure does not decode; the honest source is the drift-gated sidecar). NOTHING
+// statistical is hand-hardcoded in source: this gate pins the gauge model parseCampaignGauges yields against
+// the vendored bytes, so an edit that broke the members, the pass, or the pinned critical bits fails HERE.
+interface GaugeManifest {
+  schema: string
+  profile: string
+  verdict_pointer: { plan_id: string }
+  statistical_pointer: { verdict_schema_version: number; member_count: number; members: { test_id: number; kind: string; statistic: string; pass: boolean }[] }
+  test_params_echo: { members: { test_id: number; dof: number; alpha_ppm: number; critical_lo_bits: string; critical_hi_bits: string }[] }
+}
+
+// F1 — THE PRECOMMITTED LITERALS (the fix for the CIRCULAR gate). The old gate decoded the manifest's own
+// critical bits and compared them to THEMSELVES (`g.criticalLo === f64FromHexBits(p.critical_lo_bits)`): editing
+// the manifest moved BOTH sides, so nothing pinned the precommit and a skewed bound sailed through (the mutation
+// test below proves the old gate passed a nibble flip). These are the four bound bit-strings + the
+// statistic-relevant params, captured ONCE from the certified gate run — the controller-verified values; the
+// current vendored manifest IS that certified drop, so the bits were read from it once and FROZEN here as
+// literals. The gate compares them against the manifest AND against parseCampaignGauges' decoded output, so a
+// future manifest edit that drifts a bound away from the precommit fails against a fixed literal, not a copy.
+//
+// TWO PIN LAYERS, THREE INDEPENDENT WITNESSES (W5 F1). There are now two places the certified tuple is pinned:
+//   1. campaignCatalog.ts — the RUNTIME authority. parseCampaignGauges rejects any FETCHED value that differs
+//      from it, so a tampered/stale MANIFEST alone can never reach the Wall (the catalog guards the user).
+//   2. PINNED_GAUGES here — an INDEPENDENT CI literal copy that imports neither the catalog nor the manifest.
+// The layers are deliberately NOT shared: because the runtime check is fetch === catalog, a COORDINATED edit that
+// forged BOTH the catalog AND the vendored manifest to agree would pass at runtime. These frozen literals are the
+// third witness that pair cannot move — the gate below pins catalog ⇄ literals AND manifest ⇄ literals AND
+// parseCampaignGauges-output ⇄ literals, so all three must agree with the precommit or CI fails (the gate guards
+// the catalog). Keep PINNED_GAUGES hand-frozen; do NOT refactor it to read from campaignCatalog.ts (that would
+// collapse the third witness back into the pair it exists to catch).
+const PINNED_GAUGES = {
+  CHI2_NEES: {
+    testId: 2, dof: 200, alphaPpm: 25000, statistic: '212.57017224319395', pass: true,
+    loBits: '4063bc0da9d80e2d', hiBits: '406eef7b64db220a',
+    criticalLo: 157.87666790197673, criticalHi: 247.48381274032027,
+  },
+  CHI2_NIS: {
+    testId: 3, dof: 100, alphaPpm: 25000, statistic: '93.21421605417723', pass: true,
+    loBits: '4051c0e6fdc9bc29', hiBits: '4060caeecd55fdf4',
+    criticalLo: 71.01409859371837, criticalHi: 134.34165064616502,
+  },
+} as const
+
+describe('W5 gauge drift gate: the Wall gauge model decodes from the vendored, pinned manifest', () => {
+  const man = json<GaugeManifest>('public/campaigns/robust-f3a/campaign-manifest.json')
+  const model = parseCampaignGauges(man, ROBUST_F3A)
+  const gauges = model.ok ? model.members : []
+
+  test('the vendored manifest VALIDATES as this campaign (fail-closed parse ok) with the two certified members', () => {
+    expect(model.ok).toBe(true)
+    expect(gauges.map(g => g.kind).sort()).toEqual(['CHI2_NEES', 'CHI2_NIS'])
+    for (const g of gauges) expect(g.pass).toBe(true)
+  })
+  test('each certified statistic sits STRICTLY inside its precommitted band (the pass is real, not asserted)', () => {
+    for (const g of gauges) {
+      expect(g.criticalHi).toBeGreaterThan(g.criticalLo)
+      expect(g.statistic).toBeGreaterThan(g.criticalLo)
+      expect(g.statistic).toBeLessThan(g.criticalHi)
+      expect(g.position).toBeGreaterThan(0)
+      expect(g.position).toBeLessThan(1)
+    }
+  })
+  test('the pinned bit-strings decode to the pinned bounds (the literals are internally self-consistent)', () => {
+    for (const g of Object.values(PINNED_GAUGES)) {
+      expect(f64FromHexBits(g.loBits)).toBe(g.criticalLo)
+      expect(f64FromHexBits(g.hiBits)).toBe(g.criticalHi)
+    }
+  })
+  test('the CATALOG stat pins EQUAL the independent precommit literals (catches a coordinated catalog+manifest edit)', () => {
+    // Layer 1 (campaignCatalog.ts) is the runtime authority parseCampaignGauges enforces against the fetch; this
+    // gate pins that authority itself to the frozen third-witness literals, so a catalog value edited in lock-step
+    // with the manifest (which the runtime fetch === catalog check would wave through) still fails HERE.
+    const specByTestId = new Map(ROBUST_F3A.stat.members.map(s => [s.testId, s]))
+    for (const [kind, g] of Object.entries(PINNED_GAUGES)) {
+      const s = specByTestId.get(g.testId)!
+      expect(s.kind).toBe(kind)
+      expect(s.statistic).toBe(g.statistic)
+      expect(s.pass).toBe(g.pass)
+      expect(s.dof).toBe(g.dof)
+      expect(s.alphaPpm).toBe(g.alphaPpm)
+      expect(s.loBits).toBe(g.loBits)
+      expect(s.hiBits).toBe(g.hiBits)
+      expect(s.sidedness).toBe('TWO') // PINNED_GAUGES carries no sidedness; the catalog pins the raw token
+    }
+  })
+  test('the vendored manifest bits + params MATCH the precommitted LITERALS (not a copy of themselves)', () => {
+    const paramByTestId = new Map(man.test_params_echo.members.map(p => [p.test_id, p]))
+    const statByTestId = new Map(man.statistical_pointer.members.map(s => [s.test_id, s]))
+    for (const [kind, g] of Object.entries(PINNED_GAUGES)) {
+      const p = paramByTestId.get(g.testId)!
+      expect(p.critical_lo_bits).toBe(g.loBits)
+      expect(p.critical_hi_bits).toBe(g.hiBits)
+      expect(p.dof).toBe(g.dof)
+      expect(p.alpha_ppm).toBe(g.alphaPpm)
+      const s = statByTestId.get(g.testId)!
+      expect(s.kind).toBe(kind)
+      expect(s.statistic).toBe(g.statistic)
+      expect(s.pass).toBe(g.pass)
+    }
+  })
+  test('parseCampaignGauges output MATCHES the precommitted literals (the decode path is pinned to the precommit)', () => {
+    expect(model.ok).toBe(true)
+    for (const g of gauges) {
+      const pin = PINNED_GAUGES[g.kind as keyof typeof PINNED_GAUGES]
+      expect(pin, `unexpected gauge kind ${g.kind}`).toBeTruthy()
+      expect(g.criticalLo).toBe(pin.criticalLo)
+      expect(g.criticalHi).toBe(pin.criticalHi)
+      expect(g.dof).toBe(pin.dof)
+      expect(g.statisticText).toBe(pin.statistic)
+      expect(g.pass).toBe(pin.pass)
+    }
+  })
+  test('MUTATION: flipping one hex nibble in a synthetic manifest copy fails the gate (the OLD circular gate passed it)', () => {
+    // Deep-clone the vendored manifest and flip ONE nibble of the NEES lower-bound bits. The OLD gate decoded
+    // the mutated bits and compared them to the mutated manifest's OWN bits — equal, so it PASSED the tamper.
+    // The literal pin catches it: the mutated bits no longer equal the precommit, and the decoded bound no
+    // longer equals the precommitted double (a self-comparison would have moved WITH the mutation).
+    const mutated = JSON.parse(JSON.stringify(man)) as GaugeManifest
+    const neesParams = mutated.test_params_echo.members.find(p => p.test_id === 2)!
+    const orig = neesParams.critical_lo_bits
+    const flipped = orig.slice(0, -1) + (orig.endsWith('d') ? 'c' : 'd')
+    expect(flipped).not.toBe(orig)
+    neesParams.critical_lo_bits = flipped
+    // Arm 1 — the manifest bits no longer equal the precommitted literal.
+    expect(neesParams.critical_lo_bits).not.toBe(PINNED_GAUGES.CHI2_NEES.loBits)
+    // Arm 2 — the decode path yields a bound that is NOT the precommitted double.
+    const mutatedModel = parseCampaignGauges(mutated, ROBUST_F3A)
+    if (mutatedModel.ok) {
+      const nees = mutatedModel.members.find(g => g.kind === 'CHI2_NEES')!
+      expect(nees.criticalLo).not.toBe(PINNED_GAUGES.CHI2_NEES.criticalLo)
+    }
+    // (A larger flip that pushed the bound past the statistic would instead fail-close mutatedModel.ok=false —
+    // also a catch; the point is the precommit no longer moves with the manifest.)
+  })
+})
+
+// ── W5: THE WALL ROBUST-WORDMARK RIDER (D4 Ruling 2 / W2 — the two entities never conflate) ────────────────
+// The Certification Wall IS the ROBUST campaign and NAMES it correctly (its catalog-sourced header wears the
+// robust wordmark). The correct-profile f3a RUN is a DIFFERENT entity that must never carry it. This rider
+// pins BOTH directions so the tripwire cannot be satisfied by scrubbing the wordmark off the surface that
+// SHOULD carry it: the campaign catalog carries robust; the f3a run entry does not.
+describe('W5 Wall rider: the Wall names ROBUST; the f3a run surfaces never do (no conflation)', () => {
+  test('the campaign catalog carries the ROBUST wordmark — the Wall names its own campaign', () => {
+    expect(ROBUST_F3A.campaignId).toMatch(PROFILE_CONFLATION_RE)
+    expect(ROBUST_F3A.verdictLevelName).toMatch(PROFILE_CONFLATION_RE)
+  })
+  test('the correct-profile f3a run entry still carries NO robust wordmark (the tripwire holds)', () => {
+    const f3a = index.find(e => e.id === 'f3a')!
+    for (const value of Object.values(f3a))
+      if (typeof value === 'string') expect(value).not.toMatch(PROFILE_CONFLATION_RE)
+  })
 })

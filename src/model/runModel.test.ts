@@ -4,6 +4,7 @@ import { decodeBundle, type DecodedRun } from '../decode/decodeBundle'
 import type { EntityV2 } from '../decode/payloads'
 import { RunModel } from './runModel'
 import { buildTrail } from '../ui/trail'
+import { asEventTick, asStateFrame } from '../lib/brand'
 
 const load = (n: string) => { const b = readFileSync(`contract/fixtures/${n}`); return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) }
 const f0 = new RunModel(decodeBundle(load('f0_seed42.det')), null)
@@ -23,14 +24,14 @@ describe('causal index (F0)', () => {
 })
 describe('tick index (E0)', () => {
   test('every tick 0..74 has exactly one event', () => {
-    for (let t = 0; t < 75; t++) expect(e0.eventsByTick(t)).toHaveLength(1)
+    for (let t = 0; t < 75; t++) expect(e0.eventsByTick(asEventTick(t))).toHaveLength(1)
   })
   test('an out-of-range tick returns the shared empty instance — no per-call allocation (debt #16, §8.2)', () => {
     // `?? []` allocated a FRESH empty array on every out-of-range call; `?? EMPTY` returns the module
     // singleton (the same instance eventsForSubject already hands back). Identity across two calls is the
     // observable proof the allocation is gone. Behavior is otherwise unchanged — still an empty, readonly,
     // length-0 result for any tick outside 0..tickCount-1 (mirrors the geometryQueryAt memoization test).
-    const oob = e0.tickCount + 5
+    const oob = asEventTick(e0.tickCount + 5)
     expect(e0.eventsByTick(oob)).toHaveLength(0)
     expect(e0.eventsByTick(oob)).toBe(e0.eventsByTick(oob))
   })
@@ -51,17 +52,26 @@ describe('tick index (E0)', () => {
 })
 describe('lazy state materialization equivalence', () => {
   test('same tick decoded twice (through cache eviction) is deeply equal', () => {
-    const first = structuredClone(e0.entityStatesAt(5))
-    for (let t = 6; t < 30; t++) e0.entityStatesAt(t) // force eviction (LRU 16)
-    expect(structuredClone(e0.entityStatesAt(5))).toEqual(first)
+    const first = structuredClone(e0.entityStatesAt(asStateFrame(5)))
+    for (let t = 6; t < 30; t++) e0.entityStatesAt(asStateFrame(t)) // force eviction (LRU 16)
+    expect(structuredClone(e0.entityStatesAt(asStateFrame(5)))).toEqual(first)
   })
   test('F0 entity value follows the fixture transitions (0 at tick 0)', () => {
-    const s0 = f0.entityStatesAt(0)
+    const s0 = f0.entityStatesAt(asStateFrame(0))
     expect([...s0.keys()]).toEqual(['1:0'])
     expect(s0.get('1:0')!.value).toBe(0n)
   })
   test('entityStatesAt returns the cached instance on back-to-back hits', () => {
-    expect(e0.entityStatesAt(0)).toBe(e0.entityStatesAt(0))
+    expect(e0.entityStatesAt(asStateFrame(0))).toBe(e0.entityStatesAt(asStateFrame(0)))
+  })
+  test('the state-frame / event-tick brands are non-interchangeable at the RunModel seam (A3)', () => {
+    // Compile-level pins: entityStatesAt reads the STATE-FRAME domain, eventsByTick the EVENT domain. A bare
+    // number (an un-branded raw playhead) cannot index either — the confusion the wave exists to kill is now a
+    // type error at this seam. @ts-expect-error fires at typecheck; the runtime call still works (brands erase).
+    // @ts-expect-error a raw number is not a StateFrame
+    expect(() => e0.entityStatesAt(0)).not.toThrow()
+    // @ts-expect-error a StateFrame is not an EventTick (the two axes must not cross)
+    expect(e0.eventsByTick(asStateFrame(0))).toHaveLength(1)
   })
 })
 describe('causal chain (E0: single chain of depth 75)', () => {

@@ -1,13 +1,21 @@
 import type { RunManifest } from '../decode/manifest'
 import { comparableManifestPins, type TrustVerdict, type VerifyResult } from '../decode/verify'
 import { metaBadge, type BadgeState } from './badges'
+import { badgeMark, requireGlyph, type MarkKey } from './voices'
 import { ASSUMED_DT_US } from '../state/transport'
 
 // Pure row/footer helpers for the ProvenancePanel (spec §Provenance), extracted from ProvenancePanel.tsx so
 // the row set and the footer voice are unit-testable WITHOUT a React render — mirroring ceremonyFormat.ts's
 // split from Ceremony.tsx (the node-env test suite has no jsdom). No DOM, no store, no side effects.
 
-export type ProvRow = { k: string; val: string; b: BadgeState; cls?: string; note?: string; title?: string }
+// F1 — a row carries BOTH a BadgeState (`b`, the CSS/back-compat hook the tr class keys on) AND an explicit
+// semantic `mark`: the glyph a surface paints comes from `mark`, NOT from re-deriving it off `b` through the
+// badge seam. This splits the two things `b: 'pending'` conflated on a det-only run — a trailer-CHECKED-and-
+// matched row (a real ○ self-check RAN) vs a NO-CLAIM row (scenario/seed/assumed-dt/registries/commit/dirty:
+// nothing recomputed, no manifest to attest). The seam mapped BOTH to ○; the no-claim rows carry `mark: null`
+// (an honest no-verdict presentation — glyphless, dim, a note) so a VERDICT glyph never rings an unadjudicated
+// row. `mark: null` = render no glyph; a non-null mark names the ONE voices-module mark to paint.
+export type ProvRow = { k: string; val: string; b: BadgeState; mark: MarkKey | null; cls?: string; note?: string; title?: string }
 
 // Row → group layout. F4: event_count / tick_count are now COMPARISON rows in the integrity group (they were
 // only in the footer count display before), so a manifest that lies about a count reds a VISIBLE row instead of
@@ -27,7 +35,9 @@ const TERM_REASON: Record<number, string> = { 1: 'completed', 2: 'step_limit', 3
 // field is findable (before this, a corrupt-event-hash det-only bundle wore 'self-verified · pending' beside an
 // aggregate mismatch — the failing field unfindable). The map is prov-key → trailerPins-key.
 const SELF_VERIFIED_NOTE = 'self-verified · no external oracle'
-const TRAILER_MISMATCH_NOTE = 'recomputed ✗ the sealed trailer'
+// The ✗ is the mismatch mark, sourced from the ONE voices module (never a note-local glyph literal — the
+// same single-source law the footer now obeys, F2).
+const TRAILER_MISMATCH_NOTE = `recomputed ${requireGlyph('mismatch')} the sealed trailer`
 const TRAILER_CHECKED: Record<string, keyof VerifyResult['trailerPins']> = {
   event_hash: 'eventHash', state_trajectory_hash: 'stateTrajectoryHash',
   event_count: 'eventCount', tick_count: 'tickCount',
@@ -43,6 +53,11 @@ const TRAILER_CHECKED: Record<string, keyof VerifyResult['trailerPins']> = {
 const DERIVED_NOTE = 'derived from the sealed inputs · no oracle'
 const TRAILER_SOURCED_NOTE = 'trailer value · not recomputed'
 const ATTESTED_NOTE = 'manifest claim · not recomputed'
+// F1 — a det-only NO-CLAIM row (a metadata field that under a manifest would be an ATTESTED • claim, but a
+// det-only bundle pins no manifest): there is no claim to attest and no recompute to check, so it wears the
+// honest no-verdict presentation (mark: null → glyphless) and says why. (The assumed-dt row carries its own
+// 'assumed' cls + '(assumed)' value, so it is left to speak for itself rather than doubled with this note.)
+const NO_CLAIM_NOTE = 'no manifest claim — nothing to adjudicate'
 const short = (h: string): string => (h.length > 16 ? `${h.slice(0, 8)}…${h.slice(-8)}` : h)
 
 // The provenance rows for a model's manifest + recomputed verify result. SINGLE-SOURCED against the trust fold
@@ -64,7 +79,9 @@ export function provenanceRows(manifest: RunManifest | null, verify: VerifyResul
   const meta: BadgeState = metaBadge(m !== null)
   const detOnly = m === null
   const termWord = TERM_REASON[verify.terminationReason] ?? String(verify.terminationReason)
-  const rows: ProvRow[] = [
+  // Built WITHOUT `mark` (the b/note passes below mutate these); the semantic mark is threaded in the finalize
+  // pass at the end, once every row's BadgeState is settled.
+  const rows: Omit<ProvRow, 'mark'>[] = [
     { k: 'scenario', val: m?.scenarioId ?? '(det-only)', b: meta },
     { k: 'seed', val: m?.seed ?? '—', b: meta },
     m
@@ -113,25 +130,44 @@ export function provenanceRows(manifest: RunManifest | null, verify: VerifyResul
       else if (r.k === 'case_id' || r.k === 'termination_reason') { r.b = 'attested'; r.note = TRAILER_SOURCED_NOTE }
     }
   }
-  return rows
+  // FINALIZE — thread the semantic mark (F1). A det-only row still on the neutral 'pending' badge that is NOT
+  // one of the trailer-CHECKED fields is a NO-CLAIM row (scenario/seed/assumed-dt/registries/commit/dirty):
+  // nothing recomputed it and there is no manifest to attest, so it gets `mark: null` (glyphless, an honest
+  // no-verdict) + the no-claim note — never the ○ self-check the badge seam would otherwise force onto it.
+  // Every OTHER row's mark follows its BadgeState through the same seam the hangar data table uses: a trailer-
+  // reproduced 'pending' → ○ selfConsistent (the check RAN and matched), 'attested' → •, verified/mismatch → ✓/✗.
+  return rows.map(r => {
+    const noClaim = detOnly && r.b === 'pending' && !TRAILER_CHECKED[r.k]
+    const mark: MarkKey | null = noClaim ? null : badgeMark(r.b) // null = glyphless (nothing to adjudicate here)
+    return noClaim && r.note === undefined && r.cls !== 'assumed'
+      ? { ...r, mark, note: NO_CLAIM_NOTE }
+      : { ...r, mark }
+  })
 }
 
 // The panel footer voice, derived from the trust VERDICT — NOT bare matchesTrailer (F4). The old footer read
 // `matchesTrailer ? 'trailer consistent ✓' : '…✗'`, so a manifest lying only about a count (bundle clean →
 // matchesTrailer TRUE, verdict 'mismatch') showed a GREEN footer beside a red count row: the panel could not
 // explain the refusal it participates in. The footer now REFUSES on the aggregate mismatch and distinguishes an
-// in-bundle reproduction failure (matchesTrailer false) from a manifest that lies about clean bytes. For a
-// non-mismatch verdict the trailer IS consistent (an in-bundle fact true for both manifest-verified and det-only
-// self-consistent), so the ✓ is scoped to trailer consistency — the manifest-grade voice lives on the row
-// badges + the thesis, never here.
+// in-bundle reproduction failure (matchesTrailer false) from a manifest that lies about clean bytes.
+//   F2 — the footer speaks the VERDICT'S OWN mark, glyph sourced from the ONE voices module (never a footer-
+// local literal, and never the WRONG mark): a self-consistent det-only run showed ○ in the ceremony/thesis but
+// a site-local ✓ HERE — the migration missed this seam. Now it switches on TrustVerdict exhaustively:
+// manifest-verified → ✓ (trailer consistent, backed by the external manifest); self-consistent → ○, scoped to
+// the trailer SELF-check (no external oracle — the manifest-grade green lives on the row badges + the thesis,
+// never here); mismatch → ✗. So the footer glyph agrees with every other surface for the same run.
 export function provenanceFooter(
   verify: Pick<VerifyResult, 'eventCount' | 'tickCount' | 'matchesTrailer'>, verdict: TrustVerdict,
 ): string {
   const counts = `${verify.eventCount} events · ${verify.tickCount} ticks`
-  if (verdict === 'mismatch') {
-    return verify.matchesTrailer
-      ? `${counts} · manifest mismatch ✗`       // bundle reproduced its trailer, but a pinned field lies
-      : `${counts} · trailer INCONSISTENT ✗`    // the bytes never reproduced their own trailer
+  switch (verdict) {
+    case 'mismatch':
+      return verify.matchesTrailer
+        ? `${counts} · manifest mismatch ${requireGlyph('mismatch')}`    // ✗ — bundle reproduced its trailer, but a pinned field lies
+        : `${counts} · trailer INCONSISTENT ${requireGlyph('mismatch')}` // ✗ — the bytes never reproduced their own trailer
+    case 'self-consistent':
+      return `${counts} · trailer self-consistent ${requireGlyph('selfConsistent')}` // ○ — reproduced its own trailer; no external oracle
+    case 'manifest-verified':
+      return `${counts} · trailer consistent ${requireGlyph('verified')}`             // ✓ — trailer consistent, backed by the manifest
   }
-  return `${counts} · trailer consistent ✓`
 }

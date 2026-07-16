@@ -2,6 +2,7 @@ import { useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent } from 'rea
 import type { RunEntry } from './useRun'
 import { assumedClockTitle, cardNote, cardVerdict, effectiveSealStatus, histogramRows, realSimDuration, sealFor, VOICE_GLYPH, type SealRecord, type SealStatus } from './hangar'
 import { CATEGORY } from './theme'
+import { ROBUST_F3A } from '../decode/campaignCatalog'
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
 // THE HANGAR (T5b, D5) — the run-library front door.
@@ -13,8 +14,9 @@ import { CATEGORY } from './theme'
 //     frame loop (§8: the Hangar never mounts the r3f canvas and does no rAF work). Its STAGE half is
 //     the drill-through: opening a card rides the existing hero/ceremony path.
 //   • Borrowed hues (LAW 2, zero new tokens): the integrity voices ONLY — verified green (`--verified`)
-//     for a card the ceremony SEALED this session, the attested text-dim `•` otherwise, and the alarm
-//     `--mismatch` ✗ for a seal later BROKEN by a mismatched re-load (closure item 1). The kind
+//     for a card the ceremony SEALED this session, the attested slate `•` (`--pending`, the canonical
+//     attested token — v0.8 W1) otherwise, and the alarm `--mismatch` ✗ for a seal later BROKEN by a
+//     mismatched re-load (closure item 1). The voice glyph + class are sourced from voices.ts. The kind
 //     histogram wears event-IDENTITY category hues (`--cat-*`), never a provenance voice glyph and
 //     never the R3 verdict pair (those are statistical pass/fail — the v0.7 Wall's, not the Hangar's).
 //   • What it dims (LAW 1): within itself a sealed ✓ card carries the earned emphasis; at rest the
@@ -53,9 +55,12 @@ export interface HangarProps {
   onClose: () => void
   onOpenRun: (id: string) => void
   onOpenTour: (id: string) => void
+  // The Wall's front-door entry (v0.8 W5): opens the campaign Certification Wall. The Wall is the Hangar's
+  // campaign expansion (D4 6.4) — reachable HERE, following the card/CTA grammar.
+  onOpenWall: () => void
 }
 
-export function Hangar({ open, runs, currentRunId, sealedRuns, loadedRunId, loadedResultId, tourRunIds, onClose, onOpenRun, onOpenTour }: HangarProps) {
+export function Hangar({ open, runs, currentRunId, sealedRuns, loadedRunId, loadedResultId, tourRunIds, onClose, onOpenRun, onOpenTour, onOpenWall }: HangarProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   const prevFocusRef = useRef<HTMLElement | null>(null)
 
@@ -117,6 +122,24 @@ export function Hangar({ open, runs, currentRunId, sealedRuns, loadedRunId, load
             ))}
           </div>
         )}
+        {/* CAMPAIGNS (v0.8 W5) — the Wall's front door. A campaign is a SEPARATE entity from a run: it names
+            the ROBUST campaign correctly (the profile-conflation tripwire guards only the correct-profile f3a
+            RUN card above, which stays untouched — the two must never conflate). The verdict rides the ATTESTED
+            voice (on record, not a session receipt); the ✓ receipts are earned inside the Wall. */}
+        <section className="hangar-campaigns" aria-label="campaigns">
+          <p className="hangar-campaigns-label">campaigns</p>
+          <article className="hangar-campaign-card" data-campaign={ROBUST_F3A.campaignId}>
+            <div className="hangar-campaign-info">
+              <h4>{ROBUST_F3A.campaignId} — 50-seed statistical campaign</h4>
+              <p className="hangar-campaign-note">seeds 42–91 · acquire and re-verify every bundle byte-for-byte in your browser</p>
+            </div>
+            <span className="hangar-campaign-verdict">
+              <span className="hangar-glyph" aria-hidden="true">{VOICE_GLYPH.attested}</span>
+              {ROBUST_F3A.verdictLevelName} · on record
+            </span>
+            <button className="hangar-campaign-open" onClick={onOpenWall}>open the wall →</button>
+          </article>
+        </section>
         {/* Disclaimer chip (D4): the index is a map, not the authority. Always present on the surface. */}
         <p className="hangar-disclaimer">{DISCLAIMER}</p>
       </div>

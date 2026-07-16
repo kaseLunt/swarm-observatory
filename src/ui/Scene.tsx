@@ -31,8 +31,10 @@ import { buildQueryDraws, queryBounds, queryStageApplies } from './queryStage'
 import { povFraming } from './queryScene'
 import { TrajectoryTrail } from './trajectoryTrail'
 import { SensingStage, HEAD_R as HEAD_MARKER_R, SENSOR_MARKER_R, lerpHeadPosition } from './sensingStageView'
-import { buildSensingStage, sensingStageApplies, sensingSubjectRef, TARGET_FRAME_OFFSET, evaluatedFrame } from './sensingStage'
+import { buildSensingStage, sensingStageApplies, sensingSubjectRef, TARGET_FRAME_OFFSET } from './sensingStage'
+import { resolveCursorInto, eventTickOf, type FrameCursor } from './cursor'
 import { R_MAX, SENSOR_O, OCCLUDER_C, OCCLUDER_R2 } from './sensingScenario'
+import type { StateFrame, TransportTick } from '../lib/brand'
 
 // Follow-aim trail bias (ruling 7, T2). The playback follow aimed dead at the live head, so the one-sided
 // trail — which lies entirely BEHIND the head — projected off to one side of frame (dossier Q6). Bias the
@@ -123,6 +125,9 @@ const scratchMat = new THREE.Matrix4()
 const scratchA: [number, number, number] = [0, 0, 0]
 const scratchB: [number, number, number] = [0, 0, 0]
 const scratchP: [number, number, number] = [0, 0, 0]
+// The Entities frame-loop cursor: reused every frame (§8 — no allocation on the useFrame path). resolveCursorInto
+// writes (t0, t1) here; the loop reads them and never mints a fresh object.
+const entitiesCursor: FrameCursor = { t0: 0 as StateFrame, t1: 0 as StateFrame }
 const EMPTY_SEQS: readonly number[] = []
 // Predictive-lead velocity scratch (v0.5c ruling 4): the previous follow frame's head sample + a validity
 // flag, so the follow block can estimate the head velocity (Δhead/dt) with ZERO per-frame allocation.
@@ -454,7 +459,12 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
   }, [paintColors])
 
   useFrame((state, delta) => {
-    const { tick, fraction, selectedEntity, playing, finale } = useViewStore.getState()
+    const vs = useViewStore.getState()
+    const { fraction, selectedEntity, playing, finale } = vs
+    // A3 BOUNDARY: the store playhead is a TransportTick (a plain scrub coordinate — viewStore.tick is a bare
+    // number by design); brand it EventTick HERE, the ONE ingestion where model semantics begin. Every tick use
+    // below (the pausedMidRun gate, the cursor, lerpHeadPosition, eventsByTick) is now typed in the event domain.
+    const tick = eventTickOf(vs.tick as TransportTick)
     // pausedMidRun (v0.5d ruling 3): a playhead paused STRICTLY between the cold open and the natural end — the
     // sanctioned pause-then-click window where the tracking ring must stay visible so the sub-pixel subject is
     // discoverable. Cold rest (tick 0) and the natural-end rest (tick === tickCount, finale-owned) are excluded.
@@ -471,10 +481,13 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
     // (e0/f1 untouched). The gate is the ONE arbitrated stage predicate sensingStageApplies (threaded as
     // hasSensing), never a second predicate; and model.tickCount === trail.count − 1, matching the head's clamp.
     const poseFrameOffset = hasSensing ? TARGET_FRAME_OFFSET : 0
-    const t0 = evaluatedFrame(tick, poseFrameOffset, model.tickCount)
-    const t1 = Math.min(t0 + 1, model.tickCount)
-    const s0 = model.entityStatesAt(t0)
-    const s1 = model.entityStatesAt(t1)
+    // The ONE cursor resolver (§A3): (t0, t1) = the evaluated frame and its clamped successor. model.tickCount
+    // is the terminal StateFrame index (=== trail.count − 1); brand it StateFrame at this single lastFrame
+    // ingestion. Non-sensing runs pass offset 0 ⇒ t0 === Math.min(tick, tickCount), byte-identical to pre-A3.
+    resolveCursorInto(entitiesCursor, tick, poseFrameOffset, model.tickCount as StateFrame)
+    const t0 = entitiesCursor.t0
+    const s0 = model.entityStatesAt(entitiesCursor.t0)
+    const s1 = model.entityStatesAt(entitiesCursor.t1)
     const mesh = meshRef.current
     if (!mesh) return
     // The invisible hit mesh mirrors the visible cones' transforms so its enlarged raycast target tracks

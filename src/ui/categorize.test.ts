@@ -21,7 +21,7 @@ describe('categoryOf maps EventKind → semantic category (spec-3a §2.3)', () =
     for (const k of [20, 21]) expect(categoryOf(k)).toBe('fact')
   })
   test('unknown kind falls back to query (never throws)', () => {
-    // CONSCIOUS DEFAULT: F1's experiment-block motion kinds (0x0120/0x0121) have no §2.3 row;
+    // CONSCIOUS DEFAULT: the f1 experiment-block motion kinds (0x0120/0x0121) have no §2.3 row;
     // 'query' hue+glyph is the neutral fallback until a motion category is designed. Documented, not accidental.
     expect(categoryOf(0x0120)).toBe('query')
   })

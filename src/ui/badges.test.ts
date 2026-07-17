@@ -10,7 +10,7 @@ test('states', () => {
   expect(badge(null, 'aa')).toBe('pending')
 })
 
-test('metaBadge: manifest-present-but-not-recomputed is ATTESTED, never verified (v0.5d bench R2)', () => {
+test('metaBadge: manifest-present-but-not-recomputed is ATTESTED, never verified', () => {
   // Two-voice discipline: ✓/'verified' is reserved EXCLUSIVELY for recomputed-and-matched rows.
   // A pure-metadata row (scenario/seed/commit/registries/dirty-false) has no in-bundle recomputation —
   // its manifest claim is honestly ATTESTED (present, gate-accepted, but not independently re-derived);

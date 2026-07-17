@@ -1,4 +1,4 @@
-// ── THE TRUSTED RUN CATALOG (H1 — runs/index.json is a discovery convenience, NEVER authority) ───────────
+// ── THE TRUSTED RUN CATALOG (runs/index.json is a discovery convenience, NEVER authority) ───────────
 // runs/index.json is fetched over the network and is unsigned. Letting its `base` field decide whose bytes
 // load, and its `detOnly` field decide whether a manifest is fetched at all, hands an attacker the trust
 // verdict: a tampered entry {id:'f0', base:'runs/e0', detOnly:true} would load e0's bytes, skip f0's manifest,
@@ -9,7 +9,7 @@
 //   • a manifest-REQUIRED run can never be silently downgraded to det-only (a missing manifest is an ERROR,
 //     never a false self-consistent green — see useRun).
 // index.json keeps only its discovery/ordering role: the header switcher list and the Hangar card metadata.
-// Identity beyond the base is the seal fold's job (H2/H3): the verdict already binds the loaded bytes to the
+// Identity beyond the base is the seal fold's job: the verdict already binds the loaded bytes to the
 // manifest's pinned result_id/case_id, so the catalog need not re-pin hashes — it closes the base-swap, the
 // verdict closes the byte-identity. (A drift test pins this catalog against the index generator's RUN_LIST.)
 
@@ -41,18 +41,18 @@ export interface LoadPlan {
 
 // A conforming run id is a SINGLE path segment: a lowercase-alnum lead then alnum/hyphen. Every certified id
 // (f0/f1/e0/f2a/f3a/f4) matches; the grammar admits future ids (digits+letters, optional hyphens) while
-// rejecting anything that could redirect a fetch. This is the F2 fix: the unknown-id arm below derives its base
+// rejecting anything that could redirect a fetch. This is the traversal-safety fix: the unknown-id arm below derives its base
 // as `runs/<id>`, so a traversal id like 'x/../f0' would normalize under fetch to ANOTHER run's bytes (an
 // identity spoof — f0's bytes served under the label 'x/../f0'). A non-conforming id must therefore resolve to
 // NO plan at all, never a base string.
 const RUN_ID_RE = /^[a-z0-9][a-z0-9-]*$/
 
-// F8 — prototype-shaped ids that CONFORM to the grammar. '__proto__'/'toString'/'valueOf'/'hasOwnProperty' carry
+// Prototype-shaped ids that CONFORM to the grammar. '__proto__'/'toString'/'valueOf'/'hasOwnProperty' carry
 // chars outside RUN_ID_RE and are already rejected by the grammar test; 'constructor' and 'prototype' are all-
 // lowercase and PASS it. Object.hasOwn keeps them off the certified path, but the unknown-id fallback below would
 // still hand them a real det-only plan (base 'runs/constructor') → useRun issues a fetch. No run is ever named for
 // a prototype key, so deny the whole family outright: the contract is then unambiguous — a prototype-shaped id
-// resolves to NO plan and NO fetch, matching the "prototype keys never fetch" claim the F5 tests assert.
+// resolves to NO plan and NO fetch, matching the "prototype keys never fetch" claim the tests assert.
 const PROTOTYPE_DENYLIST: ReadonlySet<string> = new Set([
   'constructor', 'prototype', 'toString', 'valueOf', 'hasOwnProperty', '__proto__',
 ])
@@ -66,13 +66,13 @@ const PROTOTYPE_DENYLIST: ReadonlySet<string> = new Set([
 // run's bytes. A NON-conforming id (path traversal, a slash, an absolute/scheme-bearing string) OR a prototype-
 // shaped id resolves to null — useRun then surfaces the unknown-run error, and NO fetch is issued.
 export function resolveLoadPlan(runId: string): LoadPlan | null {
-  // F5/F8 — the grammar test runs FIRST, then the prototype denylist, then the catalog lookup as an OWN-property
+  // The grammar test runs FIRST, then the prototype denylist, then the catalog lookup as an OWN-property
   // check (Object.hasOwn). The old order indexed RUN_CATALOG[runId] BEFORE the grammar test and via bracket
   // access, so a prototype key resolved to an inherited member as a truthy "certified entry":
   // resolveLoadPlan('__proto__') returned Object.prototype with `.base` undefined → certified:true, base undefined
   // → useRun fetched 'undefined/bundle.det'. Grammar-first rejects '__proto__'/'toString'/'hasOwnProperty' (chars
   // outside the grammar) to null; the denylist then closes 'constructor'/'prototype' (which DO conform) so they
-  // resolve to null too — never the uncertified 'runs/constructor' fetch the pre-F8 fallback issued. Object.hasOwn
+  // resolve to null too — never the uncertified 'runs/constructor' fetch the earlier fallback issued. Object.hasOwn
   // then admits ONLY real catalog entries.
   if (!RUN_ID_RE.test(runId)) return null
   if (PROTOTYPE_DENYLIST.has(runId)) return null
@@ -84,7 +84,7 @@ export function resolveLoadPlan(runId: string): LoadPlan | null {
 }
 
 // The TRUSTED det-only GRADE for a run id — sourced from the in-bundle catalog pin, NEVER from index.json's
-// unsigned `detOnly` field (F1). A manifest-REQUIRED certified run is full-manifest (false: it can earn the
+// unsigned `detOnly` field. A manifest-REQUIRED certified run is full-manifest (false: it can earn the
 // manifest-grade ✓); a det-only certified run and every uncertified/unknown id are det-only-grade (true) — an
 // unknown id can never earn the manifest-grade green. cardVerdict keys the rendered trust grade on THIS, so a
 // lying index entry (detOnly:false on a det-only run, or detOnly:true on a full-manifest one) cannot flip the

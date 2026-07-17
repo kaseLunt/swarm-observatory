@@ -5,7 +5,7 @@ import type { CategoryKey } from './theme'
 // itself a mutating outcome whose keystone predicate binds Entity(0).value in State[t]→State[t+1] —
 // same resolver-mutating semantics as the rest of that row, not an observation.
 // Anything with no §2.3 row falls back to 'query' — a benign, documented default. Only two cases
-// land here: F1's experiment-block motion kinds (0x0120/0x0121, no category designed yet) and the
+// land here: the f1 experiment-block motion kinds (0x0120/0x0121, no category designed yet) and the
 // deprecated kind 16 (AuthorizationGranted, excluded from the registry — spec-impossible, can never
 // appear in a decodable bundle, so this arm is unreachable for it in practice).
 const MAP: Record<number, CategoryKey> = {

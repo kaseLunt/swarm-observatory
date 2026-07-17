@@ -34,7 +34,7 @@ export function stepActions(step: TourStep) {
   return out
 }
 
-// v0.5d bench R4 (design ruling, cited in the test pin): DWELL IS NOT MOTION. Reduced motion converts
+// Design ruling (cited in the test pin): DWELL IS NOT MOTION. Reduced motion converts
 // flights to cuts (startPlay snaps the playhead; camera eases collapse to factor 1) — but a hold is
 // CAPTION-READING time, authored 3500-6000ms for reading, and the old rm cap (min(holdMs, 1200)) gave
 // rm users LESS reading time than everyone else. Ruled form: rm hold = max(authored, old behavior),

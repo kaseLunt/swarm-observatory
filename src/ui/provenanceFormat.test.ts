@@ -8,7 +8,7 @@ import { FILE_HEADER_LEN, FrameTag } from '../decode/frames'
 import { crc32c } from '../lib/crc32c'
 import type { RunManifest } from '../decode/manifest'
 
-// F4 — the ProvenancePanel must render a VISIBLE comparison row for every comparable pin (counts included) and
+// the ProvenancePanel must render a VISIBLE comparison row for every comparable pin (counts included) and
 // its footer must speak the aggregate VERDICT, not bare matchesTrailer: a manifest that lies only about a count
 // yields an overall mismatch, and before this fix the panel showed ZERO red rows and a green "trailer consistent
 // ✓" footer — it could not explain the refusal it participates in.
@@ -31,7 +31,7 @@ const cleanManifest = (): RunManifest => ({
 })
 const rowFor = (m: RunManifest | null, key: string) => provenanceRows(m, verify).find(r => r.k === key)!
 
-describe('provenanceRows — the counts are now VISIBLE comparison rows (F4)', () => {
+describe('provenanceRows — the counts are now VISIBLE comparison rows', () => {
   test('event_count and tick_count are rendered rows in the integrity group', () => {
     expect(PROV_GROUPS.find(g => g.label === 'integrity')!.keys).toEqual(
       expect.arrayContaining(['event_count', 'tick_count']),
@@ -58,10 +58,10 @@ describe('provenanceRows — the counts are now VISIBLE comparison rows (F4)', (
       expect(r.note, k).toMatch(/self-verified/)
     }
   })
-  test('F1/F2: det-only case_id + termination_reason + result_id wear the ATTESTED voice (•), never a ○ self-check', () => {
+  test('det-only case_id + termination_reason + result_id wear the ATTESTED voice (•), never a ○ self-check', () => {
     // case_id + termination_reason are trailer-SOURCED (read from the trailer, never recomputed); result_id is
     // DERIVED from those trailer-sourced inputs with NO in-bundle oracle. None is a self-check — a ○ ring here
-    // would be an unfalsifiable derivation wearing the check glyph (F1). All three render '•' (badge 'attested'),
+    // would be an unfalsifiable derivation wearing the check glyph. All three render '•' (badge 'attested'),
     // never the ○ (badge 'pending') the genuinely trailer-reproduced hash rows earn.
     for (const k of ['case_id', 'termination_reason']) {
       const r = rowFor(null, k)
@@ -77,13 +77,13 @@ describe('provenanceRows — the counts are now VISIBLE comparison rows (F4)', (
   })
 })
 
-// ── F1 — the per-row SEMANTIC MARK splits the det-only 'pending' seam (a verdict ring never lands unadjudicated) ──
+// ── the per-row SEMANTIC MARK splits the det-only 'pending' seam (a verdict ring never lands unadjudicated) ──
 // The BadgeState seam maps EVERY 'pending' to the ○ self-check. On a det-only run that collapses two different
 // things: a trailer-CHECKED-and-matched row (a self-check genuinely RAN) vs a NO-CLAIM row (scenario/seed/dt/
 // registries/commit/dirty — nothing recomputed, no manifest to attest). Threading an explicit `mark` per row
 // keeps the ○ where it was earned and gives the no-claim rows `mark: null` (glyphless), so the module's own
 // two-family law is not violated through its own seam.
-describe('provenanceRows — the threaded per-row mark (F1)', () => {
+describe('provenanceRows — the threaded per-row mark', () => {
   const NO_CLAIM = ['scenario', 'seed', 'dt', 'schema_registry', 'state_registry', 'commit', 'dirty']
   const TRAILER_CHECKED = ['event_hash', 'state_trajectory_hash', 'event_count', 'tick_count']
 
@@ -120,13 +120,61 @@ describe('provenanceRows — the threaded per-row mark (F1)', () => {
   })
 })
 
-// ── F2 — FULL-MANIFEST, ONLY the TRAILER value corrupt: the row folds pin+trailer, agreeing with the ceremony ──
+// ── The dirty row explains itself — a build-hygiene disclosure, not a byte verdict ──────────────────────────
+// dirty=true renders in the alarm voice by deliberate ruling (the manifest itself declares the build tree
+// unclean), but the alarm hue alone reads to a cold visitor like a byte-verification failure. The row now
+// carries a disclosure note drawing the distinction the hue cannot — while the voice/badge/family stay exactly
+// as they were. dirty=false and the absent-manifest (det-only) paths are untouched.
+describe('provenanceRows — the dirty row explains itself: build-hygiene disclosure, not a byte verdict', () => {
+  test('dirty=true keeps the alarm badge AND now carries the disclosure note', () => {
+    const r = rowFor({ ...cleanManifest(), dirty: true }, 'dirty')
+    expect(r.val).toBe('true')
+    expect(r.b).toBe('mismatch')     // the alarm voice is UNCHANGED — the deliberate ruling holds
+    expect(r.mark).toBe('mismatch')  // …and the threaded glyph stays the ✗ family (no new glyph)
+    // The note draws the distinction the alarm hue cannot: a self-declaration about build hygiene, not a hash lie.
+    expect(r.note).toBeDefined()
+    expect(r.note).toMatch(/self-declares/)
+    expect(r.note).toMatch(/build-hygiene/)
+    expect(r.note).toMatch(/not a byte-verification failure/)
+    // …and it states the CONTRACT consequence: a dirty run is non-citable under the publication contract
+    // (contract/spec-3a-event-schema.md §4.5 — "Citable additionally requires dirty=false").
+    expect(r.note).toMatch(/non-citable/)
+    expect(r.note).toMatch(/publication contract/)
+  })
+  test('dirty=false does NOT carry the disclosure note — it keeps its attested state and note', () => {
+    const r = rowFor(cleanManifest(), 'dirty') // cleanManifest() is dirty:false
+    expect(r.val).toBe('false')
+    expect(r.b).toBe('attested')                            // the on-record voice, unchanged
+    expect(r.note).toBe('manifest claim · not recomputed')  // the attested note, never the dirty disclosure
+    expect(r.note).not.toMatch(/build-hygiene/)
+  })
+  test('a det-only run (absent manifest) is unchanged — the dirty row keeps its no-claim note, no disclosure', () => {
+    const r = rowFor(null, 'dirty')
+    expect(r.b).toBe('pending')
+    expect(r.mark).toBeNull()
+    expect(r.note).toMatch(/no manifest claim/) // the no-claim note, exactly as before
+    expect(r.note).not.toMatch(/build-hygiene/)
+  })
+  test('dirty=true beside a MISMATCHED hash row: the note claims the CHECK, not the outcome — no contradiction', () => {
+    // A dirty=true manifest that ALSO lies about event_hash: the event_hash row reds AND the dirty row shows its
+    // note in the SAME table. The note must not read "the hashes above VERIFY" (a false claim beside a red row) —
+    // it claims the PROCESS ("are checked independently"), which stays true whether a check passed or failed.
+    const rows = provenanceRows({ ...cleanManifest(), dirty: true, eventHash: 'f'.repeat(64) }, verify)
+    const dirty = rows.find(r => r.k === 'dirty')!
+    const eventHash = rows.find(r => r.k === 'event_hash')!
+    expect(eventHash.b).toBe('mismatch')                    // the hash row is red — a check that FAILED
+    expect(dirty.note).toMatch(/are checked independently/) // the note claims the check ran, not that it passed
+    expect(dirty.note).not.toMatch(/verify independently/)  // never the outcome-claim that would contradict the red row
+  })
+})
+
+// ── FULL-MANIFEST, ONLY the TRAILER value corrupt: the row folds pin+trailer, agreeing with the ceremony ──
 // A full-manifest run whose TRAILER stored event_hash is corrupt (frames clean → the recomputed hash still matches
 // the MANIFEST pin; the bundle just failed to reproduce its OWN trailer → trailerPins.eventHash false,
-// matchesTrailer false). Before F2 the panel badged event_hash ✓ from the manifest pin ALONE while the ceremony's
+// matchesTrailer false). Before the panel badged event_hash ✓ from the manifest pin ALONE while the ceremony's
 // per-field pinTick painted ✗ — two surfaces disagreeing on one field. foldedBadge folds BOTH comparisons, so the
 // panel now reds the row exactly where the ceremony does.
-describe('provenanceRows — full-manifest, ONLY the trailer event hash corrupt: panel/ceremony agree (F2)', () => {
+describe('provenanceRows — full-manifest, ONLY the trailer event hash corrupt: panel/ceremony agree', () => {
   const trailerCorrupt: VerifyResult = {
     ...verify, matchesTrailer: false, trailerPins: { ...verify.trailerPins, eventHash: false },
   }
@@ -154,10 +202,10 @@ describe('provenanceRows — full-manifest, ONLY the trailer event hash corrupt:
   })
 })
 
-// ── F2 — PREMISE-FIRST: a det-only bundle whose STORED event hash mismatches its trailer reds THAT row ───────
+// ── PREMISE-FIRST: a det-only bundle whose STORED event hash mismatches its trailer reds THAT row ───────
 // Corrupt ONLY the trailer's stored event_hash (32 bytes at trailer-payload offset 32; CRC-fixed so the frame
 // decodes cleanly), then fold. The recomputed event_hash (from the clean event frames) no longer matches the
-// tampered trailer value → trailerPins.eventHash false → matchesTrailer false. Before F2 the event_hash row
+// tampered trailer value → trailerPins.eventHash false → matchesTrailer false. Before the event_hash row
 // still wore 'self-verified · pending' beside an aggregate mismatch and the failing field was UNFINDABLE; now it
 // reds THAT row while its siblings keep their honest self-check notes. Mirrors the sealFold/verify tamper idiom.
 function tamperedDetVerify(det: string, trailerPayloadOffset: number): VerifyResult {
@@ -178,7 +226,7 @@ function tamperedDetVerify(det: string, trailerPayloadOffset: number): VerifyRes
   return foldAndVerify(bytes)
 }
 
-describe('provenanceRows — det-only, ONLY the stored event hash tampered (F2)', () => {
+describe('provenanceRows — det-only, ONLY the stored event hash tampered', () => {
   const EVENT_HASH_OFFSET = 32 // trailer payload: case_id(32) then event_hash(32)
   const v = tamperedDetVerify('e0_seed42.det', EVENT_HASH_OFFSET)
   const detRow = (k: string) => provenanceRows(null, v).find(r => r.k === k)!
@@ -204,7 +252,7 @@ describe('provenanceRows — det-only, ONLY the stored event hash tampered (F2)'
   })
 })
 
-describe('provenanceFooter — the voice is the aggregate VERDICT, not bare matchesTrailer (F4)', () => {
+describe('provenanceFooter — the voice is the aggregate VERDICT, not bare matchesTrailer', () => {
   test('PREMISE: the OLD footer (matchesTrailer only) read GREEN on a count-lie (matchesTrailer stays TRUE)', () => {
     const oldFooter = (v: VerifyResult) => `trailer ${v.matchesTrailer ? 'consistent ✓' : 'INCONSISTENT ✗'}`
     expect(verify.matchesTrailer).toBe(true)
@@ -222,7 +270,7 @@ describe('provenanceFooter — the voice is the aggregate VERDICT, not bare matc
   test('an in-bundle reproduction failure (matchesTrailer false) reads the trailer refusal, not a manifest one', () => {
     expect(provenanceFooter({ ...verify, matchesTrailer: false }, 'mismatch')).toContain('trailer INCONSISTENT ✗')
   })
-  test('F2: the footer speaks the verdict’s OWN mark — manifest-verified ✓, self-consistent ○ (superseding ✓-for-both)', () => {
+  test('the footer speaks the verdict’s OWN mark — manifest-verified ✓, self-consistent ○ (superseding ✓-for-both)', () => {
     // manifest-verified keeps the trailer-consistent ✓ — the trailer IS consistent AND an external manifest backs it.
     expect(provenanceFooter(verify, verdictAgainstManifest(verify, cleanManifest()))).toBe('212 events · 96 ticks · trailer consistent ✓')
     // SUPERSEDE (the finding's own point): a det-only self-consistent run showed ○ in the ceremony/thesis but a

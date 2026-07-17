@@ -6,7 +6,7 @@ import {
 import { GEOMETRY_QUERY_RESOLVED } from '../decode/payloads'
 
 // Kind constants used below (EVENT_KIND_NAMES / categorize.ts): 1+23 query, 8 decision, 2 mutating,
-// 20 fact, 5 comms. 0x0120/0x0121 are F1's motion kinds — no §2.3 category → categorize's 'query'
+// 20 fact, 5 comms. 0x0120/0x0121 are the motion-experiment kinds — no §2.3 category → categorize's 'query'
 // fallback, but PER-KIND lanes give each its OWN row (the category supplies only the hue).
 describe('assignLanes — PER-KIND lane assignment (design spec §5.2; constitution §5)', () => {
   test('single-KIND run collapses to ONE lane (e0 today: every event is kind 23)', () => {

@@ -8,7 +8,7 @@ import { ROBUST_F3A, campaignSeedIds } from '../decode/campaignCatalog'
 import { useCampaignStore } from '../state/campaignStore'
 import type { RunSummary } from '../decode/campaignVerify'
 
-// ── FIX (W5): THE MOUNT SEED IS COMMIT-SAFE AND SURVIVES StrictMode's EFFECT REPLAY ──────────────────────────────
+// ── FIX: THE MOUNT SEED IS COMMIT-SAFE AND SURVIVES StrictMode's EFFECT REPLAY ──────────────────────────────
 // The Wall seeds its module-scoped campaign store to '50 pending' on mount so the very first painted frame reads
 // 0-of-50, never a 0-of-0 flash. That seed USED to run in a useState lazy initializer — a render-phase mutation of
 // a shared external store (a React purity violation). The app root mounts under <StrictMode>, whose dev lifecycle
@@ -56,7 +56,7 @@ afterEach(() => {
   useCampaignStore.getState().reset()
 })
 
-describe('CertificationWall: the mount seed is commit-safe under StrictMode (W5)', () => {
+describe('CertificationWall: the mount seed is commit-safe under StrictMode', () => {
   test('under StrictMode effect replay, the seed survives the fetch cleanup-reset — the census settles 0-of-50, never the 0-of-0 the render-seed left', () => {
     // Premise: a just-closed session reset the module store to total=0 (the 0-of-0 source). The module store
     // survives a close; only a fresh mount re-seeds it.
@@ -116,7 +116,7 @@ describe('CertificationWall: the mount seed is commit-safe under StrictMode (W5)
   })
 })
 
-// ── THE FIRST-FRAME FIX (W5): SEEDING AT THE OPEN ACTION, NOT (ONLY) IN A LAYOUT EFFECT ────────────────────────────
+// ── THE FIRST-FRAME FIX: SEEDING AT THE OPEN ACTION, NOT (ONLY) IN A LAYOUT EFFECT ────────────────────────────
 // The Wall's layout-effect seed cannot own the FIRST painted frame: zustand registers its useSyncExternalStore
 // subscription in a PASSIVE effect, so the layout-effect init() mutates a store the component is not yet subscribed
 // to — React only NOTICES the changed snapshot at passive setup, which lands AFTER paint on a default/transition-lane
@@ -141,7 +141,7 @@ function CensusProbe({ sink }: { sink: number[] }) {
   return null
 }
 
-describe('CertificationWall: the first painted frame is seeded at the open action, in any lane (W5)', () => {
+describe('CertificationWall: the first painted frame is seeded at the open action, in any lane', () => {
   test('PREMISE — with ONLY the Wall\'s layout-effect seed, a transition-lane first render reads 0-of-0 (the flash)', () => {
     // A just-closed session left the module store at rest (total=0) — the 0-of-0 source.
     useCampaignStore.getState().reset()

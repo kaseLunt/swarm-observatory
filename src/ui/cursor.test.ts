@@ -43,9 +43,9 @@ describe('resolveCursor — the shared (t0, t1) frame cursor', () => {
   })
 })
 
-// resolveCursorInto — the zero-alloc out-param form the §8 frame paths use. Observable contract: it mutates the
+// resolveCursorInto — the zero-alloc out-param form the frame paths use. Observable contract: it mutates the
 // caller's cursor in place (identity preserved across calls, returns void) and agrees with the allocating form.
-describe('resolveCursorInto — the §8 zero-alloc form', () => {
+describe('resolveCursorInto — the zero-alloc form', () => {
   test('writes into the caller-owned cursor (same reference across calls) and returns void', () => {
     const out: FrameCursor = { t0: asStateFrame(0), t1: asStateFrame(0) }
     const ret = resolveCursorInto(out, asEventTick(55), 1, asStateFrame(96))
@@ -95,13 +95,13 @@ describe('brand boundary — the axes cannot cross', () => {
   })
 })
 
-// F3 — the OFFSET domain. The resolver asserts its (t0, t1) results StateFrame; if the offset could be any number,
+// The OFFSET domain. The resolver asserts its (t0, t1) results StateFrame; if the offset could be any number,
 // a fractional (or NaN) offset would mint a fractional/NaN branded frame that entityStatesAt would then accept.
 // The offset is constrained to 0 | typeof TARGET_FRAME_OFFSET, so that is a COMPILE error — no runtime guard, and
 // no runtime negative test, are needed: a non-integer offset is simply not representable. The @ts-expect-error
 // below proves the compiler rejects 0.5; the runtime call still executes (the type is erased) and WOULD have
 // produced the fractional 3.5 the type now forbids — that residual value is what the constraint exists to bar.
-describe('offset domain (F3) — only 0 or TARGET_FRAME_OFFSET, so no fractional/NaN frame can be minted', () => {
+describe('offset domain — only 0 or TARGET_FRAME_OFFSET, so no fractional/NaN frame can be minted', () => {
   test('a fractional offset is a compile error (it would otherwise mint a fractional StateFrame)', () => {
     // @ts-expect-error 0.5 is not an allowed FrameOffset — evaluatedFrame(3, 0.5, 96) would brand 3.5 as a StateFrame
     expect(resolveCursor(asEventTick(3), 0.5, asStateFrame(96)).t0).toBe(3.5)

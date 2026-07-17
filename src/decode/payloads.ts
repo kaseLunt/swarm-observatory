@@ -11,7 +11,7 @@ export const EVENT_KIND_NAMES: Record<number, string> = {
   24: 'AllocationStateUpdated',
   // EXP-F1 motion substrate — the registry's OWN names (spec-3a §6.5.2, spec-3b §11.4 k=1 block
   // 0x0120..=0x013F). DATA, not display taste: the Hangar front door renders these instead of the bare
-  // integers the critic flagged (289 × 96). Any kind still outside this table keeps the honest `kind N`.
+  // integers flagged in review (289 × 96). Any kind still outside this table keeps the honest `kind N`.
   0x0120: 'MotionSegmentStarted', 0x0121: 'MotionStepped',
   0xf000: 'F0_FIXTURE',
 }

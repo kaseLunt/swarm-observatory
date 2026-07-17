@@ -10,7 +10,7 @@ test('defaults omitted; malformed ignored', () => {
   expect(parseLink('run=f0&tick=NaN&ev=-3')).toEqual({ run: 'f0' })
 })
 test('buildShareUrl joins origin + pathname + encoded state; parses back to the same view', () => {
-  // The copy-link share weapon (T6): a full absolute URL that round-trips through the URL grammar. The
+  // The copy-link share weapon: a full absolute URL that round-trips through the URL grammar. The
   // default-only state collapses to just ?run= (encodeLink omits the defaults) — a clean shareable link.
   expect(buildShareUrl('https://x.dev', '/', { run: 'e0', tick: 0, sel: null, ev: null, speed: 1 }))
     .toBe('https://x.dev/?run=e0')
@@ -20,8 +20,8 @@ test('buildShareUrl joins origin + pathname + encoded state; parses back to the 
   // The tail after '?' round-trips through parseLink — the recipient lands on the exact same view.
   expect(parseLink(href.slice(href.indexOf('?') + 1))).toEqual(s)
 })
-test('buildShareUrl carries NO verification state (NEVER-list) — only the view grammar', () => {
-  // Structural pin of the NEVER-list: the share URL is built solely from LinkState (run/tick/sel/ev/speed).
+test('buildShareUrl carries NO verification state — only the view grammar', () => {
+  // Structural pin of that rule: the share URL is built solely from LinkState (run/tick/sel/ev/speed).
   // There is no trust/verdict/seal field to leak — a shared link reproduces the VIEW, never a trust claim.
   const url = buildShareUrl('https://x.dev', '/', { run: 'e0', tick: 5, sel: null, ev: null, speed: 1 })
   for (const banned of ['verif', 'seal', 'verdict', 'trust', 'hash', 'matches']) {

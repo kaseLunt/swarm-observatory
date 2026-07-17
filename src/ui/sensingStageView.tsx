@@ -11,11 +11,11 @@ import {
 } from './sensingScenario'
 import { nedToThree } from './placement'
 
-// The sensing head's frame-loop cursor: reused every fraction-rate write (§8). lerpHeadPosition runs
+// The sensing head's frame-loop cursor: reused every fraction-rate write (the load budget). lerpHeadPosition runs
 // synchronously to completion, so a single module-scope cursor is reentrancy-safe.
 const headCursor: FrameCursor = { t0: 0 as StateFrame, t1: 0 as StateFrame }
 
-// ── The Sensing Gauntlet stage (Task v07-2) — f2a's stage voice ────────────────────────────────────────
+// ── The Sensing Gauntlet stage — f2a's stage voice ────────────────────────────────────────
 // The instrument voice is the four-gate strip (Inspector); THIS is the drama on the 3D stage (LAW 3). It
 // stages the sensor apparatus at the origin, its FOV cone and range ring, the occluder sphere Q, and the
 // drone's flight as an ELIGIBLE-TINTED TRAIL: the recorded path, each vertex tinted by the decoded eligibility
@@ -35,18 +35,18 @@ const headCursor: FrameCursor = { t0: 0 as StateFrame, t1: 0 as StateFrame }
 // surface; the constitution bans BEARING recomputation on the verification surface (sensingMath), not trig
 // in general.
 //
-// §8 / PERF: the eligible-tinted trail and the NOT-YET outline are STATIC geometry (positions + vertex
+// PERF: the eligible-tinted trail and the NOT-YET outline are STATIC geometry (positions + vertex
 // colours baked once at load); a tick reveals a longer prefix via a single setDrawRange write — O(1) per
 // tick, zero per-frame allocation, no useFrame (an event-rate store subscription). f2a is a fixed 96-tick
-// scene, so even the O(revealed) detection/head updates are trivially bounded. ONE exception (closure
-// round 2): the head's POSITION follows the store fraction — a fraction-rate subscription write (frame-
+// scene, so even the O(revealed) detection/head updates are trivially bounded. ONE exception:
+// the head's POSITION follows the store fraction — a fraction-rate subscription write (frame-
 // rate during play, silent while paused), one zero-alloc lerp, so the head rides the same continuous
 // curve Entities' interactive cone does. Reveal / tint / marks stay per-tick.
 
 // NED (n,e,d) → three [x=east, y=up=−down, z=north] — the ONE app-wide basis-A conversion (placement.nedToThree),
 // the SAME transform the flight trail (entityPosition), the interactive drone/cone (Scene.Entities) and the
 // tour-camera anchors (Scene.SENSOR_THREE/OCCLUDER_THREE) draw through. The apparatus (FOV cone, range ring,
-// sensor, occluder, detection marks) MUST share it: ARCH-4 was this file drifting to a private, MIRRORED
+// sensor, occluder, detection marks) MUST share it: the basis-drift defect was this file drifting to a private, MIRRORED
 // [n,−d,e] basis (x↔z), so the FOV cone opened +x perpendicular to the +z flight it judged — a drone dead-centre
 // of the drawn cone read "outside FOV". `t3` is now a bound alias of the shared function (one definition, so the
 // apparatus and the flight can never fall into two bases again); the old comment's claim to "mirror
@@ -59,19 +59,19 @@ const NEGATE = new THREE.Color(hexToThree(PALETTE.verdictNegate)) // ineligible 
 const STEEL = new THREE.Color(hexToThree(CATEGORY.query.hue))     // ambient scenario geometry (constants)
 const DIM = new THREE.Color(hexToThree(PALETTE.textDim))          // the NOT-YET hollow outline / apparatus
 
-// The drone's live-pose marker radius. EXPORTED (v0.7 T4 fixwave, W3): Scene threads it into the authored
+// The drone's live-pose marker radius. EXPORTED (v0.7 fixwave): Scene threads it into the authored
 // 'conjunction' shot so the fit bounds the marker's VISUAL extent, not just its centre — a narrow-aspect frame
 // no longer crops the marker's rightmost vertex off-screen. One source of truth: the cone geometry below uses it.
 export const HEAD_R = 7
-// The head cone's HEIGHT (a squat 4-sided pyramid, apex up). EXPORTED (v0.7 T4 closure, W3) so the camera-fit
+// The head cone's HEIGHT (a squat 4-sided pyramid, apex up). EXPORTED (v0.7 closure) so the camera-fit
 // crop test derives the base-rim plane (y − HEAD_CONE_H/2 — ConeGeometry is y-centred) from the SAME height the
 // renderer builds the marker at, instead of a private 2.4/1.2 derivation that would drift if the proportions move.
 // One source of truth: the coneGeometry below consumes it.
 export const HEAD_CONE_H = HEAD_R * 2.4
-// The sensor apparatus (octahedron) radius. EXPORTED alongside HEAD_R for the same W3 conjunction fit. A named
+// The sensor apparatus (octahedron) radius. EXPORTED alongside HEAD_R for the same conjunction fit. A named
 // const so the octahedron geometry and the camera fit share ONE value (was an inline literal 9).
 export const SENSOR_MARKER_R = 9
-// ── Detection marks — the RULING-1 fix (the detection pile that out-bloomed the eclipse and bookend) ─────
+// ── Detection marks — the design-ruling fix (the detection pile that out-bloomed the eclipse and bookend) ─────
 // SHRINK: r 5 → 2. At 5 the 17 kind-1 marks (the drone steps 2m/tick) fused into one glowing capsule; at 2
 // they read as a countable BEAD-CHAIN of contacts — which is what they ARE, decoded measurements. The radius
 // was the only thing lying (count + positions are decoded-true). GRADE: the LATEST revealed mark is the live
@@ -144,7 +144,7 @@ export function coneEdgesGeometry(): THREE.BufferGeometry {
   return g
 }
 
-// ── RENDERED-SPACE APPARATUS PREDICATES (ARCH-4 — the test class that would have caught the two-basis defect) ──
+// ── RENDERED-SPACE APPARATUS PREDICATES (the test class that would have caught the two-basis defect) ──
 // These decide a three-space HEAD pose's relationship to the DRAWN cone / range ring / occluder, computed from
 // the SAME `t3` (the ONE shared basis-A conversion) and the SAME scenario constants the geometry above is built
 // from. A rendered-space oracle (sensingStageView.test) feeds them the head at its FLIGHT-basis three position
@@ -165,7 +165,7 @@ const segMinDist2 = (
 // The DRAWN sensor apex and occluder body — the same t3 projection of the scenario constants the octahedron /
 // sphere / cone are placed by. Exported so the oracle binds these values, not a hand-copied literal, AND can
 // prove they equal the tour-camera anchors (Scene's SENSOR_THREE / OCCLUDER_THREE, computed from the SAME
-// shared conversion): after ARCH-4 the apparatus and the anchors MUST agree.
+// shared conversion): after that basis-drift defect the apparatus and the anchors MUST agree.
 export const SENSOR_THREE: [number, number, number] = t3(SENSOR_O)
 export const OCCLUDER_THREE = { center: t3(OCCLUDER_C), r2: OCCLUDER_R2 } as const
 // The drawn FOV boundary-ray direction at ±half-angle — exactly as coneEdgesGeometry lays the two edges.
@@ -194,7 +194,7 @@ export const drawnLosClear = (h: readonly [number, number, number]): boolean =>
 // per model; a tick reveals a prefix via setDrawRange. Indexing by FRAME (not tick) is what lands each
 // eligibility bit on the exact pose it was computed from — a tick-k verdict's g is state frame k+1's pos.
 //
-// BORN HIDDEN (§4, W3): the geometry mounts at drawRange (0, 0) so the bright tinted line shows NOTHING until
+// BORN HIDDEN (§4): the geometry mounts at drawRange (0, 0) so the bright tinted line shows NOTHING until
 // the first sync writes the revealed prefix. The default FULL drawRange would flash the whole future eligible/
 // ineligible trail for one frame on mount / run-switch — a NOT-YET violation. Exported so a unit test can pin
 // the born-hidden drawRange without a WebGL context (BufferGeometry is pure JS).
@@ -208,11 +208,11 @@ export function tintedTrailGeometry(trail: Trail, byFrame: readonly (SensingDraw
     colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b
   }
   g.setAttribute('color', new THREE.BufferAttribute(colors, 3))
-  g.setDrawRange(0, 0) // W3: born hidden — the layout-effect sync reveals the correct prefix pre-paint
+  g.setDrawRange(0, 0) // born hidden — the layout-effect sync reveals the correct prefix pre-paint
   return g
 }
 
-// The head's FRACTIONAL pose (closure round 2) — the SAME (t0, t1, fraction) sample Scene.Entities lerps
+// The head's FRACTIONAL pose — the SAME (t0, t1, fraction) sample Scene.Entities lerps
 // the interactive cone with: t0 = the evaluated frame of the current tick (evaluatedFrame — the ONE
 // tick→frame map), t1 = the next frame clamped to the terminal vertex, lerped by the store fraction. A
 // pause does NOT clear the fraction (only setTick does), so a head snapped at the integer frame sat up to
@@ -223,10 +223,10 @@ export function tintedTrailGeometry(trail: Trail, byFrame: readonly (SensingDraw
 export function lerpHeadPosition(out: THREE.Vector3, trail: Trail, tick: EventTick, fraction: number): void {
   // The head rides the SAME cursor Scene's interactive cone and ChainLinks resolve — resolveCursor is the ONE
   // home of the (t0, t1) offset/clamp shape (it composes evaluatedFrame). `tick` arrives ALREADY in the event
-  // domain (F1): every caller brands the plain store playhead at ITS OWN ingestion (eventTickOf), so this
+  // domain: every caller brands the plain store playhead at ITS OWN ingestion (eventTickOf), so this
   // wrapper never re-brands a bare number — a StateFrame (an already-offset frame) is now a compile error here,
   // which is what makes the double-application of TARGET_FRAME_OFFSET uncompilable. The terminal vertex is
-  // branded StateFrame at this single lastFrame ingestion. Zero alloc: the module-scope headCursor scratch (§8).
+  // branded StateFrame at this single lastFrame ingestion. Zero alloc: the module-scope headCursor scratch (the load budget).
   resolveCursorInto(headCursor, tick, TARGET_FRAME_OFFSET, (trail.count - 1) as StateFrame)
   const f0 = headCursor.t0, f1 = headCursor.t1
   const p = trail.positions
@@ -239,7 +239,7 @@ export function lerpHeadPosition(out: THREE.Vector3, trail: Trail, tick: EventTi
 
 export function SensingStage({ trail, data }: { trail: Trail; data: SensingStageData }) {
   const marksRef = useRef<THREE.InstancedMesh>(null)
-  // W3: born hidden — zero the draw count the instant the mesh mounts so a run-switch never flashes ALL
+  // born hidden — zero the draw count the instant the mesh mounts so a run-switch never flashes ALL
   // detection contacts (stacked at the origin under their identity matrices) before the first tick sync
   // writes the correct revealed count.
   const initMarks = useCallback((m: THREE.InstancedMesh | null) => { marksRef.current = m; if (m) m.count = 0 }, [])
@@ -273,7 +273,7 @@ export function SensingStage({ trail, data }: { trail: Trail; data: SensingStage
   const marks = useMemo(() => [...data.detections].sort((a, b) => a.tick - b.tick), [data.detections])
   const markMats = useMemo(() => marks.map(m => new THREE.Matrix4().setPosition(...t3(m.pos))), [marks])
 
-  // useLayoutEffect (W3): the first sync runs PRE-PAINT (in the React commit, before R3F's next rAF render),
+  // useLayoutEffect: the first sync runs PRE-PAINT (in the React commit, before R3F's next rAF render),
   // so the born-hidden geometry/head/marks are placed at their correct revealed prefix before anything is
   // drawn — no full-trail flash on mount / run-switch even in the worst case.
   useLayoutEffect(() => {
@@ -298,14 +298,14 @@ export function SensingStage({ trail, data }: { trail: Trail; data: SensingStage
       if (head) {
         const d = data.byFrame[headFrame] ?? null
         ;(head.material as THREE.MeshBasicMaterial).color.copy(d === null ? DIM : d.eligible ? AFFIRM : NEGATE)
-        head.visible = true // W3: born hidden in JSX; shown once the first sync has placed + tinted it
+        head.visible = true // born hidden in JSX; shown once the first sync has placed + tinted it
       }
 
-      // Detection marks materialise as the playhead reaches their tick (persist thereafter). GRADE (ruling 1):
+      // Detection marks materialise as the playhead reaches their tick (persist thereafter). GRADE (a design ruling):
       // the NEWEST revealed mark is the live detection at full affirm; every earlier mark recedes to the sub-
       // bloom MARK_SPENT register, so the persisted contacts read as a countable bead-chain and never a fused
       // blooming capsule. Per-instance colour (instanceColor); ≤17 marks, so this O(revealed) recolour is the
-      // trivially-bounded work this fixed 96-tick scene already sanctions (§8 note above), and it is correct
+      // trivially-bounded work this fixed 96-tick scene already sanctions (the load-budget note above), and it is correct
       // across a scrub-back (n shrinks → the new newest re-brightens, the earlier marks stay spent).
       if (marksMesh) {
         let n = 0
@@ -316,16 +316,16 @@ export function SensingStage({ trail, data }: { trail: Trail; data: SensingStage
         if (marksMesh.instanceColor) marksMesh.instanceColor.needsUpdate = true
       }
     }
-    // The head POSE follows the store fraction (closure round 2): the same evaluated (t0, t1, fraction)
+    // The head POSE follows the store fraction: the same evaluated (t0, t1, fraction)
     // lerp Entities renders the interactive cone with, so a mid-motion pause (fraction ≠ 0 — a pause never
     // clears it) shows ONE drone, not a cone up to a full 2-m step ahead of a tick-snapped head. This is a
     // fraction-RATE write (frame-rate during play, silent while paused — Timeline's draw loop is the only
-    // fraction writer): one lerp into the head's own vector, zero allocation — the same §8 class of work
+    // fraction writer): one lerp into the head's own vector, zero allocation — the same load-budget class of work
     // Entities' per-frame cone lerp already does. Everything else in build() stays event-rate (per tick).
     const place = () => {
       const head = headRef.current
       if (!head) return
-      // A3 ingestion (F1): viewStore.tick is a plain TransportTick (a bare scrub coordinate); brand it into the
+      // Ingestion: viewStore.tick is a plain TransportTick (a bare scrub coordinate); brand it into the
       // event domain HERE, at this surface's own store read, exactly as Scene/ChainLinks do — lerpHeadPosition
       // now demands an EventTick and applies TARGET_FRAME_OFFSET itself, so this is the ONE offset application.
       const vs = useViewStore.getState()
@@ -341,7 +341,7 @@ export function SensingStage({ trail, data }: { trail: Trail; data: SensingStage
   return (
     <group>
       {/* Sensor apparatus at the origin — an aperture marker (◎). A scenario constant; quiet steel, never a
-          verdict hue, never dressed as an agent. F3: mounted at the EXPORTED SENSOR_THREE (the same t3 anchor the
+          verdict hue, never dressed as an agent. Mounted at the EXPORTED SENSOR_THREE (the same t3 anchor the
           drawn-space oracle + the tour camera bind), so the marker's transform is pinned, not an inline literal. */}
       <mesh position={SENSOR_THREE} renderOrder={2}>
         <octahedronGeometry args={[SENSOR_MARKER_R]} />
@@ -357,7 +357,7 @@ export function SensingStage({ trail, data }: { trail: Trail; data: SensingStage
         <lineBasicMaterial color={STEEL} transparent opacity={0.5} toneMapped={false} fog={false} depthWrite={false} />
       </lineSegments>
 
-      {/* Occluder sphere Q — a scenario constant (a quiet hollow body). F3: mounted at the EXPORTED
+      {/* Occluder sphere Q — a scenario constant (a quiet hollow body). Mounted at the EXPORTED
           OCCLUDER_THREE.center (the same t3 anchor the oracle binds), so its transform is pinned, not an inline literal. */}
       <mesh position={OCCLUDER_THREE.center} renderOrder={1}>
         <sphereGeometry args={[OCC_R, 20, 16]} />
@@ -372,10 +372,10 @@ export function SensingStage({ trail, data }: { trail: Trail; data: SensingStage
       <primitive object={tintedLine} />
 
       {/* Decoded detection marks (kind-1 meas, NED meters) — persistent contacts, revealed by tick. SHRINK +
-          GRADE (ruling 1): a small radius (a countable bead-chain, not a fused capsule) and per-instance colour
+          GRADE (a design ruling): a small radius (a countable bead-chain, not a fused capsule) and per-instance colour
           (instanceColor) so the live mark is full affirm and the spent trail is sub-bloom. Material colour is
           left at the default white — instanceColor carries the true hue. Born at count 0 (initMarks) so a mount
-          never flashes every contact before the first sync (W3). */}
+          never flashes every contact before the first sync. */}
       <instancedMesh ref={initMarks} args={[undefined, undefined, Math.max(1, marks.length)]} frustumCulled={false} renderOrder={3}>
         <sphereGeometry args={[MARK_R, 12, 10]} />
         <meshBasicMaterial toneMapped={false} fog={false} />
@@ -384,7 +384,7 @@ export function SensingStage({ trail, data }: { trail: Trail; data: SensingStage
       {/* The drone's live pose — the NOW voice (▸ the vehicle), riding the evaluated frame lerped by the
           store fraction (the SAME continuous curve Entities' interactive cone renders) and tinted by the
           committed frame's eligibility verdict. Born hidden (visible=false); the first layout-effect
-          sync places + tints + reveals it pre-paint, so no green cone flashes at the origin on mount (W3). */}
+          sync places + tints + reveals it pre-paint, so no green cone flashes at the origin on mount. */}
       <mesh ref={headRef} renderOrder={4} visible={false}>
         <coneGeometry args={[HEAD_R, HEAD_CONE_H, 4]} />
         <meshBasicMaterial color={AFFIRM} toneMapped={false} fog={false} />

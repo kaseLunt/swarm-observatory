@@ -36,11 +36,11 @@ import { resolveCursorInto, eventTickOf, type FrameCursor } from './cursor'
 import { R_MAX, SENSOR_O, OCCLUDER_C, OCCLUDER_R2 } from './sensingScenario'
 import type { StateFrame, TransportTick } from '../lib/brand'
 
-// Follow-aim trail bias (ruling 7, T2). The playback follow aimed dead at the live head, so the one-sided
-// trail — which lies entirely BEHIND the head — projected off to one side of frame (dossier Q6). Bias the
+// Follow-aim trail bias (a design ruling). The playback follow aimed dead at the live head, so the one-sided
+// trail — which lies entirely BEHIND the head — projected off to one side of frame. Bias the
 // follow aim off the head toward the midpoint of the REVEALED path by this fraction (aim = lerp(head, mid,
 // bias)): the head then sits ~1/3 in from the leading edge and the traveled path balances the frame.
-// CALIBRATED on screenshot evidence (t2-shots/calib): the plan floated ≈0.3, but because followPan preserves
+// CALIBRATED on screenshot evidence: the plan floated ≈0.3, but because followPan preserves
 // the camera→pivot offset, a bias applied to the ABSOLUTE midpoint of f1's ~250u corridor moves the pivot
 // ~0.3·136u ≈ 40u off the head, so the subject RECEDES to a sub-pixel speck in the far corner — the opposite
 // of "head prominent, ~1/3 from the leading edge". 0.2 mildly recedes; 0.15 keeps the subject prominent with
@@ -48,7 +48,7 @@ import type { StateFrame, TransportTick } from '../lib/brand'
 // ONLY — focus / trail-frame / establishing aims are untouched. Zero per-frame allocation: a direct
 // trail-buffer read + a number-local lerp (house style).
 const FOLLOW_TRAIL_BIAS = 0.15
-// Absolute cap on the follow-bias aim DISPLACEMENT (T2 fixwave, ruling 7). FOLLOW_TRAIL_BIAS above encodes a
+// Absolute cap on the follow-bias aim DISPLACEMENT (a design-ruling fixwave). FOLLOW_TRAIL_BIAS above encodes a
 // SCREEN-relative composition goal — "head ~1/3 in from the leading edge" — but it is applied as an UNBOUNDED
 // WORLD displacement 0.15·|head−mid| that grows with the revealed corridor: at f1 tick 63 the pull is ~20.9u,
 // and a future campaign-scale 1000u+ corridor would push the head fully out of frame. Cap the displacement
@@ -62,37 +62,37 @@ const FOLLOW_TRAIL_BIAS = 0.15
 // Below the cap the displacement is applied verbatim (bit-identical to the uncapped lerp — early run
 // untouched). Exported for tests (camera.test.ts pins followBiasCapScale against the real cap value).
 export const FOLLOW_BIAS_MAX = 4.5
-// Predictive follow-lead fraction (v0.5c ruling 4). The exponential follow lags an accelerating head by
-// ≈v/rate (critic n4: head at ~89-93% frame width at 0.9-1.8s, the SDF label clipping the right edge).
+// Predictive follow-lead fraction (a design ruling). The exponential follow lags an accelerating head by
+// ≈v/rate (an observed note: head at ~89-93% frame width at 0.9-1.8s, the SDF label clipping the right edge).
 // followLead aims the follow forward along the head velocity by FOLLOW_LEAD·(v/rate), cancelling that
-// fraction of the steady-state lag. CALIBRATED on projected-head evidence (t3-shots / t3a-lead.mjs, f1 1×
+// fraction of the steady-state lag. CALIBRATED on projected-head evidence (f1 1×
 // selected play, frame-width fraction xFrac = ndc.x·0.5+0.5): at 0 the head rides OFF-screen (peak xFrac
-// 1.27, only 17/91 samples on-screen — the v0.5b behaviour, worse than the critic's 0.89-0.93 at this
+// 1.27, only 17/91 samples on-screen — the v0.5b behaviour, worse than the observed 0.89-0.93 at this
 // speed); 0.6 → peak 0.79; 0.7 → 0.76; 0.8 → peak 0.737 across the WHOLE run (target ≤0.75, the SDF label
 // never clipping) with the head never crossing left of centre (min xFrac ~0.5, so the trail stays balanced
-// behind it). 0.8 is the top of ruling 4's α≈0.5-0.8 band and the value that puts the whole-run peak under
+// behind it). 0.8 is the top of the design ruling's α≈0.5-0.8 band and the value that puts the whole-run peak under
 // target. The v0.5b follow bias + cap are UNCHANGED — the lead is an ADDITIONAL aim offset composing with them.
 const FOLLOW_LEAD = 0.8
-// Calibration CANVAS aspect for the follow lead (v0.5d ruling 1; RE-MEASURED for the T3 reserved-inspector
+// Calibration CANVAS aspect for the follow lead (a design ruling; RE-MEASURED for the reserved-inspector
 // layout). FOLLOW_LEAD=0.8 was measured on the 1440×810 selected-play scene — and the Inspector + Provenance
 // columns FLANK the 3D canvas (app.css grid `inspector(280px) | viewport | panel(320px)` above the 1080px
-// drawer breakpoint; since bench R1 the inspector track is RESERVED, so the flanking is selection-INVARIANT).
+// drawer breakpoint; since the inspector track is now RESERVED, so the flanking is selection-INVARIANT).
 // `state.camera.aspect` (what leadForAspect reads live) is that CANVAS aspect, so CALIB_ASPECT must be the
 // canvas aspect at the calibration condition — NOT the 16:9 window — else leadForAspect would compensate at
 // the very aspect it was calibrated on and shift the v0.5c lead. MEASURED at 1440×810 ?run=f1&sel=1:0
-// (sceneBox, v0.5d T3 re-sweep): canvas 840×687 → 1.223 (was 905×687 → 1.318 under the T1 auto-width
-// inspector; R1's fixed 280px track is what moved it). leadForAspect returns FOLLOW_LEAD EXACTLY at or above
+// (sceneBox, a later re-sweep): canvas 840×687 → 1.223 (was 905×687 → 1.318 under the earlier auto-width
+// inspector; the fixed 280px track is what moved it). leadForAspect returns FOLLOW_LEAD EXACTLY at or above
 // this aspect (the full-width drawer layout, canvas ~1.47, is wider → unchanged, the wide-aspect PROTECT)
-// and MORE lead only on narrower canvases (the flanked-narrow band, canvas ~0.75–0.9 post-R1).
+// and MORE lead only on narrower canvases (the flanked-narrow band, canvas ~0.75–0.9 after that change).
 const CALIB_ASPECT = 1.223
-// Aspect-lead COMPENSATION GAIN (v0.5d ruling 1; values RE-MEASURED for the T3 reserved-inspector layout).
+// Aspect-lead COMPENSATION GAIN (a design ruling; values RE-MEASURED for the reserved-inspector layout).
 // leadForAspect raises the effective lead by gain·(aspect deficit) below CALIB_ASPECT. gain = (1−FOLLOW_LEAD)
 // = 0.2 would cancel ONLY the residual-lag fraction growth — but the (PROTECT'd, untouchable) v0.5b follow
 // bias is the LARGER contributor and its fraction ALSO grows on a narrow canvas, so a residual-lag-only gain
-// left the T1 flanked band at ~0.79–0.80 (measured), over the 0.75 ceiling. gain is CALIBRATED on the sweep
-// to also offset the bias growth; 0.8 survived the R1 re-calibration unchanged. T3 six-window re-sweep
-// (v05d-t3-leadsweep, reserved 280px inspector): the WHOLE flanked-narrow band (windows 1081–1160, canvas
-// ~0.78–0.92 aspect post-R1) peaks 0.739–0.743, calib (840×687 → 1.223) peaks 0.749, 1280×720 (canvas 1.123)
+// left the earlier flanked band at ~0.79–0.80 (measured), over the 0.75 ceiling. gain is CALIBRATED on the sweep
+// to also offset the bias growth; 0.8 survived the re-calibration unchanged. The six-window re-sweep
+// (reserved 280px inspector): the WHOLE flanked-narrow band (windows 1081–1160, canvas
+// ~0.78–0.92 aspect after that change) peaks 0.739–0.743, calib (840×687 → 1.223) peaks 0.749, 1280×720 (canvas 1.123)
 // 0.749, the full-width drawer (canvas 1.438) 0.711 — every window ≤ the 0.75 ceiling, zero off-screen
 // samples. BYTE-UNCHANGED (deficit 0) at calib and at the drawer (WIDER than calib → clamped). 1280×720 is
 // COMPENSATED, not byte-unchanged: canvas aspect 1.123 < CALIB_ASPECT, deficit ≈0.082 lifts its lead — and it
@@ -101,7 +101,7 @@ const CALIB_ASPECT = 1.223
 // the residual-lag position to counter the bias; the bias still pulls the head rightward, so the head never
 // strands left. Paired with the leadEff-proportional lead cap below so the over-lead is not clipped.
 const LEAD_ASPECT_GAIN = 0.8
-// Absolute cap on the lead displacement (v0.5c ruling 4). The lead needs its OWN cap distinct from the
+// Absolute cap on the lead displacement (a design ruling). The lead needs its OWN cap distinct from the
 // first-frame/teleport guard below: that guard zeroes the lead on a DISCONTINUOUS frame (first sample, or a
 // scrub that jumps the head), but a smooth-yet-fast segment produces a large continuous velocity the guard
 // lets through — so the cap is the always-on backstop that bounds |lead| in world units.
@@ -115,7 +115,7 @@ const LEAD_ASPECT_GAIN = 0.8
 // clamped here to ≤10u — a bounded nudge the gentle follow ease (~5%/frame at 60fps) barely registers, never a launch.
 const FOLLOW_LEAD_MAX = 10
 // Per-frame head displacement (world units) beyond which the head is treated as TELEPORTED, not travelling
-// (v0.5c ruling 4): a scrub jumps the playhead, so the head can leap the whole corridor between two frames
+// (a design ruling): a scrub jumps the playhead, so the head can leap the whole corridor between two frames
 // (f1: ~250u). Normal selected play advances the head at most ~7-8u/frame (8×, the fastest ladder), so 40u
 // (~5× the peak, far below a scrub) cleanly separates a real velocity from a teleport — on a teleport the
 // lead is SKIPPED that frame (no direction error, no launch) and the sample re-seeds clean for the next.
@@ -125,11 +125,11 @@ const scratchMat = new THREE.Matrix4()
 const scratchA: [number, number, number] = [0, 0, 0]
 const scratchB: [number, number, number] = [0, 0, 0]
 const scratchP: [number, number, number] = [0, 0, 0]
-// The Entities frame-loop cursor: reused every frame (§8 — no allocation on the useFrame path). resolveCursorInto
+// The Entities frame-loop cursor: reused every frame (the load budget — no allocation on the useFrame path). resolveCursorInto
 // writes (t0, t1) here; the loop reads them and never mints a fresh object.
 const entitiesCursor: FrameCursor = { t0: 0 as StateFrame, t1: 0 as StateFrame }
 const EMPTY_SEQS: readonly number[] = []
-// Predictive-lead velocity scratch (v0.5c ruling 4): the previous follow frame's head sample + a validity
+// Predictive-lead velocity scratch (a design ruling): the previous follow frame's head sample + a validity
 // flag, so the follow block can estimate the head velocity (Δhead/dt) with ZERO per-frame allocation.
 // `has` is false on the first follow frame, is re-seeded false on every run switch (the Entities dormant-arm
 // effect resets it, since this module state outlives the per-run Canvas remount) and on a mid-run pause, so
@@ -146,18 +146,18 @@ const EMPTY_SEQS: readonly number[] = []
 const followLeadPrev = { x: 0, y: 0, z: 0, has: false }
 const scratchLead: [number, number, number] = [0, 0, 0]
 
-// F1 — the directed-camera subject anchor, resolved fresh every frame by camera.heldSubjectPose from the
+// The directed-camera subject anchor, resolved fresh every frame by camera.heldSubjectPose from the
 // TIMELINE (the subject's trail), never accumulated. This is PURE scratch: heldSubjectPose overwrites all four
 // fields (or clears `has`) on every read, so nothing crosses frames and nothing crosses runs — no run-switch
 // re-seed is needed (the prior traversal-latch's cross-run leak vector is gone). Module scope only to keep the
-// frame path allocation-free (§8, house style); it is written-then-read within a single frame, never carried.
+// frame path allocation-free (the load budget, house style); it is written-then-read within a single frame, never carried.
 const subjectPoseScratch: SubjectHold = { has: false, x: 0, y: 0, z: 0 }
-// F1 — the head's OWN fractional pose, read for the camera anchor across a dropout RECOVERY so the anchor and the
+// The head's OWN fractional pose, read for the camera anchor across a dropout RECOVERY so the anchor and the
 // SensingStage head share ONE pose source at every fraction (see the frame-loop fallback). lerpHeadPosition writes
-// this in place (out.set) with zero allocation, so the module scratch keeps the frame path allocation-free (§8).
+// this in place (out.set) with zero allocation, so the module scratch keeps the frame path allocation-free (the load budget).
 const subjectLerpScratch = new THREE.Vector3()
 
-// Absent-slot park (Task v04.1). `keys` is the entity set at the run's FIRST POPULATED tick; under late-spawn
+// Absent-slot park. `keys` is the entity set at the run's FIRST POPULATED tick; under late-spawn
 // semantics an entity in that set can be ABSENT at the current tick (before it spawns). Skipping such a slot
 // (the old `if (!a) continue`) would leave Three's DEFAULT IDENTITY matrix in the instanced slot — a false
 // unit cone at the origin WITH a live (invisible) hit target, since the hit mesh gets its own per-instance
@@ -170,18 +170,18 @@ const PARKED = new THREE.Matrix4().makeScale(0, 0, 0)
 // are derived from (its only consumer is this module; exported as the canonical selection-tint
 // values, not for testability — no test imports it).
 // InstancedMesh has NO per-instance emissive, so per-instance brightness comes from HDR instance
-// colors: SELECTED is the accent scaled >1.0 (pre-bloom it just renders bright; under Task 5's bloom
+// colors: SELECTED is the accent scaled >1.0 (pre-bloom it just renders bright; under the bloom
 // it glows), NEUTRAL is the accent dimmed to ~0.55, DIMMED is a genuinely recessed panel tone.
 export const SELECTION_COLORS = { selected: PALETTE.accent, dimmed: '#141d27', neutral: PALETTE.accent } as const
 const SELECTED = new THREE.Color(SELECTION_COLORS.selected).multiplyScalar(2.2)
 const DIMMED = new THREE.Color(SELECTION_COLORS.dimmed)
 const NEUTRAL = new THREE.Color(SELECTION_COLORS.neutral).multiplyScalar(0.55)
-// Hover emissive lift (Task v04-7): a hovered, non-selected cone brightens to read as interactive.
+// Hover emissive lift: a hovered, non-selected cone brightens to read as interactive.
 // InstancedMesh has no per-instance emissive, so — exactly like SELECTED — the "lift" is an HDR-ish
 // instance colour: the accent well above NEUTRAL (×0.55) yet below SELECTED (×2.2). Module scope so the
 // hover repaint (event-driven, never per frame) allocates nothing. Derived ONCE at load.
 const HOVERED = new THREE.Color(SELECTION_COLORS.neutral).multiplyScalar(1.25)
-// Celebrated rest head (T3, ruling 2 / dossier Q7): at a natural-end rest with NO selection the resting head
+// Celebrated rest head (a design ruling): at a natural-end rest with NO selection the resting head
 // is painted an HDR instance tone ABOVE the bloom 0.4 threshold so it glows — the naive path's subject,
 // honoured. accent ×1.75 sits below SELECTED (×2.2) so a selection still out-glows it (selection lensing wins)
 // yet well clear of NEUTRAL (×0.55). Reuses the instance-color lever (setColorAt); NO new shader; the pulse
@@ -189,27 +189,27 @@ const HOVERED = new THREE.Color(SELECTION_COLORS.neutral).multiplyScalar(1.25)
 // paintColors path (a store subscription), never per frame.
 const FINALE_HEAD = new THREE.Color(SELECTION_COLORS.neutral).multiplyScalar(1.75)
 
-// Query-pulse colors, derived ONCE at module scope from the palette. R3 swatch (owner-approved 2026-07-09):
+// Query-pulse colors, derived ONCE at module scope from the palette. The owner-approved swatch (2026-07-09):
 // the verdict pair is now its OWN token pair (verdictAffirm / verdictNegate), un-borrowed from the integrity
 // green/red — a query returning false no longer flashes the tamper red. The per-frame setHex call site
 // references these consts, so resolving the palette hex to a THREE numeric costs zero per frame (module load).
 const PULSE_TRUE = hexToThree(PALETTE.verdictAffirm)
 const PULSE_FALSE = hexToThree(PALETTE.verdictNegate)
 
-// Resting cone emissive (Task 2 §4): a self-lit deep-blue floor so an unselected cone reads as a solid
+// Resting cone emissive: a self-lit deep-blue floor so an unselected cone reads as a solid
 // object against the darkened vignette rather than a flat silhouette. A documented literal (like
 // SELECTION_COLORS.dimmed) — it is a material tone, not a palette token consumed anywhere else.
 const CONE_EMISSIVE = '#12263a'
-// Additive ground-ring under the SELECTED entity (Task 2 §4): the accent scaled >1.0 so it clears
+// Additive ground-ring under the SELECTED entity: the accent scaled >1.0 so it clears
 // Bloom's luminance threshold and glows — this is the deliberate, data-bound source that gives the
 // selected cone its halo (visible only while a selection exists; tracked in the frame loop).
 const RING_COLOR = new THREE.Color(PALETTE.accent).multiplyScalar(2.4)
-// Unselected mid-run tracking-ring SCALE (v0.5c ruling 5 FLOOR, v0.5d ruling 2 DISTANCE-TRUE). The selRing mesh
+// Unselected mid-run tracking-ring SCALE (design rulings — FLOOR + DISTANCE-TRUE). The selRing mesh
 // (outer radius 0.92u) reads correctly at the selection/finale CLOSE-UP (~11.4-25u), but the mid-run tracking
 // marker rides the head during the ESTABLISHING shot with the camera FIXED while the head travels the corridor —
-// browser-measured (v05d-t2-distprobe): the camera→head distance sweeps 242u (tick 1) → 465u (tick 62). A FIXED
+// browser-measured: the camera→head distance sweeps 242u (tick 1) → 465u (tick 62). A FIXED
 // world scale is therefore a shrinking apparent marker: scale-8's on-screen radius fell 7.2px → 3.7px, DYING to
-// ~4.4-4.8px in the late climb (ticks 38-46) — exactly where the head is most sub-pixel (critic n2). Ruling 2:
+// ~4.4-4.8px in the late climb (ticks 38-46) — exactly where the head is most sub-pixel (an observed note). The design ruling:
 // make the scale DISTANCE-PROPORTIONAL — screen-space-constant — via camera.ringTrackScale (scale = K·dist,
 // floored + ceiling'd). See its comment for the mechanism; the constants below are the calibration.
 //   RING_TRACK_MIN_SCALE = 8 is the FLOOR and the v0.5c value: the "8-at-its-calibration-distance" look, preserved.
@@ -227,13 +227,13 @@ const RING_TRACK_MIN_SCALE = 8
 const RING_TRACK_CALIB_DIST = 242
 const RING_TRACK_MAX_SCALE = 20
 const RING_TRACK_K = RING_TRACK_MIN_SCALE / RING_TRACK_CALIB_DIST
-// Ring-scale handoff scratch (v0.5d ruling 4; SEED amended by v0.5d ruling 2 / rider B). At a natural end the ring
+// Ring-scale handoff scratch (a design ruling; SEED amended by a later ruling). At a natural end the ring
 // swaps from the wide-establish tracking marker to the finale close-up ring (scale 1) — but the finale CAMERA ease
 // takes ~500ms to close in, so an instant scale-1 ring is sub-pixel for that beat: one NAKED-HEAD frame while the
-// camera is still wide (critic n4). Instead the finale arm EASES this scratch toward 1 in LOCKSTEP with the finale
+// camera is still wide (an observed note). Instead the finale arm EASES this scratch toward 1 in LOCKSTEP with the finale
 // camera ease (same focusLerpFactor time-constant), so the ring stays a visible marker the whole handoff — its
 // apparent size (scale/distance) never collapses.
-//   SEED FROM THE LIVE TRACKING SCALE (rider B): with the distance-true ring (ruling 2) the tracking marker is
+//   SEED FROM THE LIVE TRACKING SCALE (the seed rider): with the distance-true ring the tracking marker is
 // scale ~15 at the far natural-end distance, NOT the constant 8. So the tracking arm seeds this scratch with the
 // LIVE per-frame ringTrackScale on the last play frame (the frame immediately before the finale arm on the
 // natural-end path); the finale ease then starts the shrink from whatever the ring last RENDERED, avoiding a
@@ -247,9 +247,9 @@ const RING_TRACK_K = RING_TRACK_MIN_SCALE / RING_TRACK_CALIB_DIST
 // (factor 1).
 const finaleRingScale = { v: RING_TRACK_MIN_SCALE }
 
-// Trail-frame ease scratch (Task v04.1-2): the framing computed ONCE per request (event-rate — on the
+// Trail-frame ease scratch: the framing computed ONCE per request (event-rate — on the
 // stamp change) is copied into these preallocated vectors; the per-frame ease reads them only, so the
-// frame path stays allocation-free (§8).
+// frame path stays allocation-free (the load budget).
 const trailFramePos = new THREE.Vector3()
 const trailFrameTgt = new THREE.Vector3()
 // Trail-frame framing opts. Same fov / margin / lift as CameraRig's resting fit, but the oversized
@@ -262,15 +262,15 @@ const trailFrameTgt = new THREE.Vector3()
 // tour-arrival HOLD is the opposite case — a deliberate wide shot whose whole point is to frame the
 // trajectory-so-far with the subject in it — so here we fit the prefix fully.
 const TRAIL_FRAME_OPTS = { fov: DEFAULT_FOV, margin: FIT_MARGIN, lift: TARGET_LIFT, maxDistanceFactor: Infinity }
-// FINALE close-up pull-back (T3, ruling 2). finaleFraming composes a directed rest shot around the TRUE head;
+// FINALE close-up pull-back (a design ruling). finaleFraming composes a directed rest shot around the TRUE head;
 // FINALE_DISTANCE is how far the camera sits off the head along the composed octant. ~2.2× the composed offset
 // length (~11.4u = |DEFAULT_POSITION − DEFAULT_TARGET|): far enough that the resting drone reads as the SUBJECT
 // with the hold-lit corridor receding into the 30→400 fog for depth, close enough that it is not a speck (the
-// void the corridor-fit would produce). Calibrated on screenshots (t3-shots). Finite-guarded at the consume,
+// void the corridor-fit would produce). Calibrated on screenshots. Finite-guarded at the consume,
 // and RM-snapped through the shared focusLerpFactor ease (factor 1) — no bespoke finale ease.
 const FINALE_DISTANCE = 25
 const FINALE_FRAMING_OPTS = { lift: TARGET_LIFT, distance: FINALE_DISTANCE }
-// AUTHORED tour-camera shot knobs (v0.7 T4). SHOT_OPTS threads the framing constants this file owns into the
+// AUTHORED tour-camera shot knobs (v0.7). SHOT_OPTS threads the framing constants this file owns into the
 // pure camera.shotFraming resolver: `fit` is the uncapped house fit shared by 'conjunction' + 'stage'
 // (TRAIL_FRAME_OPTS ≡ STAGE_FRAME_OPTS); `headMedium`/`headClose` are the compose-around-head distances (a
 // 'head' 'close' arrive lands finaleFraming's terminal close-up EXACTLY, so f1's terminal beat is byte-identical
@@ -281,7 +281,7 @@ const FINALE_FRAMING_OPTS = { lift: TARGET_LIFT, distance: FINALE_DISTANCE }
 const SHOT_OPTS = { fit: TRAIL_FRAME_OPTS, lift: TARGET_LIFT, headMedium: HEAD_MEDIUM_DISTANCE, headClose: FINALE_DISTANCE }
 // The sensing anchors use the ONE shared basis-A conversion (placement.nedToThree) — the SAME transform the
 // sensing apparatus (sensingStageView) and the flight trail draw through, so the authored conjunction shots
-// frame exactly what is rendered. (Formerly a local re-derivation here; unified under ARCH-4 so the anchors
+// frame exactly what is rendered. (Formerly a local re-derivation here; unified so the anchors
 // and the apparatus can never drift into two bases again.)
 const SENSOR_THREE = nedToThree(SENSOR_O)
 const OCCLUDER_THREE = { center: nedToThree(OCCLUDER_C), radius: Math.sqrt(OCCLUDER_R2) }
@@ -309,7 +309,7 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
   const selRingRef = useRef<THREE.Mesh>(null)
   const selected = useViewStore(s => s.selectedEntity)
   const keys = useMemo(() => model.entityKeys(), [model])
-  // Authored-shot opts with the stage-fit branch bound to THIS run's stage opts (G6): the 'stage' bookend (f2a b5)
+  // Authored-shot opts with the stage-fit branch bound to THIS run's stage opts: the 'stage' bookend (f2a b5)
   // frames on `stage` (the RAISED sensing vantage), while 'conjunction'/'head' keep the untouched house `fit`. Memoized
   // on stageOpts (stable per model) so the frame-path shotFraming call reads a stable object — zero per-frame alloc.
   const shotOpts = useMemo(() => ({ ...SHOT_OPTS, stage: stageOpts }), [stageOpts])
@@ -326,12 +326,12 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
   // framing is computed then) and cleared on convergence or on an orbit-drag takeover.
   const trailFrameStampRef = useRef(trailFrameRequest.stamp)
   const trailFrameActiveRef = useRef(false)
-  // Which ease rate the ACTIVE trail-frame ease uses (v0.5d ruling 5): true → the gentler refitLerpFactor (a
+  // Which ease rate the ACTIVE trail-frame ease uses (a design ruling): true → the gentler refitLerpFactor (a
   // scrub-from-finale re-fit), false → focusLerpFactor (tour-arrival, plain establish, finale). Set at each
   // activation from the request's refit flag (below); read by the shared ease block so the rate is fixed for the
   // ease's whole duration even though the channel may re-arm afterward. Mirrors the trailFramePos scratch pattern.
   const trailFrameGentleRef = useRef(false)
-  // Tour-start camera-reset one-shot (v0.5d ruling 6): seed from the CURRENT stamp so a fresh mount consumes an
+  // Tour-start camera-reset one-shot (a design ruling): seed from the CURRENT stamp so a fresh mount consumes an
   // outstanding reset request without acting (mirrors focus/trail-frame). The consume is an INSTANT cut, so there
   // is no companion "active" ref — one stamp change, one write.
   const tourStartStampRef = useRef(tourStartFrameRequest.stamp)
@@ -343,7 +343,7 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
   const followCoastRef = useRef(false)
   // Reduced-motion is read DIRECTLY in the frame loop via prefersReducedMotion() (v0.4.1): motion.ts
   // now keeps a live module boolean fresh via a matchMedia change listener, so the read is a plain
-  // boolean load (no per-frame matchMedia, zero alloc — §8) AND a mid-session OS toggle propagates
+  // boolean load (no per-frame matchMedia, zero alloc — the load budget) AND a mid-session OS toggle propagates
   // without a remount. This retires the mount-snapshot ref that would have gone stale on a live toggle.
 
   // Arm the auto-follow coast on the store's rising edge of `playing`. This is a subscription, not a read
@@ -352,29 +352,29 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
   // true→false within a single r3f frame (which a frame-loop read could sample straight past) is still
   // caught. The frame loop then eases the pivot and disarms on convergence.
   //
-  // DORMANT ARM (Task v04.1-2 M6): only a run with POSITIONED entities may arm the coast. A positionless
+  // DORMANT ARM: only a run with POSITIONED entities may arm the coast. A positionless
   // run (e0 — entityKeys() is empty) has nothing spatial to follow, so arming there would pan an empty
   // stage on play. `positioned` is captured once in the effect closure and recomputed only when the model
   // changes (dep [model]); e0 therefore never arms.
   useEffect(() => {
     const positioned = model.entityKeys().length > 0
-    // Re-seed the predictive-lead velocity sample on run switch (v0.5c ruling 4): followLeadPrev is module
+    // Re-seed the predictive-lead velocity sample on run switch (a design ruling): followLeadPrev is module
     // scope, so it outlives this per-run Canvas remount — clear it here so the new run's first follow frame
     // never computes a velocity across the old run's head position.
     followLeadPrev.has = false
-    // (F1: the subject anchor no longer needs a run-switch clear — heldSubjectPose derives it fresh from THIS
+    // (the subject anchor no longer needs a run-switch clear — heldSubjectPose derives it fresh from THIS
     // run's trail every frame, so a prior run's pose can never leak into the new run's first directed frame.)
     finaleRingScale.v = RING_TRACK_MIN_SCALE // re-seed the ring handoff (module state outlives the per-run Canvas remount)
-    // ONE PLAY-EDGE HANDLER shared by the subscription rising-edge arm AND the mount reconciliation (v0.7 T4
-    // fixwave, W1). A play moment — a false→true `playing` edge caught by the subscription below, OR an ALREADY-
+    // ONE PLAY-EDGE HANDLER shared by the subscription rising-edge arm AND the mount reconciliation (v0.7
+    // fixwave). A play moment — a false→true `playing` edge caught by the subscription below, OR an ALREADY-
     // TRUE `playing` at a slow (pre-Entities) mount — does TWO things in order:
     //   1. ARM the auto-follow coast whenever the run is POSITIONED (independent of establish eligibility): a
     //      moving subject must be tracked, selection or not.
     //   2. THEN apply the STRICTER establish eligibility (unselected · tour-free · fittable · mid-run) — the
     //      wide establishing shot, an unselected-only framing.
-    // The two are INDEPENDENT, and that is the whole W1 fix: a SELECTED early-play mount (?run=f1&sel=1:0 + ▶
+    // The two are INDEPENDENT, and that is the whole fix: a SELECTED early-play mount (?run=f1&sel=1:0 + ▶
     // landing before Entities mounts) arms follow so the selected vehicle stays framed EVEN THOUGH establish
-    // correctly REJECTS (a selection is present). The prior I-1 mount reconciliation wired only step 2, so such
+    // correctly REJECTS (a selection is present). The prior mount reconciliation wired only step 2, so such
     // a mount left follow false and the vehicle flew off-frame until the next pause/resume edge re-armed it.
     // `!s.playing` short-circuits so the common at-rest mount — EVERY run switch (App.selectRun rests
     // playing=false) — is a no-op (never arms, never establishes), exactly as before.
@@ -385,32 +385,32 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
       // ALREADY-TRUE `playing`, which the rising edge (s.playing true) and the already-playing mount both satisfy
       // — so the SAME predicate is the establish gate for both callers. RE-FIRE on a pause→resume is allowed (the
       // ease reads the LIVE camera → a no-op when nothing moved it, a gentle re-frame if the user orbited away).
-      // The tick<tickCount guard excludes a PLAY-AT-REST (finale re-fire, r1) so the finale close-up owns the end.
+      // The tick<tickCount guard excludes a PLAY-AT-REST (finale re-fire) so the finale close-up owns the end.
       if (shouldEstablishOnMount(s, positioned, bounds !== null, isTourActive(), model.tickCount)) requestEstablishFrame()
     }
-    // I-1 + W1: reconcile a MISSED play edge. A subscription attached HERE at mount cannot catch a `playing`
+    // Reconcile a MISSED play edge. A subscription attached HERE at mount cannot catch a `playing`
     // rising edge that fired BEFORE it existed (a slow SwiftShader mount landing after ▶ — the e2e seatEarlySphere
     // note documents it). Replay that edge ONCE, AFTER the stamp refs seeded (render, above) so the consume sees a
     // genuine stamp change. onPlayEdge CANNOT double-fire with the subscription arm (an already-playing mount has
-    // no future rising edge). W1: it now arms follow too (not just establish), so a selected early-play mount tracks.
+    // no future rising edge). It now arms follow too (not just establish), so a selected early-play mount tracks.
     onPlayEdge(useViewStore.getState())
     return useViewStore.subscribe((s, prev) => {
-      // Rising edge of `playing` → the shared play-edge handler (W1): arm follow (+ establish iff eligible).
+      // Rising edge of `playing` → the shared play-edge handler: arm follow (+ establish iff eligible).
       if (s.playing && !prev.playing) onPlayEdge(s)
       // A selection landing during an ACTIVE establishing ease cancels it — the user chose the subject, so
       // follow takes over through its own gate (the establish activation deliberately leaves the coast armed,
       // so the now-open follow gate engages the frame after this ease clears). SCOPED to the establish intent
       // inside cancelEstablishFrame: a tour's select actions hit this too but are a no-op there, so a
-      // tour-arrival frame (and — T3 — a finale frame) is never cancelled by a selection.
+      // tour-arrival frame (and a finale frame) is never cancelled by a selection.
       if (s.selectedEntity !== prev.selectedEntity) cancelEstablishFrame()
-      // FINALE (T3, ruling 5; falling edge AMENDED by v0.5c ruling 3): the natural-end edge writes the store
+      // FINALE (a design ruling; falling edge AMENDED by a later ruling): the natural-end edge writes the store
       // finale flag inside the Timeline transport batch. React to its edges here — the module-channel + camera
       // side (the store flag itself drives the React consumers: the entity head repaint, the DOM marker —
       // e0's QueryStage, ChainSpine's successor, needs no finale flag: its tick subscription holds the stage).
       //   • rising (false→true): arm the composed close-up + light the journey (requestFinaleFrame). The consume
-      //     computes finaleFraming(true head) / the spine-bounds fit and clears coast+focus (r2).
+      //     computes finaleFraming(true head) / the spine-bounds fit and clears coast+focus.
       //   • falling (true→false): STOP the rest display — unlight the journey (the trail's own play-clear does
-      //     NOT cover a scrub) and drop any in-flight finale ease. THEN, v0.5c ruling 3: when the finale was left
+      //     NOT cover a scrub) and drop any in-flight finale ease. THEN, a design ruling: when the finale was left
       //     by a playhead MOVE, hand back the establishing context (an establish request — framing, NO hold-light)
       //     so a scrub / arrow-key step / deep-link off a finale rest eases back to the wide frame instead of
       //     stranding the viewer at the empty sky where the head was. ALL OTHER finale clears (tour-start,
@@ -420,7 +420,7 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
       else if (!s.finale && prev.finale) {
         trailHold.lit = false
         if (trailFrameRequest.intent === 'finale') trailFrameActiveRef.current = false
-        // v0.5d ruling 5: the scrub-from-finale re-fit gets the gentler settle rate (requestRefitFrame — refit=true),
+        // A design ruling: the scrub-from-finale re-fit gets the gentler settle rate (requestRefitFrame — refit=true),
         // so leaving a finale by a scrub eases back to the wide frame as a directed move, not a whip. Plain establish
         // (the play rising edge, above) keeps the focus rate.
         if (shouldRefitOnFinaleClear(s, prev, positioned, bounds !== null)) requestRefitFrame()
@@ -441,7 +441,7 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
       const k = keys[i]!
       // Selection lensing WINS (SELECTED / DIMMED). With nothing selected, a natural-end finale celebrates the
       // resting head — the SUBJECT cone (subjectIndex; the sensing subject on an f2a-shape run, index 0 otherwise)
-      // — with an HDR tone that clears the bloom threshold; otherwise NEUTRAL. (F3: the celebrated head is the
+      // — with an HDR tone that clears the bloom threshold; otherwise NEUTRAL. (the celebrated head is the
       // entity the evidence concerns, not a hardcoded slot 0.)
       let color = sel !== null ? (k === sel ? SELECTED : DIMMED) : (finale && i === subjectIndex ? FINALE_HEAD : NEUTRAL)
       // Hover lifts an interactive non-selected cone; it never dims the already-glowing selected cone OR the
@@ -453,7 +453,7 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
   }, [keys, subjectIndex])
   useEffect(() => {
     paintColors()
-    // Repaint on a selection change OR a finale edge (T3: the head lights/dims as the finale sets/clears) —
+    // Repaint on a selection change OR a finale edge (the head lights/dims as the finale sets/clears) —
     // both are event-rate store subscriptions, never the frame path.
     return useViewStore.subscribe((s, prev) => { if (s.selectedEntity !== prev.selectedEntity || s.finale !== prev.finale) paintColors() })
   }, [paintColors])
@@ -461,15 +461,15 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
   useFrame((state, delta) => {
     const vs = useViewStore.getState()
     const { fraction, selectedEntity, playing, finale } = vs
-    // A3 BOUNDARY: the store playhead is a TransportTick (a plain scrub coordinate — viewStore.tick is a bare
+    // THE TICK-DOMAIN BOUNDARY: the store playhead is a TransportTick (a plain scrub coordinate — viewStore.tick is a bare
     // number by design); brand it EventTick HERE, the ONE ingestion where model semantics begin. Every tick use
     // below (the pausedMidRun gate, the cursor, lerpHeadPosition, eventsByTick) is now typed in the event domain.
     const tick = eventTickOf(vs.tick as TransportTick)
-    // pausedMidRun (v0.5d ruling 3): a playhead paused STRICTLY between the cold open and the natural end — the
+    // pausedMidRun (a design ruling): a playhead paused STRICTLY between the cold open and the natural end — the
     // sanctioned pause-then-click window where the tracking ring must stay visible so the sub-pixel subject is
     // discoverable. Cold rest (tick 0) and the natural-end rest (tick === tickCount, finale-owned) are excluded.
     const pausedMidRun = !playing && tick > 0 && tick < model.tickCount
-    // f2a PARITY (closure round): for a sensing run the interactive drone — the cone, its enlarged raycast
+    // f2a PARITY: for a sensing run the interactive drone — the cone, its enlarged raycast
     // hit target, the SDF label, the ground ring, and the follow/focus camera targets — must ride the SAME
     // evaluated state frame the SensingStage head paints. A tick-k eligibility verdict was decided against
     // frame (k + TARGET_FRAME_OFFSET)'s pose (the excerpt's g = frame k+1), and the head rides that frame;
@@ -481,9 +481,9 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
     // (e0/f1 untouched). The gate is the ONE arbitrated stage predicate sensingStageApplies (threaded as
     // hasSensing), never a second predicate; and model.tickCount === trail.count − 1, matching the head's clamp.
     const poseFrameOffset = hasSensing ? TARGET_FRAME_OFFSET : 0
-    // The ONE cursor resolver (§A3): (t0, t1) = the evaluated frame and its clamped successor. model.tickCount
+    // The ONE cursor resolver: (t0, t1) = the evaluated frame and its clamped successor. model.tickCount
     // is the terminal StateFrame index (=== trail.count − 1); brand it StateFrame at this single lastFrame
-    // ingestion. Non-sensing runs pass offset 0 ⇒ t0 === Math.min(tick, tickCount), byte-identical to pre-A3.
+    // ingestion. Non-sensing runs pass offset 0 ⇒ t0 === Math.min(tick, tickCount), byte-identical to the pre-brand path.
     resolveCursorInto(entitiesCursor, tick, poseFrameOffset, model.tickCount as StateFrame)
     const t0 = entitiesCursor.t0
     const s0 = model.entityStatesAt(entitiesCursor.t0)
@@ -499,9 +499,9 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
     // Running swarm centroid accumulated from the SAME interpolated positions the cones render at
     // (zero extra allocation — plain number accumulators). Consumed by the auto-follow block below.
     let cx = 0, cy = 0, cz = 0, count = 0
-    // F3 — the SUBJECT's own interpolated pose this frame (the i===subjectIndex sample the loop already computes),
+    // The SUBJECT's own interpolated pose this frame (the i===subjectIndex sample the loop already computes),
     // captured for the directed-camera anchor so a sensing run frames the entity the evidence concerns, not the
-    // all-entity centroid. subjectSeen marks whether the subject was present THIS frame; F2 (below) then holds the
+    // all-entity centroid. subjectSeen marks whether the subject was present THIS frame; the hold fallback (below) then holds the
     // last-known pose across a frame where the subject is absent so the anchor never falls back to the centroid.
     let sx = 0, sy = 0, sz = 0, subjectSeen = false
     for (let i = 0; i < keys.length; i++) {
@@ -516,8 +516,8 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
       entityPosition(scratchB, b, i)
       lerp3(scratchP, scratchA, scratchB, fraction)
       cx += scratchP[0]; cy += scratchP[1]; cz += scratchP[2]; count++
-      // F3 — capture the SUBJECT cone's interpolated pose (subjectIndex is the sensing subject on an f2a-shape
-      // run, index 0 otherwise) so the directed camera can anchor on it. On a sensing run the F4 gate guarantees
+      // Capture the SUBJECT cone's interpolated pose (subjectIndex is the sensing subject on an f2a-shape
+      // run, index 0 otherwise) so the directed camera can anchor on it. On a sensing run the sensing gate guarantees
       // subjectIndex names a real, resolvable subject; the useSubjectAnchor gate below only trusts it when hasSensing.
       if (i === subjectIndex) { sx = scratchP[0]; sy = scratchP[1]; sz = scratchP[2]; subjectSeen = true }
       scratchMat.makeRotationY(-(a.headingRad))
@@ -527,8 +527,8 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
       // SDF label rides the selected cone: reuse its just-computed interpolated position (scratchP),
       // lift it ~1.2u above the cone tip. Zero allocation — mutates the group's own vector in place.
       // Manual billboarding (in-place quaternion copy) replaces drei's <Billboard>, which registered
-      // its OWN useFrame (rotation.clone() every frame, even while the label was invisible) — see
-      // task-v02b-5-report.md §8. Only runs on the branch where the label is actually placed, so an
+      // its OWN useFrame (rotation.clone() every frame, even while the label was invisible).
+      // Only runs on the branch where the label is actually placed, so an
       // unselected entity costs nothing at all.
       if (k === selectedEntity) {
         if (label) {
@@ -538,7 +538,7 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
         }
         // Ground-ring reticle: pin to the deck (y≈0.02, just above the grid plane) under the cone —
         // an accent target pad, not a halo around the cone body. Reuses scratchP (x,z) — zero alloc.
-        // Scale 1 INSTANTLY: selection is a user act, not a transition (no ease — v0.5d ruling 4). Reset the
+        // Scale 1 INSTANTLY: selection is a user act, not a transition (no ease — a design ruling). Reset the
         // finale handoff scratch to the wide default (RING_TRACK_MIN_SCALE): this seed is LOAD-BEARING for the
         // one finale entry that has no preceding tracking frame — deselecting AT a selected
         // natural-end rest hands the ring from THIS arm straight to the finale arm (no tick move, finale kept),
@@ -547,14 +547,14 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
         finaleRingScale.v = RING_TRACK_MIN_SCALE
         if (ring) { ring.position.set(scratchP[0], 0.02, scratchP[2]); ring.scale.setScalar(1); ring.visible = true; ringPlaced = true }
       } else if (finale && selectedEntity === null && i === subjectIndex) {
-        // FINALE head ring (T3, ruling 2 / dossier Q7): at a natural-end rest with NO selection, the celebrated
-        // head (the SUBJECT cone, subjectIndex — F3: the entity the evidence concerns, index 0 for a non-sensing
+        // FINALE head ring (a design ruling): at a natural-end rest with NO selection, the celebrated
+        // head (the SUBJECT cone, subjectIndex — the entity the evidence concerns, index 0 for a non-sensing
         // run) gets the SAME accent ground-ring the selection uses — the selRing lever,
         // its gate extended from selection-only to also cover the finale. NO label (the finale is a rest state,
         // not a selection). Selection lensing WINS: the `k === selectedEntity` branch above takes priority, so
         // this only fires while nothing is selected. The cone's HDR tint is FINALE_HEAD via paintColors.
-        // v0.5d ruling 4 — RING-SCALE HANDOFF: ease finaleRingScale from the LIVE distance-true tracking scale
-        // (seeded by the tracking arm on the last play frame — rider B, ~15 at the far natural-end distance, NOT
+        // A design ruling — RING-SCALE HANDOFF: ease finaleRingScale from the LIVE distance-true tracking scale
+        // (seeded by the tracking arm on the last play frame — the seed rider, ~15 at the far natural-end distance, NOT
         // the constant floor) toward the close-up scale 1, in LOCKSTEP with the finale camera ease (same
         // focusLerpFactor time-constant). The camera takes ~500ms to
         // close in from the wide corridor; an instant scale-1 ring would be sub-pixel for that beat (one naked-head
@@ -564,19 +564,19 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
         finaleRingScale.v += (1 - finaleRingScale.v) * focusLerpFactor(prefersReducedMotion(), delta)
         if (ring) { ring.position.set(scratchP[0], 0.02, scratchP[2]); ring.scale.setScalar(finaleRingScale.v); ring.visible = true; ringPlaced = true }
       } else if (i === subjectIndex && shouldTrackWithRing(playing, pausedMidRun, selectedEntity !== null, finale, bounds !== null)) {
-        // UNSELECTED MID-RUN TRACKING RING (v0.5c ruling 5; v0.5d rulings 2 + 3): the THIRD arm of the ring gate
+        // UNSELECTED MID-RUN TRACKING RING (design rulings): the THIRD arm of the ring gate
         // (else-if chain → priority selection > finale > mid-run-tracking). During unselected play (or a mid-run
-        // PAUSE — ruling 3, the sanctioned pause-then-click discovery path) of a positioned, fittable run (f1) the
+        // PAUSE — a design ruling, the sanctioned pause-then-click discovery path) of a positioned, fittable run (f1) the
         // establishing shot frames the whole corridor, so the subject is sub-pixel; ride the SAME ground-ring at
-        // the live head (F3: the SUBJECT cone, subjectIndex — index 0 for a non-sensing run) as an honest tracking
+        // the live head (the SUBJECT cone, subjectIndex — index 0 for a non-sensing run) as an honest tracking
         // marker — entity position is data. e0 (positionless → the
         // loop never runs) and f0 (null bounds) are excluded by the gate; a scrub off-frame is honest — the marker
         // sits where the entity IS (the +X bulge carries it off the right edge through ticks ~10-44).
-        //   DISTANCE-TRUE SCALE (ruling 2): the establishing camera is FIXED while the head travels, so the
+        //   DISTANCE-TRUE SCALE (a design ruling): the establishing camera is FIXED while the head travels, so the
         // camera→head distance sweeps 242→465u; a fixed world scale shrinks to sub-pixel in the late climb. Scale
         // the ring PROPORTIONALLY to that distance (ringTrackScale, floored/ceiling'd — see RING_TRACK_* consts)
-        // so its apparent size stays constant. Number locals only, zero alloc (§8).
-        //   Seed the finale handoff scratch every mid-run frame with the LIVE distance-true scale (rider B) so the
+        // so its apparent size stays constant. Number locals only, zero alloc (the load budget).
+        //   Seed the finale handoff scratch every mid-run frame with the LIVE distance-true scale (the seed rider) so the
         // natural-end shrink starts from whatever the ring last rendered (~15 at the far end), not the floor — the
         // tracking arm is the frame immediately before the finale arm on the natural-end path.
         const ring = selRingRef.current
@@ -602,7 +602,7 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
     if (label) label.visible = labelPlaced
     if (selRingRef.current) selRingRef.current.visible = ringPlaced
 
-    // F1/F3 — the directed-camera anchor decision, resolved ONCE post-loop from TIMELINE-DERIVED data (not a
+    // The directed-camera anchor decision, resolved ONCE post-loop from TIMELINE-DERIVED data (not a
     // traversal latch). INVARIANT: on an admitted SENSING run the finale close-up / authored-shot head / follow
     // aim frame the EVIDENCE SUBJECT, GAPS INCLUDED — never the all-entity centroid. The held anchor at the
     // evaluated frame t0 is the subject's LAST PRESENT pose at frame ≤ t0, read O(1) from the sensing trail's
@@ -612,7 +612,7 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
     // PRE-gap pose the trail/head still render, never a stale future pose), tour jumps, and run switches (each run
     // derives from its OWN trail — no cross-run state to leak). Null before first appearance (t0 < trail.first) ⇒
     // SUPPRESS the directed beat rather than substitute a centroid. Non-sensing short-circuits (heldSubjectPose
-    // uncalled, scratch untouched) → useSubjectAnchor false → the centroid path is byte-identical to pre-F3.
+    // uncalled, scratch untouched) → useSubjectAnchor false → the centroid path is byte-identical to the prior centroid-only behavior.
     const hasHold = hasSensing && heldSubjectPose(subjectPoseScratch, trail, t0)
     const useSubjectAnchor = hasHold
     const suppressDirected = hasSensing && !hasHold
@@ -636,7 +636,7 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
 
     // Geometry-query pulse for this tick's kind-23 event — the POSITIONED ground-plane RIPPLE at the subject
     // cone (flat rotation-x = -PI/2). If the subject is ABSENT this tick (late-spawn pre-spawn), HIDE rather
-    // than ripple at a stale/origin position (contract point 3 — the sibling of the T1 absent-slot park).
+    // than ripple at a stale/origin position (the sibling of the absent-slot park).
     //   POSITIONLESS runs (e0) no longer pulse here: the query stage (queryStageView) now WRITES THE WORLD as
     // the run plays — each probe's real geometry is the live cue (the head ray at full voice, its verdict
     // contact), so a floating helix ring would be a disconnected relic (and the very "spasmodic blinking" the
@@ -659,7 +659,7 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
             entityPosition(scratchP, st, Math.max(idx, 0))
             pulse.position.set(scratchP[0], scratchP[1], scratchP[2])
             pulse.rotation.set(-Math.PI / 2, 0, 0)
-          } else placed = false // contract point 3: no stale/origin ripple for an unspawned subject
+          } else placed = false // no stale/origin ripple for an unspawned subject
         }
         if (placed) {
           const r = 0.5 + fraction * 2
@@ -674,7 +674,7 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
       } else pulse.visible = false
     }
 
-    // TOUR-START CAMERA RESET (v0.5d ruling 6, INSTANT cut). useTour.start() bumps tourStartFrameRequest.stamp so
+    // TOUR-START CAMERA RESET (a design ruling, INSTANT cut). useTour.start() bumps tourStartFrameRequest.stamp so
     // step 0's caption opens on the composed LOAD vantage from EVERY entry state (finale rest, mid-run orbit,
     // cold). frameFor(bounds, LOAD_FRAME_OPTS) is the SAME framing CameraRig writes at load (the shared opts), so
     // on a PLAIN tour — camera already at the vantage — the cut writes identical numbers → PIXEL-EQUIVALENT no-op.
@@ -683,7 +683,7 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
     // Disarm the trail-frame ease + the coast so no lingering finale/establish ease drags the camera back off the
     // vantage after the cut; focus is LEFT alone (a tour's step-0 focus must still fire, and it can't be live yet
     // — start() bumps this stamp before dispatching step 0). Finite-guarded exactly like CameraRig's load write.
-    // Instant, so no "active" ease ref: one stamp change, one write. §8: the framing is computed once per
+    // Instant, so no "active" ease ref: one stamp change, one write. The load budget: the framing is computed once per
     // request (event-rate — frameFor allocates a Framing at consume); steady frames are a stamp compare only.
     if (tourStartFrameRequest.stamp !== tourStartStampRef.current) {
       // Consume INSIDE the controls guard (matching the focus block's posture of only acting
@@ -752,15 +752,15 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
       }
     }
 
-    // Trail-frame arrival ease (Task v04.1-2, frame path, allocation-free). A NATURAL tour play-step arrival
+    // Trail-frame arrival ease (frame path, allocation-free). A NATURAL tour play-step arrival
     // bumps trailFrameRequest.stamp (useTour.onArrived). On the stamp CHANGE we compute ONCE (event-rate) a
     // framing of the trajectory-SO-FAR — the trail prefix 0..arrivedTick — and copy it into module scratch;
-    // then each frame we ease camera.position AND controls.target toward it (points 2-3). OrbitControls
+    // then each frame we ease camera.position AND controls.target toward it. OrbitControls
     // re-derives its offset from (camera − target) each update, so writing BOTH is respected and never
-    // fought. Consuming the request DISARMS the follow coast (point 4) — the trail frame is the sole camera
+    // fought. Consuming the request DISARMS the follow coast — the trail frame is the sole camera
     // owner during its ease. Reduced motion ⇒ factor 1 ⇒ snap (same rule as focus). Inert when
-    // trail.count === 0 (e0: no-op, guarded at consume time — point 6). Converge (both within 1e-2 dist²)
-    // ⇒ stand down. An orbit drag cedes immediately (point 5).
+    // trail.count === 0 (e0: no-op, guarded at consume time). Converge (both within 1e-2 dist²)
+    // ⇒ stand down. An orbit drag cedes immediately.
     if (trailFrameRequest.stamp !== trailFrameStampRef.current) {
       trailFrameStampRef.current = trailFrameRequest.stamp
       if (trailFrameRequest.cancelled) {
@@ -771,7 +771,7 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
         // left it and the user (or the fresh tour's own step 0) takes over.
         trailFrameActiveRef.current = false
       } else if (trailFrameRequest.intent === 'establish') {
-        // ESTABLISHING SHOT (T2, ruling 3): frame the WHOLE trajectory — the load-time `bounds` prop, same
+        // ESTABLISHING SHOT (a design ruling): frame the WHOLE trajectory — the load-time `bounds` prop, same
         // Infinity-cap fit as TRAIL_FRAME_OPTS — so the unselected run plays out INSIDE the frame over its
         // ~8s. No trail prefix: the whole path is the subject. bounds is null for e0/f0, and the subscription
         // already gates the request on bounds !== null; guard here too so a stray establish request can never
@@ -788,48 +788,48 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
             trailFramePos.set(f.position[0], f.position[1], f.position[2])
             trailFrameTgt.set(f.target[0], f.target[1], f.target[2])
             trailFrameActiveRef.current = true
-            trailFrameGentleRef.current = trailFrameRequest.refit // v0.5d ruling 5: refit → gentler settle; plain establish → focus rate
+            trailFrameGentleRef.current = trailFrameRequest.refit // a design ruling: refit → gentler settle; plain establish → focus rate
           }
         }
       } else if (trailFrameRequest.intent === 'finale') {
-        // FINALE (T3, ruling 1/2). Compose the directed rest shot. Only activate while the finale is STILL set:
+        // FINALE (a design ruling). Compose the directed rest shot. Only activate while the finale is STILL set:
         // a scrub in the request→consume gap clears the store flag, and a cleared finale must never activate its
-        // OWN close-up frame (task h) — the guard makes a stale FINALE request inert. (v0.5c ruling 3: a
+        // OWN close-up frame — the guard makes a stale FINALE request inert. (a design ruling: a
         // playhead-move clear DOES hand back a frame, but that is a SEPARATE establish request fired on the
         // falling edge — never this finale close-up.)
         //   • POSITIONED (f1/f0): a compose-around-head close-up on the TRUE head. The loop's centroid THIS
         //     frame IS the terminal position (tick===tickCount, fraction 0), never the lagging follow pivot
-        //     (r4). finaleFraming builds the composition from scratch, so BOTH follow entry paths (select-then-
+        //     finaleFraming builds the composition from scratch, so BOTH follow entry paths (select-then-
         //     play, establish-entered) converge to the same shot.
         //   • POSITIONLESS (e0): "frame the evidence" — the solids + the 21 contacts (finaleBounds, the
         //     query stage's solidsContacts preset), fit UNCAPPED (the stage lives hundreds of units out).
         // Same finite guard + scratch copy as tour-arrival. On activation, CLEAR coast + focus (copy the
-        // tour-arrival branch's two clears, NOT establish's deliberate non-clear — r2): a selected-play natural
+        // tour-arrival branch's two clears, NOT establish's deliberate non-clear): a selected-play natural
         // end leaves the coast active, and the finale must own the camera against an open follow gate.
         if (useViewStore.getState().finale) {
           let f: Framing | null = null
           if (keys.length === 0) {
             if (finaleBounds !== null) f = frameFor(finaleBounds, STAGE_FRAME_OPTS)
           } else if ((count > 0 || useSubjectAnchor) && !suppressDirected) {
-            // F3 — the finale close-up composes around the SUBJECT's pose on a sensing run (else the centroid).
-            // F1 — gate on HELD-ANCHOR validity (useSubjectAnchor), not the current-frame entity count: when the
+            // The finale close-up composes around the SUBJECT's pose on a sensing run (else the centroid).
+            // Gate on HELD-ANCHOR validity (useSubjectAnchor), not the current-frame entity count: when the
             // SOLE subject drops out at the natural end (count 0) the held pose is still valid, so the close-up
             // stays anchored on it (cameraAnchor returns [sx,sy,sz] and never divides by count when useSubjectAnchor).
-            // F2 — suppressDirected (sensing, subject never seen) leaves f null: hold the camera, never a centroid close-up.
+            // suppressDirected (sensing, subject never seen) leaves f null: hold the camera, never a centroid close-up.
             f = finaleFraming(cameraAnchor(cx, cy, cz, count, sx, sy, sz, useSubjectAnchor), FINALE_FRAMING_OPTS)
           }
           if (f !== null && isFiniteFraming(f)) {
             trailFramePos.set(f.position[0], f.position[1], f.position[2])
             trailFrameTgt.set(f.target[0], f.target[1], f.target[2])
             trailFrameActiveRef.current = true
-            trailFrameGentleRef.current = false // finale close-up keeps the focus rate (ruling 5 is scoped to the refit path)
-            followCoastRef.current = false // r2: the finale owns the camera (as tour-arrival does)
-            focusActiveRef.current = false // r2: a fresh directed beat supersedes any lingering focus ease
+            trailFrameGentleRef.current = false // finale close-up keeps the focus rate (the gentler rate is scoped to the refit path)
+            followCoastRef.current = false // the finale owns the camera (as tour-arrival does)
+            focusActiveRef.current = false // a fresh directed beat supersedes any lingering focus ease
           }
         }
       } else if (trailFrameRequest.intent === 'pov') {
-        // OBSERVER'S EYE (T4b, directive II.6): ease to the POV framing — stand at the drawn observer O, look
-        // toward the interrogated theatre — REUSING this trail-frame owner (no fourth camera owner; the T0
+        // OBSERVER'S EYE: ease to the POV framing — stand at the drawn observer O, look
+        // toward the interrogated theatre — REUSING this trail-frame owner (no fourth camera owner; the
         // split guard reserves that). observerFraming is null for f0/f1 (no drawn observer) and for an e0
         // record with no theatre, so the request is INERT there. Clears coast + focus like the finale branch
         // so the POV owns the camera during its ease; an orbit-drag cedes it (the shared ease block below).
@@ -842,7 +842,7 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
           focusActiveRef.current = false
         }
       } else {
-        // TOUR-ARRIVAL (v0.7 T4 — an AUTHORED per-beat arrive, or the trajectory-so-far DEFAULT). Resolve one
+        // TOUR-ARRIVAL (v0.7 — an AUTHORED per-beat arrive, or the trajectory-so-far DEFAULT). Resolve one
         // framing, then activate through the shared trio (this branch is reached only for intent 'tour-arrival',
         // not cancelled/establish/finale/pov).
         //   • AUTHORED (trailFrameRequest.shot !== null): shotFraming resolves the shot GRAMMAR to a Framing from
@@ -852,20 +852,20 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
         //     the shot's inputs are unavailable (a 'conjunction' on a non-sensing run, an absent head), and we
         //     then FALL THROUGH to the default (the design-lead degradation rule).
         //   • DEFAULT (shot === null, or an unresolvable shot): the trajectory-SO-FAR prefix fit, BYTE-IDENTICAL
-        //     to the pre-T4 behavior — prefix = arrivedTick+1 vertices (onArrived snapped the tick before
+        //     to the earlier behavior — prefix = arrivedTick+1 vertices (onArrived snapped the tick before
         //     requesting), fit with TRAIL_FRAME_OPTS. Inert on e0 (trail.count === 0 → f stays null → no
         //     activation), unchanged. frameFor's tuple is the sanctioned event-rate allocation, copied at once.
         let f: Framing | null = null
         const shot = trailFrameRequest.shot
         if (shot !== null) {
-          // F3 — the authored-shot head anchor is the SUBJECT's pose on a sensing run (the conjunction shot is the
+          // The authored-shot head anchor is the SUBJECT's pose on a sensing run (the conjunction shot is the
           // sensing lens's shot), else the all-entity centroid; null when nothing is on stage this frame.
-          // F1 — gate on HELD-ANCHOR validity (useSubjectAnchor), not the current-frame entity count: a sole-subject
+          // Gate on HELD-ANCHOR validity (useSubjectAnchor), not the current-frame entity count: a sole-subject
           // dropout (count 0, held pose valid) still resolves the head anchor to the held pose (cameraAnchor takes
-          // [sx,sy,sz], never dividing by count). F2 — suppressDirected (sensing, subject never seen) → null head
+          // [sx,sy,sz], never dividing by count). suppressDirected (sensing, subject never seen) → null head
           // anchor: the shot goes unresolvable and falls through to the subject-trail default, never a centroid substitute.
           const headAnchor: [number, number, number] | null = ((count > 0 || useSubjectAnchor) && !suppressDirected) ? cameraAnchor(cx, cy, cz, count, sx, sy, sz, useSubjectAnchor) : null
-          // W3: pass the marker VISUAL radii (only meaningful on a sensing run — the conjunction is the sensing
+          // Pass the marker VISUAL radii (only meaningful on a sensing run — the conjunction is the sensing
           // lens's shot; a non-sensing run has no sensor, so shotFraming falls through anyway) AND the live canvas
           // aspect (a zero-alloc number read, the SAME (state.camera).aspect leadForAspect uses) so the conjunction
           // fit tightens against the horizontal fov and a narrow flanked layout no longer crops the marker off-frame.
@@ -892,8 +892,8 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
           trailFramePos.set(f.position[0], f.position[1], f.position[2])
           trailFrameTgt.set(f.target[0], f.target[1], f.target[2])
           trailFrameActiveRef.current = true
-          trailFrameGentleRef.current = false // tour-arrival keeps the focus rate (ruling 5 is scoped to the refit path)
-          followCoastRef.current = false // point 4: the trail frame supersedes both coast branches
+          trailFrameGentleRef.current = false // tour-arrival keeps the focus rate (the gentler rate is scoped to the refit path)
+          followCoastRef.current = false // the trail frame supersedes both coast branches
           // invariant: at most one of focusActiveRef/trailFrameActiveRef is true — each activation clears the other.
           focusActiveRef.current = false // a fresh directed beat also supersedes any lingering focus ease
         }
@@ -901,9 +901,9 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
     }
     if (trailFrameActiveRef.current && controls) {
       if (orbitDragging.current) {
-        trailFrameActiveRef.current = false // point 5: an orbit-drag start cedes the camera immediately
+        trailFrameActiveRef.current = false // an orbit-drag start cedes the camera immediately
       } else {
-        // v0.5d ruling 5: a scrub-from-finale re-fit eases at the GENTLER refitLerpFactor (set at activation); every
+        // A design ruling: a scrub-from-finale re-fit eases at the GENTLER refitLerpFactor (set at activation); every
         // other trail-frame ease (tour-arrival, plain establish, finale) keeps focusLerpFactor. RM snaps either way.
         const f = (trailFrameGentleRef.current ? refitLerpFactor : focusLerpFactor)(prefersReducedMotion(), delta)
         const cam = state.camera.position, tgt = controls.target
@@ -920,7 +920,7 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
     // centroid accumulated in the loop above. target.y eases to centroid + TARGET_LIFT so the composed
     // horizon-high framing is preserved as it tracks. Reduced motion snaps (factor 1, same rule as focus).
     //
-    // SELECTION/TOUR GATE (Task v04.1-2 point 7): the coast only runs when (selectedEntity !== null ||
+    // SELECTION/TOUR GATE: the coast only runs when (selectedEntity !== null ||
     // isTourActive()). A manual play with NOTHING selected no longer auto-pans — it holds the composed
     // frame (a small/medium trajectory is framed whole by the publish-time CameraRig fit; an oversized one
     // like f1 rests at the composed default, and the user follows the subject by selecting it). isTourActive
@@ -929,7 +929,7 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
     // GATE-CLOSED EXPIRY (fixwave): the coast's disarm paths all live INSIDE the gated block below, so an
     // UNSELECTED play-to-end would leave the arm set forever — and a later plain click (a selection) would
     // then satisfy the gate and pan the camera with NO play edge, violating the click grammar (camera moves
-    // are explicit: F focus, play, or leaving a finale by a playhead move — v0.5c ruling 3). So when the gate
+    // are explicit: F focus, play, or leaving a finale by a playhead move — a design ruling). So when the gate
     // is CLOSED (nothing selected, no tour) AND playback
     // has stopped, expire the arm in the else-branch. Mid-play select-to-follow is preserved: while
     // playing=true the arm persists, so a selection made DURING a play still starts following.
@@ -947,12 +947,12 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
       followCoastRef.current && (count > 0 || useSubjectAnchor) && controls && !orbitDragging.current && !suppressDirected &&
       !focusActiveRef.current && !trailFrameActiveRef.current && (selectedEntity !== null || isTourActive())
     ) {
-      // F1 — gate on (count > 0 || useSubjectAnchor), not entity count alone: when the SOLE subject drops out mid-
+      // Gate on (count > 0 || useSubjectAnchor), not entity count alone: when the SOLE subject drops out mid-
       // follow (count 0, held pose valid) the follow keeps tracking the held pose (hx = sx below, never cx/count).
-      // F2 — !suppressDirected: on a sensing run whose subject has never been seen (a gap at frame 0), the follow
+      // !suppressDirected: on a sensing run whose subject has never been seen (a gap at frame 0), the follow
       // holds rather than drift the pivot onto the remaining-entity centroid. Once the subject first appears the
       // held anchor is valid (useSubjectAnchor true) from that frame on, so this only gates the pre-appearance window.
-      // Task v04-7 (T1-review interplay): a USER pause mid-timeline must NOT re-center. The coast
+      // A USER pause mid-timeline must NOT re-center. The coast
       // survives playing=false ONLY to LAND the camera when playback reached the run's end (tick ===
       // tickCount) — the end-of-run landing it exists for. A pause before the end (tick <
       // tickCount) is a user pause, so disarm WITHOUT easing rather than drift the pivot onto the
@@ -962,14 +962,14 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
         followLeadPrev.has = false // a user pause ends the continuous velocity track; re-seed on resume
       } else {
         const reduced = prefersReducedMotion()
-        // F3 — the follow aim rides the SUBJECT's pose on a sensing run (the tinted trail is the subject's, so the
-        // aim and the trail bias agree), else the all-entity centroid. Zero-alloc number locals (§8): the same
+        // The follow aim rides the SUBJECT's pose on a sensing run (the tinted trail is the subject's, so the
+        // aim and the trail bias agree), else the all-entity centroid. Zero-alloc number locals (the load budget): the same
         // useSubjectAnchor decision cameraAnchor applies at the event-rate sites, applied inline for the frame path.
         const hx = useSubjectAnchor ? sx : cx / count, hy = useSubjectAnchor ? sy : cy / count, hz = useSubjectAnchor ? sz : cz / count // live head (single-entity) / swarm centroid / sensing subject
         let tx = hx, ty = hy + TARGET_LIFT, tz = hz
-        // FOLLOW-AIM TRAIL BIAS (ruling 7): bias the pivot off the live head toward the midpoint of the
+        // FOLLOW-AIM TRAIL BIAS (a design ruling): bias the pivot off the live head toward the midpoint of the
         // REVEALED trail so the one-sided trail balances the frame (head ~1/3 from the leading edge) instead
-        // of projecting off to one side (dossier Q6). The midpoint is a DIRECT read of the trail buffer at the
+        // of projecting off to one side. The midpoint is a DIRECT read of the trail buffer at the
         // revealed-midpoint vertex (revealedMidpointIndex ×3) — zero allocation, no per-frame scan. TARGET_LIFT
         // is added to BOTH endpoints so the biased aim keeps the composed lift. Only positioned runs WITH a
         // trail (f1); f0 (no trail, count 0) keeps the head aim. This is the FOLLOW aim only — focus / trail-
@@ -987,15 +987,15 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
           const s = followBiasCapScale(dx, dy, dz, FOLLOW_BIAS_MAX)
           tx += dx * s; ty += dy * s; tz += dz * s
         }
-        // PREDICTIVE LEAD (v0.5c ruling 4): the exponential follow lags the accelerating head by ≈v/rate, riding
-        // it toward the leading edge (critic n4). Lead the aim FORWARD along the head's instantaneous velocity
+        // PREDICTIVE LEAD (a design ruling): the exponential follow lags the accelerating head by ≈v/rate, riding
+        // it toward the leading edge (an observed note). Lead the aim FORWARD along the head's instantaneous velocity
         // (Δhead/dt from the module-scratch previous sample) by leadEff·(v/rate) to cancel that fraction of
         // the lag. Reduced motion SNAPS the follow (factor 1 → no lag), so the lead is disabled there (adding it
         // under a snap would over-shoot the head PAST centre). First frame (no prior sample) and a scrub teleport
         // (Δ beyond LEAD_TELEPORT_MAX) skip the lead — don't launch the aim on a discontinuity. The sample is
         // updated EVERY follow frame so the next frame's velocity is clean. Composes with the bias above (both
         // additive aim offsets); the v0.5b bias + cap are untouched. Zero-alloc: number locals + scratchLead.
-        //   ASPECT COMPENSATION (v0.5d ruling 1): the lead's world offset is a bigger SCREEN fraction on a narrower
+        //   ASPECT COMPENSATION (a design ruling): the lead's world offset is a bigger SCREEN fraction on a narrower
         // canvas, so the head clips the leading edge in the flanked-narrow band. leadForAspect scales the effective
         // lead up as the live CANVAS aspect (state.camera.aspect — the panel-narrowed 3D canvas, a zero-alloc number
         // read) drops below CALIB_ASPECT, holding the head's screen fraction constant; at or above CALIB_ASPECT it
@@ -1004,7 +1004,7 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
           const ddx = hx - followLeadPrev.x, ddy = hy - followLeadPrev.y, ddz = hz - followLeadPrev.z
           if (ddx * ddx + ddy * ddy + ddz * ddz <= LEAD_TELEPORT_MAX * LEAD_TELEPORT_MAX) {
             const leadEff = leadForAspect(FOLLOW_LEAD, (state.camera as THREE.PerspectiveCamera).aspect, CALIB_ASPECT, LEAD_ASPECT_GAIN)
-            // Scale the lead's world cap WITH the elevated lead (v0.5d ruling 1). FOLLOW_LEAD_MAX=10u was calibrated
+            // Scale the lead's world cap WITH the elevated lead (a design ruling). FOLLOW_LEAD_MAX=10u was calibrated
             // for the base lead and BINDS once leadForAspect over-leads on a narrow canvas — clipping the very
             // compensation we need (measured: pinned at 10u, the flanked-narrow peak stalls at ~0.76 > 0.75). Scaling
             // the cap by leadEff/FOLLOW_LEAD lifts the backstop in exact proportion to the intended lead, so the aspect
@@ -1074,7 +1074,7 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
       {/* SDF crisp label (drei Text = troika SDF, crisp at any zoom). Billboarding is manual (see the
           frame loop above) — no <Billboard> wrapper, so no hidden per-frame work while unselected.
           Position + orientation + visibility are all driven by the frame loop via labelRef; visible={false}
-          here only prevents a first-frame flash at the origin. RULING 3(c): the stage label spoke the RAW key
+          here only prevents a first-frame flash at the origin. The stage label spoke the RAW key
           "1:0" while every instrument spoke ▸ ALFA — the one place the two dialects sat in one glance
           unreconciled. Route it through the identity plate's COMPACT form so the stage speaks the same name;
           the raw key stays the data-true handle in the URL. `characters` pre-builds the SDF glyph atlas at
@@ -1100,14 +1100,14 @@ export function Scene({ model }: { model: RunModel }) {
   // this, a scene unmount mid-drag (e.g. a run-switch while the user is actively orbiting) means
   // OrbitControls' onEnd never fires, and the flag would stay true forever — permanently pausing
   // Entities' playback auto-follow for the rest of the module's lifetime.
-  //   trailHold.lit rides here too (Task v0.5a-2 lifecycle guard): a run switch nulls `model`, which
+  //   trailHold.lit rides here too (lifecycle guard): a run switch nulls `model`, which
   // unmounts this Canvas, but it routes through useTour.dispose → finish() — NOT stop() — so
   // cancelTrailFrame never fires and a hold left LIT (natural finale, or a mid-hold switch) would bleed
   // into the next run's fresh trail (its rest-state comet would render fully lit). Clearing it on unmount,
   // exactly as with orbitDragging, keeps the module flag from surviving the run it belongs to.
   useEffect(() => () => { orbitDragging.current = false; trailHold.lit = false }, [])
 
-  // ONE tick-walk at model publish (Task v04-2 §2): build the subject trail, then derive the camera-fit
+  // ONE tick-walk at model publish: build the subject trail, then derive the camera-fit
   // bounds FROM that same Float32Array (boundsFromPositions) rather than a second independent walk
   // (trajectoryBounds). On a 65-tick run both walks blew past RunModel's 16-entry LRU decode cache, so the
   // second forced a full re-decode + eviction; sharing the walk halves the load-time decode work. Both are
@@ -1119,7 +1119,7 @@ export function Scene({ model }: { model: RunModel }) {
   // STAGE instead — its kind-23 probes' real geometry. f0/f1 have positioned entities → false → the query
   // stage never mounts and they are wholly unaffected. App mirrors this predicate for the honesty chip.
   const positionless = useMemo(() => model.entityKeys().length === 0, [model])
-  // The query-stage model layer (v0.6 T2), built ONCE per positionless model (the sibling of buildTrail) —
+  // The query-stage model layer (v0.6), built ONCE per positionless model (the sibling of buildTrail) —
   // seq-indexed nullable draws + validated LOS composites. A malformed bundle FAILS LOUD here at publish
   // (queryDraw/validateLosComposite throw), surfaced by the app's existing load-error voice. Null for f0/f1.
   const queryData = useMemo(() => (positionless ? buildQueryDraws(model) : null), [model, positionless])
@@ -1136,18 +1136,18 @@ export function Scene({ model }: { model: RunModel }) {
     const b = queryData ? queryBounds(queryData.draws).solidsContacts : null
     return b ? { center: [b.center[0], -b.center[2], b.center[1]] as [number, number, number], radius: b.radius } : null
   }, [queryData])
-  // Observer's Eye POV framing (v0.6 T4b): stand at the drawn observer O, look toward the interrogated
+  // Observer's Eye POV framing (v0.6): stand at the drawn observer O, look toward the interrogated
   // theatre — computed ONCE per model (three-space, via queryScene.povFraming), eased on the O keypress by
   // the reused trail-frame owner. Null for f0/f1 (no drawn observer) → the preset is a no-op there.
   const observerFraming = useMemo(() => (queryData ? povFraming(queryData.draws) : null), [queryData])
-  // e0 AUTHORED TOUR SHOTS (v0.8 W7) — the two decode-true query-stage arrive vantages, computed ONCE per model
+  // e0 AUTHORED TOUR SHOTS (v0.8) — the two decode-true query-stage arrive vantages, computed ONCE per model
   // (the sibling of stageBounds / observerFraming) and threaded into the tour-arrival shotFraming anchors below.
   // e0Corridor (SHOT 1 "the first block") is the three-space Bounds of the first blocked sightline's
   // origin→occluder→contact corridor; e0Crane (SHOT 2 "the second observer") is the directed observer-crane
   // Framing. Null for f0/f1 (no query geometry) → the 'corridor'/'crane' shots fall through there.
   const e0Corridor = useMemo(() => (queryData ? blockedCorridorBounds(queryData.losComposites) : null), [queryData])
   const e0Crane = useMemo(() => (queryData ? observerCraneFraming(queryData.draws) : null), [queryData])
-  // THE MOUNT GATE (v0.6 MUST-FIX, critic ruling 3; T6 M3 — routed through the ONE complete predicate).
+  // THE MOUNT GATE (a design-review ruling — routed through the ONE complete predicate).
   // buildQueryDraws returns a seq-indexed array that is ALL-NULL for a positionless run whose event kinds have no
   // kind-23 probe (f4) — it NEVER returns null — so `positionless && queryData` alone mounted the stage (its
   // origin-anchor octahedron + scenario solids) over a VOID on such runs. The mount now routes through
@@ -1167,10 +1167,10 @@ export function Scene({ model }: { model: RunModel }) {
   // sibling of buildTrail / buildQueryDraws); null-cheap for non-sensing runs. The eligible-tinted trail
   // REPLACES the plain trajectory trail for f2a (the drone's path is now the stage voice), so the two never
   // double-draw. hasSensing is the ONE value the mount + activeStageBounds + the Entities/CameraRig
-  // threading + the App honesty chip all share (the T3 must-fix lesson) — no consumer re-derives the gate.
+  // threading + the App honesty chip all share (the single-source lesson) — no consumer re-derives the gate.
   const sensingData = useMemo(() => buildSensingStage(model), [model])
   const hasSensing = useMemo(() => sensingStageApplies(model), [model])
-  // F3 — resolve the sensing SUBJECT ONCE: the flight the kind-22 verdicts NAME plus its index in entityKeys().
+  // Resolve the sensing SUBJECT ONCE: the flight the kind-22 verdicts NAME plus its index in entityKeys().
   // Every sensing-run consumer threads from THIS — the trail Entities tints/follows, its trajectory bounds, and
   // the tracking-ring instance index — so camera + highlight name the entity the evidence concerns, never
   // entityKeys()[0]. null on a non-sensing run (Scene threads the head defaults below: entityKeys()[0]'s
@@ -1179,7 +1179,7 @@ export function Scene({ model }: { model: RunModel }) {
     () => (hasSensing ? sensingSubjectRef(model.entityKeys(), sensingData.draws) : null),
     [hasSensing, model, sensingData],
   )
-  // M7 — the eligible-tinted stage tints the SENSING SUBJECT's flight (the entity the kind-22 verdicts NAME),
+  // The eligible-tinted stage tints the SENSING SUBJECT's flight (the entity the kind-22 verdicts NAME),
   // not the scene's first entity. For every certified (single-subject) bundle the subject IS entityKeys()[0], so
   // this is byte-identical to `trail`; on a multi-subject run it binds the tint (and the sensing load-frame
   // below) to the subject subjectRef resolved. Built only when hasSensing — the gate guarantees a single subject
@@ -1192,13 +1192,13 @@ export function Scene({ model }: { model: RunModel }) {
   // UNIONED with the sensor scope (origin, the ±R_max range extent, the occluder) so the cone, the occluder
   // and the flight are all legible on load — a stage you cannot see is not a stage. Points are three-space
   // (trail.positions already are); the sensor extent is added as a few cardinal points. AUTHORED per-beat
-  // camera is T4's job; this is only the resting frame. Null for a non-sensing run (the query/trail vantage
+  // camera is the authored-camera pass's job; this is only the resting frame. Null for a non-sensing run (the query/trail vantage
   // is unchanged). CameraRig prefers a non-null stageBounds, so this frames f2a on load.
   const sensingStageBounds = useMemo(() => {
     if (!hasSensing) return null
-    const n = sensingTrail.count // M7: frame the SENSING SUBJECT's flight, the same trail the stage tints
+    const n = sensingTrail.count // frame the SENSING SUBJECT's flight, the same trail the stage tints
     // The sensor scope, converted through the SAME shared basis-A transform (placement.nedToThree) the apparatus
-    // and the flight draw through, so the load framing encloses exactly what is rendered. ARCH-4: this was a flat
+    // and the flight draw through, so the load framing encloses exactly what is rendered. This was a flat
     // three-space literal that agreed with the apparatus ONLY by the occluder-on-the-diagonal coincidence the
     // basis bug hid inside (nedToThree([41,41,0]) === [41,0,41], and a full range ring is x↔z symmetric) — now it
     // is provably the one basis. Origin, the ±R_max range extent on both NED axes, and the occluder centre; the
@@ -1215,18 +1215,18 @@ export function Scene({ model }: { model: RunModel }) {
     return boundsFromPositions(pts, pts.length / 3)
   }, [hasSensing, sensingTrail])
 
-  // ONE stage-bounds value threaded to BOTH the CameraRig load write AND Entities' tour-start reset (W4): the
+  // ONE stage-bounds value threaded to BOTH the CameraRig load write AND Entities' tour-start reset: the
   // query core theatre for a positionless query run (e0), the sensing scope for f2a, null otherwise. Before
   // this, CameraRig got the sensing bounds but Entities still consumed the query-only stageBounds (null for
   // f2a), so f2a's tour start cut to plain trajectory bounds — away from the sensing frame step 0 was authored
   // around. e0 is byte-identical (hasSensing false ⇒ activeStageBounds === stageBounds, its value unchanged).
   const activeStageBounds = hasSensing ? sensingStageBounds : stageBounds
-  // …and the matching STAGE opts (G6), picked by the SAME hasSensing gate so it can never drift from the bounds:
+  // …and the matching STAGE opts, picked by the SAME hasSensing gate so it can never drift from the bounds:
   // the sensing scope frames at the RAISED vantage (SENSING_STAGE_FRAME_OPTS — its ground-plane apparatus self-
   // occludes at the house angle), the query core theatre (e0) keeps STAGE_FRAME_OPTS. Threaded to BOTH the CameraRig
   // load write and Entities (its tour-start reset + the 'stage' bookend shot) so all three agree on where f2a rests.
   const activeStageOpts: FrameOpts = hasSensing ? SENSING_STAGE_FRAME_OPTS : STAGE_FRAME_OPTS
-  // F3 — Entities consumes the SUBJECT's trail + trajectory bounds on a sensing run (else the head's default),
+  // Entities consumes the SUBJECT's trail + trajectory bounds on a sensing run (else the head's default),
   // so the establishing frame, the arrival-fit default and the follow-aim bias all track the subject the stage
   // tints; the subject's INSTANCE INDEX (not a hardcoded 0) drives the tracking / finale ring + the head tint.
   // For a single-subject bundle subjectRef.index is 0 and sensingTrail === trail, so entitiesTrail/entitiesBounds
@@ -1262,7 +1262,7 @@ export function Scene({ model }: { model: RunModel }) {
       {import.meta.env.DEV && <Perf position="bottom-right" />}
       {/* Depth-cued atmosphere: linear fog 30 → 400 world units, coloured to the vignette centre so distant
           cones melt into the backdrop instead of popping against it (distances unchanged from the
-          browser-verified far=400 that keeps F1's cone visible across tick 0 → 64; only the colour tracks
+          browser-verified far=400 that keeps f1's cone visible across tick 0 → 64; only the colour tracks
           the new vignette). No <color attach="background"> — the CSS vignette is the backdrop now. */}
       <fog attach="fog" args={[PALETTE.vignetteCenter, 30, 400]} />
       <ambientLight intensity={0.4} />
@@ -1274,7 +1274,7 @@ export function Scene({ model }: { model: RunModel }) {
       {/* The QUERY STAGE — mounted ONLY for a positionless run that ACTUALLY HAS kind-23 draws (e0). Replaces
           the presentational spine: the probes write the world in real NED space (rays fade-spent, contacts +
           solids persist), the reveal clock is spineRevealCount, selection re-lenses by causal role. f0/f1
-          (positioned) never mount it; a positionless-but-no-query run (f4) is now withheld too (v0.6 ruling 3),
+          (positioned) never mount it; a positionless-but-no-query run (f4) is now withheld too (a design ruling),
           so its origin-anchor octahedron + scenario solids never render over a void. */}
       {hasQueryContent && queryData && <QueryStage model={model} data={queryData} />}
       {/* THE SENSING GAUNTLET stage (f2a): sensor apparatus + FOV cone + range ring + occluder Q, and the
@@ -1295,12 +1295,12 @@ export function Scene({ model }: { model: RunModel }) {
       {/* Data-bound glow, then tone map LAST. Only HDR pixels (selected cone accent×2.2, active query
           pulse ×1.8) clear the luminance threshold and bloom — the glow is earned by selection/query
           state, not decoration. ToneMapping (ACES) runs after Bloom so it compresses the bloomed HDR
-          image for display; ordering decided by browser evidence (see task-v02b-5-report.md). */}
+          image for display; ordering decided by browser evidence. */}
       {/* Declarative composer: r3f disposes these passes when the Canvas unmounts. The Canvas is
           unkeyed but ALWAYS unmounts on a run switch (model -> null gates the whole subtree), so no
           manual dispose is needed. If the Canvas ever persists across runs, add explicit cleanup. */}
       <EffectComposer>
-        {/* Retuned for perceptible presence (Task 2 §5): threshold 0.4 lets the selection ground-ring
+        {/* Retuned for perceptible presence: threshold 0.4 lets the selection ground-ring
             (accent×2.4) and selected cone (accent×2.2) clear it and glow; intensity 1.0 gives a visible
             halo without washing the frame. ACES stays LAST so it compresses the bloomed HDR for display. */}
         <Bloom intensity={1.0} luminanceThreshold={BLOOM_LUMINANCE_THRESHOLD} luminanceSmoothing={0.2} mipmapBlur />

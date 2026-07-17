@@ -16,8 +16,8 @@ import { decodeBundle } from '../decode/decodeBundle'
 import { RunModel } from '../model/runModel'
 import { asEventTick, asStateFrame } from '../lib/brand'
 
-// tintedTrailGeometry is pure THREE.BufferGeometry work (no WebGL, no DOM), so its born-hidden drawRange (W3)
-// and its per-vertex tint indexing (W1) are unit-testable in the node env. The colours mirror the module's
+// tintedTrailGeometry is pure THREE.BufferGeometry work (no WebGL, no DOM), so its born-hidden drawRange
+// and its per-vertex tint indexing are unit-testable in the node env. The colours mirror the module's
 // own token derivation (LAW 2 — the same PALETTE names the view uses).
 const AFFIRM = new THREE.Color(hexToThree(PALETTE.verdictAffirm))
 const NEGATE = new THREE.Color(hexToThree(PALETTE.verdictNegate))
@@ -28,24 +28,24 @@ function fakeTrail(n: number): Trail {
   for (let i = 0; i < n; i++) positions[i * 3 + 2] = i * 2 // z = frame·2, mirroring the real N-lattice step
   const index = new Float32Array(n)
   for (let i = 0; i < n; i++) index[i] = i
-  return { positions, index, count: n, first: n > 0 ? 0 : -1 } // present from frame 0 (F1: first-appearance frame)
+  return { positions, index, count: n, first: n > 0 ? 0 : -1 } // present from frame 0 (the first-appearance frame)
 }
 const draw = (tick: number, eligible: boolean): SensingDraw => ({
   seq: tick, tick, subject: '1:0', sensor: '0', inRange: true, inFov: true, losClear: eligible, eligible, tiebreak: false, g: [0, 0, 0],
 })
 
-describe('tintedTrailGeometry — born hidden (W3) + tint by evaluated frame (W1)', () => {
+describe('tintedTrailGeometry — born hidden + tint by evaluated frame', () => {
   // byFrame is frame-indexed: frame 0 has no verdict (the tick-0 verdict was evaluated against frame 1), then
   // one verdict per frame. This is exactly the shape buildSensingStage produces.
   const byFrame: (SensingDraw | null)[] = [null, draw(0, true), draw(1, false), draw(2, true)]
 
-  test('W3: the geometry mounts at drawRange (0, 0) — nothing is drawn before the first sync (no future-trail flash)', () => {
+  test('the geometry mounts at drawRange (0, 0) — nothing is drawn before the first sync (no future-trail flash)', () => {
     const g = tintedTrailGeometry(fakeTrail(4), byFrame)
     expect(g.drawRange.start).toBe(0)
     expect(g.drawRange.count).toBe(0)
   })
 
-  test('W1: vertex f is tinted by byFrame[f] — null → the dim NOT-YET colour, eligible → affirm, ineligible → ember', () => {
+  test('vertex f is tinted by byFrame[f] — null → the dim NOT-YET colour, eligible → affirm, ineligible → ember', () => {
     const g = tintedTrailGeometry(fakeTrail(4), byFrame)
     const col = g.getAttribute('color') as THREE.BufferAttribute
     const expectColor = (i: number, c: THREE.Color) => {
@@ -66,7 +66,7 @@ describe('tintedTrailGeometry — born hidden (W3) + tint by evaluated frame (W1
   })
 })
 
-// ── F7 — STRUCTURAL INTEGRITY of the drawn geometries (defeat the buffer-VALUE-only assertions) ─────────────
+// ── STRUCTURAL INTEGRITY of the drawn geometries (defeat the buffer-VALUE-only assertions) ─────────────
 // Every topology test in this file reads getAttribute('position').array VALUES. Three ways to render nothing /
 // elsewhere while those values stay correct: (a) an all-zero INDEX buffer (three draws vertex 0 for every element
 // — a degenerate), (b) a setDrawRange(0, 0) (nothing drawn), (c) a displaced/hidden object transform (correct
@@ -74,13 +74,13 @@ describe('tintedTrailGeometry — born hidden (W3) + tint by evaluated frame (W1
 // the static apparatus builders (fovSector / coneEdges); the tinted-trail geometry is the DOCUMENTED exception —
 // born-hidden at drawRange(0,0) by design (pinned in its own block above) — so the full-range assertion is scoped
 // to the static apparatus.
-//   (c) is an Object3D property, NOT on the geometry — and this is the correction the F3 block below makes: a
+//   (c) is an Object3D property, NOT on the geometry — and this is the correction the transform-chain block below makes: a
 // mesh's position/rotation/scale (or a parent-group transform) lives on the Object3D and NEVER alters the local
 // geometry buffer, so a displaced or zero-scaled apparatus leaves every value/topology assertion in this file
 // GREEN. The prior claim here ("a displaced geometry would fail those value tests") was wrong. The transform
-// chain therefore needs its OWN binding: the F3 block pins the meshes' actual transforms to the exported anchor
+// chain therefore needs its OWN binding: the transform-chain block pins the meshes' actual transforms to the exported anchor
 // constants (source-level identity, the hangar.test mountGate precedent) and pins the identity meshes as identity.
-describe('F7 — the static apparatus geometries are non-indexed, itemSize-3, full draw range (nothing hidden)', () => {
+describe('the static apparatus geometries are non-indexed, itemSize-3, full draw range (nothing hidden)', () => {
   const STATIC: [string, () => THREE.BufferGeometry][] = [
     ['fovSectorGeometry', fovSectorGeometry],
     ['coneEdgesGeometry', coneEdgesGeometry],
@@ -105,7 +105,7 @@ describe('F7 — the static apparatus geometries are non-indexed, itemSize-3, fu
     expect(g.drawRange).toEqual({ start: 0, count: 0 }) // born hidden — the reveal bumps count per tick (its own block)
   })
 
-  test('PREMISE (F7): an all-zero index OR an empty drawRange leaves the VALUES intact but the structural checks catch it', () => {
+  test('PREMISE: an all-zero index OR an empty drawRange leaves the VALUES intact but the structural checks catch it', () => {
     const good = fovSectorGeometry()
     const verts = good.getAttribute('position')!.count
     // (a) all-zero index: the position VALUES are untouched (a value-only test still passes), but three would draw
@@ -122,8 +122,8 @@ describe('F7 — the static apparatus geometries are non-indexed, itemSize-3, fu
   })
 })
 
-// ── F3 — the apparatus TRANSFORM CHAIN is bound to its DEFECT CLASS, checked at the SYNTAX level (F2/F3 closure) ──
-// The F7 tests above pin the geometry BUFFERS; they cannot see an Object3D transform (position/rotation/scale/
+// ── the apparatus TRANSFORM CHAIN is bound to its DEFECT CLASS, checked at the SYNTAX level ──
+// The geometry-buffer tests above pin the geometry BUFFERS; they cannot see an Object3D transform (position/rotation/scale/
 // quaternion/matrix, or a parent-group transform) that moves or hides the apparatus. @react-three/test-renderer is
 // NOT a dependency, so rather than render the tree we PIN THE SOURCE — but the EARLIER textual pins were a
 // recursive-grammar hazard: a regex/substring capture of an element's opening tag cannot parse JSX. Three bypasses
@@ -149,7 +149,7 @@ describe('F7 — the static apparatus geometries are non-indexed, itemSize-3, fu
 // lerpHeadPosition, the marks via setPosition(...t3(m.pos)) — both pinned below as source call-sites); there are no
 // runtime scale/rotation/quaternion writes. The syntax-checked authored tags plus those two position-source pins
 // together cover both surfaces for the shipped code.
-describe('F3 — the apparatus transform chain is BOUND to its defect class (a displaced/zero-scaled/parented mount is caught)', () => {
+describe('the apparatus transform chain is BOUND to its defect class (a displaced/zero-scaled/parented mount is caught)', () => {
   const src = readFileSync('src/ui/sensingStageView.tsx', 'utf8')
   // Parse the shipped view with the TS compiler (ScriptKind.TSX) — `typescript` is already the tsc-gate
   // devDependency, imported here in the TEST only. The whole textual-capture CLASS is dead: we assert on PARSED JSX
@@ -278,14 +278,14 @@ describe('F3 — the apparatus transform chain is BOUND to its defect class (a d
   })
 
   test('the FOV sector + range-ring/edge meshes mount at IDENTITY — absolute buffers, no position/rotation/scale/quaternion/matrix to displace them', () => {
-    // These builders emit ABSOLUTE vertices (value-pinned in F7), so their meshes take NO transform — one would
+    // These builders emit ABSOLUTE vertices (value-pinned), so their meshes take NO transform — one would
     // DOUBLE-apply the world offset. The parsed opening tags must be free of EVERY transform prop.
     assertIdentity(fovMesh, 'fov sector mesh')
     assertIdentity(edgesSeg, 'range-ring/edge lineSegments')
   })
 
   test('the detection marks: placed by the shared t3 basis (setPosition(...t3(m.pos))) AND the instancedMesh carries no transform', () => {
-    // The position SOURCE — the ARCH-4 basis pin: the instance matrices ARE the beads' transform, bound to t3 so
+    // The position SOURCE — the basis pin: the instance matrices ARE the beads' transform, bound to t3 so
     // they ride the SAME basis as the trail (a mirrored basis would strew them off the flight). A runtime call-site,
     // not an authored attribute — the conceded position-only runtime residual, separately pinned.
     expect(src).toMatch(/setPosition\(\.\.\.t3\(m\.pos\)\)/)
@@ -319,7 +319,7 @@ describe('F3 — the apparatus transform chain is BOUND to its defect class (a d
   })
 })
 
-// The head pose lerps the evaluated frame pair by the store fraction (closure round 2) — pure vector math,
+// The head pose lerps the evaluated frame pair by the store fraction — pure vector math,
 // unit-testable without WebGL. fakeTrail: z = frame·2 (the N-lattice step), so the expected values are exact.
 describe('lerpHeadPosition — the head follows the evaluated (t0, t1, fraction) sample', () => {
   test('fraction 0 sits on the evaluated frame; 0.5 sits halfway to its successor', () => {
@@ -338,7 +338,7 @@ describe('lerpHeadPosition — the head follows the evaluated (t0, t1, fraction)
     }
   })
 
-  // F1 — the brand forbids the double-offset. lerpHeadPosition applies TARGET_FRAME_OFFSET itself, so its `tick`
+  // The brand forbids the double-offset. lerpHeadPosition applies TARGET_FRAME_OFFSET itself, so its `tick`
   // must be an EventTick (the raw playhead), NEVER a StateFrame (an already-evaluated frame): passing a resolved
   // frame would shift it a SECOND time. Typing `tick: EventTick` makes that a compile error at the primary named
   // cursor surface. The runtime call still runs (brands erase) — the @ts-expect-error alone locks the domain.
@@ -350,7 +350,7 @@ describe('lerpHeadPosition — the head follows the evaluated (t0, t1, fraction)
   })
 })
 
-// ── DETECTION-MARK BLOOM BUDGET (ruling 1 — the f2a detection pile that out-bloomed the eclipse/bookend) ───
+// ── DETECTION-MARK BLOOM BUDGET (the f2a detection pile that out-bloomed the eclipse/bookend) ───
 // three.js `luminance()` (Rec.709) — the exact weights the postprocessing Bloom's LuminanceMaterial uses;
 // renderer tone mapping is OFF before Bloom, so it sees these linear values. Mirrors queryStageView.test.ts's
 // CONTACT_DIM guard: the persisted (spent) marks must sit BELOW the renderer's OWN cutoff so the pile never
@@ -359,7 +359,7 @@ describe('lerpHeadPosition — the head follows the evaluated (t0, t1, fraction)
 const W = [0.2126729, 0.7151522, 0.0721750] as const
 const lum = (c: THREE.Color): number => W[0] * c.r + W[1] * c.g + W[2] * c.b
 
-describe('detection marks — SHRINK + GRADE (ruling 1): a countable bead-chain, only the live mark blooms', () => {
+describe('detection marks — SHRINK + GRADE: a countable bead-chain, only the live mark blooms', () => {
   test('SHRINK: the mark radius is small (2), so 17 marks 2m apart read as a bead-chain, not a fused capsule', () => {
     expect(MARK_R).toBe(2)
   })
@@ -374,7 +374,7 @@ describe('detection marks — SHRINK + GRADE (ruling 1): a countable bead-chain,
   })
 })
 
-// ── RENDERED-SPACE ORACLE (ARCH-4) ────────────────────────────────────────────────────────────────────────
+// ── RENDERED-SPACE ORACLE ────────────────────────────────────────────────────────────────────────
 // The class of test that would have caught the two-basis defect. The prior sensing tests proved the FLIGHT
 // (trail / head / paused-cone parity) and the MODEL (byFrame indexing), but nothing tied the drawn APPARATUS
 // (cone / range ring / occluder) to the flight in ONE space — so the apparatus quietly drew through a mirrored
@@ -408,7 +408,7 @@ function segMinDist2(
   return dx * dx + dy * dy + dz * dz
 }
 
-describe('rendered-space oracle — the drawn cone/ring/occluder reproduce the decoded verdict (ARCH-4)', () => {
+describe('rendered-space oracle — the drawn cone/ring/occluder reproduce the decoded verdict', () => {
   const model = new RunModel(decodeBundle(detFixture('f2a_seed42')), null)
   const stage = buildSensingStage(model)
   // The head at its FLIGHT-basis three position: placement.nedToThree of the pose the tick's verdict was
@@ -500,7 +500,7 @@ describe('rendered-space oracle — the drawn cone/ring/occluder reproduce the d
     expect(blocked).toBeGreaterThan(0) // f2a has a real eclipse window (the beat exists)
   })
 
-  test('BASIS DISCRIMINANT: the x↔z reflection (the ARCH-4 defect) MISclassifies FOV — the oracle is basis-sensitive', () => {
+  test('BASIS DISCRIMINANT: the x↔z reflection (the basis-drift defect) MISclassifies FOV — the oracle is basis-sensitive', () => {
     // Reflecting the flight-basis head x↔z is exactly seeing it under the mirrored basis-B apparatus. It MUST
     // break the reproduction on at least one tick — proof this oracle would have failed on the pre-fix code.
     const reflect = (h: readonly [number, number, number]): [number, number, number] => [h[2], h[1], h[0]]
@@ -554,8 +554,8 @@ describe('rendered-space oracle — the drawn cone/ring/occluder reproduce the d
     }
   })
 
-  // M8 / F7 — the range-RING prefix is swept, and the sweep is REAL, not a zero-area collapse. The M8 form pinned
-  // count / radius / continuity / closure — all of which 192 COPIES of one R_MAX point silently satisfy. F7 adds
+  // The range-RING prefix is swept, and the sweep is REAL, not a zero-area collapse. The earlier form pinned
+  // count / radius / continuity / closure — all of which 192 COPIES of one R_MAX point silently satisfy. This adds
   // the two properties a degenerate cannot fake: every segment has NONZERO length, and the per-segment bearing
   // advances monotonically CCW summing to a full 2π. Reads the ACTUAL Float32 line buffer the lineSegments mounts.
   test('the drawn range ring is a FULL R_MAX circle: at R_MAX on the ground, continuous, closed, NONZERO-length segments, monotonic 2π sweep', () => {
@@ -574,7 +574,7 @@ describe('rendered-space oracle — the drawn cone/ring/occluder reproduce the d
     // Segment continuity: segment i's end (2i+1) IS segment i+1's start (2i+2) — the shared arc endpoint, at the
     // SAME angle, so bit-identical (a disjoint/one-segment ring breaks this).
     for (let i = 0; i < RING - 1; i++) expect(nz(vert(2 * i + 1)), `segment ${i}→${i + 1} continuous`).toEqual(nz(vert(2 * i + 2)))
-    // F7 — NONZERO length + monotonic 2π sweep: what a 192-copies-of-one-point ring cannot fake. Bearing is the
+    // NONZERO length + monotonic 2π sweep: what a 192-copies-of-one-point ring cannot fake. Bearing is the
     // ground-plane atan2(x, z); the per-segment advance is small (2π/96), so folding into (−π, π] needs no unwrap.
     let totalSweep = 0
     for (let i = 0; i < RING; i++) {
@@ -592,7 +592,7 @@ describe('rendered-space oracle — the drawn cone/ring/occluder reproduce the d
     expect(Math.hypot(last[0] - first[0], last[1] - first[1], last[2] - first[2]), 'ring closes at 2π').toBeLessThanOrEqual(1e-2)
   })
 
-  test('PREMISE (F7): a ring of 192 COPIES of one R_MAX point PASSES radius/continuity/closure but FAILS length + sweep', () => {
+  test('PREMISE: a ring of 192 COPIES of one R_MAX point PASSES radius/continuity/closure but FAILS length + sweep', () => {
     const RING = 96
     const P: [number, number, number] = [R_MAX * Math.sin(0.3), 0, R_MAX * Math.cos(0.3)] // one point ON the ring
     const arr = new Float32Array(RING * 2 * 3)
@@ -613,8 +613,8 @@ describe('rendered-space oracle — the drawn cone/ring/occluder reproduce the d
     expect(Math.abs(totalSweep - 2 * Math.PI)).toBeGreaterThan(1) // and it never approaches the real ring's 2π sweep
   })
 
-  // M8 / F7 — the fan is pinned AT the ring AND has real area. M8 pinned apex/rim/within-wedge/edges, all of which
-  // 32 degenerate [apex, e, e] triangles (both rim vertices coincident → zero area) silently satisfy. F7 adds the
+  // The fan is pinned AT the ring AND has real area. The earlier form pinned apex/rim/within-wedge/edges, all of which
+  // 32 degenerate [apex, e, e] triangles (both rim vertices coincident → zero area) silently satisfy. This adds the
   // three properties a zero-area collapse cannot fake: every triangle has NONZERO area, consecutive triangles
   // SHARE a rim vertex (a true fan), and the rim bearings sweep MONOTONICALLY across the full 2·FOV_HALF_RAD wedge.
   const triArea3 = (A: readonly number[], B: readonly number[], C: readonly number[]): number => {
@@ -640,13 +640,13 @@ describe('rendered-space oracle — the drawn cone/ring/occluder reproduce the d
         expect(Math.abs(d2 - R_MAX * R_MAX), `fan rim vertex ${i} AT R_MAX`).toBeLessThanOrEqual(RAD2_WIN)
       }
     }
-    // F7 — NONZERO area per triangle + consecutive triangles SHARE a rim vertex (the fan structure). A degenerate
+    // NONZERO area per triangle + consecutive triangles SHARE a rim vertex (the fan structure). A degenerate
     // [apex, e, e] fan collapses each area to 0; this rejects it loud.
     for (let t = 0; t < 32; t++) {
       expect(triArea3(vert(3 * t), vert(3 * t + 1), vert(3 * t + 2)), `fan triangle ${t} nonzero area`).toBeGreaterThan(1)
       if (t < 31) expect(nz(vert(3 * t + 2)), `fan triangle ${t}→${t + 1} shares a rim vertex`).toEqual(nz(vert(3 * (t + 1) + 1)))
     }
-    // F7 — the rim bearings (ground-plane atan2(x, z), wedge axis +z) sweep MONOTONICALLY across the full
+    // The rim bearings (ground-plane atan2(x, z), wedge axis +z) sweep MONOTONICALLY across the full
     // 2·FOV_HALF_RAD: p_0 is triangle 0's rim1 (vertex 1), then each triangle contributes its rim2 (vertex 3t+2).
     const rimBearing = (i: number): number => Math.atan2(vert(i)[0], vert(i)[2])
     const bearings = [rimBearing(1), ...Array.from({ length: 32 }, (_, t) => rimBearing(3 * t + 2))]
@@ -662,7 +662,7 @@ describe('rendered-space oracle — the drawn cone/ring/occluder reproduce the d
     expect(nz(vert(95)), 'last fan rim column === the +FOV_HALF_RAD boundary-ray terminal').toEqual(nz(plusEdge))
   })
 
-  test('PREMISE (F7): a fan of 32 degenerate [apex, e, e] triangles FAILS nonzero-area + intra-triangle bearing advance', () => {
+  test('PREMISE: a fan of 32 degenerate [apex, e, e] triangles FAILS nonzero-area + intra-triangle bearing advance', () => {
     // Build a zero-area fan explicitly: each triangle is [apex, p_t, p_t] — its two rim vertices COINCIDE. It sits
     // at R_MAX inside the wedge (passes the point-wise checks) but every triangle has zero area and no rim advance.
     const rim = (t: number): [number, number, number] => {

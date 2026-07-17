@@ -5,20 +5,20 @@ import { CATEGORY } from './theme'
 import { ROBUST_F3A } from '../decode/campaignCatalog'
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
-// THE HANGAR (T5b, D5) — the run-library front door.
+// THE HANGAR — the run-library front door.
 //
 // LAW-4 DECLARATION (constitution §4 — filed in-code for this new surface):
 //   • Question (Q5, at library scale): "which run is this, and can I trust its pixels?" — the front
 //     door that answers before the stage is ever mounted.
 //   • Surface split (LAW 3): this is the INSTRUMENT half — density, DOM/React only, ZERO WebGL and no
-//     frame loop (§8: the Hangar never mounts the r3f canvas and does no rAF work). Its STAGE half is
+//     frame loop (the load budget: the Hangar never mounts the r3f canvas and does no rAF work). Its STAGE half is
 //     the drill-through: opening a card rides the existing hero/ceremony path.
 //   • Borrowed hues (LAW 2, zero new tokens): the integrity voices ONLY — verified green (`--verified`)
 //     for a card the ceremony SEALED this session, the attested slate `•` (`--pending`, the canonical
-//     attested token — v0.8 W1) otherwise, and the alarm `--mismatch` ✗ for a seal later BROKEN by a
-//     mismatched re-load (closure item 1). The voice glyph + class are sourced from voices.ts. The kind
+//     attested token — v0.8) otherwise, and the alarm `--mismatch` ✗ for a seal later BROKEN by a
+//     mismatched re-load. The voice glyph + class are sourced from voices.ts. The kind
 //     histogram wears event-IDENTITY category hues (`--cat-*`), never a provenance voice glyph and
-//     never the R3 verdict pair (those are statistical pass/fail — the v0.7 Wall's, not the Hangar's).
+//     never the verdict pair (those are statistical pass/fail — the v0.7 Wall's, not the Hangar's).
 //   • What it dims (LAW 1): within itself a sealed ✓ card carries the earned emphasis; at rest the
 //     field is quiet attested dots. It dims nothing on the frame — it is not on the frame.
 //   • Honest empty states: (a) index did not load → the library says so plainly, no fake cards;
@@ -26,17 +26,17 @@ import { ROBUST_F3A } from '../decode/campaignCatalog'
 //     (c) the assumed-clock tier (e0/f0/f1) shows its tick count as "assumed", never a fabricated
 //     real duration.
 //
-// D4 CHECKMARK ECONOMY: a card is SESSION-EARNED — attested `•` until its run is opened and its
+// CHECKMARK ECONOMY (a design ruling): a card is SESSION-EARNED — attested `•` until its run is opened and its
 // ceremony seals green THIS session (sealedRuns, in-memory only). Reload ⟹ every card back to `•`.
 // A seal CONTRADICTED by a later mismatched re-load renders the alarm ✗ (never ✓, never plain •) and is
 // session-terminal — the state machine lives in hangar.ts (recordSeal/breakSeal/effectiveSealStatus).
-// D4 RULING 2: the f3a verdict is sourced from its own identity (correct campaign), never a sidecar —
+// A design ruling: the f3a verdict is sourced from its own identity (correct campaign), never a sidecar —
 // the ROBUST wordmark never touches this card (pinned in hangar.test.ts).
-// D4 6.4: the card is the exact container the v0.7 Certification Wall expands into (head band /
+// The card is the exact container the v0.7 Certification Wall expands into (head band /
 // instrument zone / field zone budgeted now) so the front door does not reflow when the Wall lands.
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
 
-// The sidecar's own contract line, verbatim-class (D4 Part 1 thesis): the Hangar reads index.json,
+// The sidecar's own contract line, verbatim-class: the Hangar reads index.json,
 // which is a convenience map — a tampered index can misdirect a lookup but can never forge a
 // verification (the ✓ is re-earned by the browser, never trusted from the index).
 const DISCLAIMER = 'index, not authority — a tampered index can misdirect, never forge.'
@@ -46,17 +46,17 @@ export interface HangarProps {
   runs: RunEntry[]
   currentRunId: string
   sealedRuns: SealRecord[]
-  // The loaded run's identity, published atomically with model+hashes by useRun (W1). The render-side
+  // The loaded run's identity, published atomically with model+hashes by useRun. The render-side
   // guard (effectiveSealStatus) uses it so a ✓ is painted only while the seal's resultId matches the
-  // bytes actually on stage when that run is the open one (closure item 1's "hold only while" clause).
+  // bytes actually on stage when that run is the open one (the identity-join guard's "hold only while" clause).
   loadedRunId: string | null
   loadedResultId: string | null
   tourRunIds: readonly string[]
   onClose: () => void
   onOpenRun: (id: string) => void
   onOpenTour: (id: string) => void
-  // The Wall's front-door entry (v0.8 W5): opens the campaign Certification Wall. The Wall is the Hangar's
-  // campaign expansion (D4 6.4) — reachable HERE, following the card/CTA grammar.
+  // The Wall's front-door entry (v0.8): opens the campaign Certification Wall. The Wall is the Hangar's
+  // campaign expansion — reachable HERE, following the card/CTA grammar.
   onOpenWall: () => void
 }
 
@@ -122,7 +122,7 @@ export function Hangar({ open, runs, currentRunId, sealedRuns, loadedRunId, load
             ))}
           </div>
         )}
-        {/* CAMPAIGNS (v0.8 W5) — the Wall's front door. A campaign is a SEPARATE entity from a run: it names
+        {/* CAMPAIGNS (v0.8) — the Wall's front door. A campaign is a SEPARATE entity from a run: it names
             the ROBUST campaign correctly (the profile-conflation tripwire guards only the correct-profile f3a
             RUN card above, which stays untouched — the two must never conflate). The verdict rides the ATTESTED
             voice (on record, not a session receipt); the ✓ receipts are earned inside the Wall. */}
@@ -140,7 +140,7 @@ export function Hangar({ open, runs, currentRunId, sealedRuns, loadedRunId, load
             <button className="hangar-campaign-open" onClick={onOpenWall}>open the wall →</button>
           </article>
         </section>
-        {/* Disclaimer chip (D4): the index is a map, not the authority. Always present on the surface. */}
+        {/* Disclaimer chip: the index is a map, not the authority. Always present on the surface. */}
         <p className="hangar-disclaimer">{DISCLAIMER}</p>
       </div>
     </div>
@@ -155,7 +155,7 @@ function HangarCard({ entry, current, sealStatus, hasTour, onOpenRun, onOpenTour
   const rows = histogramRows(entry.kinds)
   const maxCount = rows.length > 0 ? rows[0]!.count : 1
   const duration = realSimDuration(entry) // mm:ss.s for a real-clock run, else null (assumed voice)
-  // F5 — entry.id is UNSIGNED index.json data; an OWN-property lookup (cardNote) so a prototype-shaped id can never
+  // entry.id is UNSIGNED index.json data; an OWN-property lookup (cardNote) so a prototype-shaped id can never
   // resolve an inherited member (Object.prototype / the Object constructor) into a crashing React child.
   const note = cardNote(entry.id)
 
@@ -184,7 +184,7 @@ function HangarCard({ entry, current, sealStatus, hasTour, onOpenRun, onOpenTour
         {rows.map((r) => (
           <li key={r.kind} className="hangar-hist-row">
             <span className="hangar-hist-bar" style={{ width: `${Math.max(4, (r.count / maxCount) * 100)}%`, background: CATEGORY[r.category].hue }} />
-            {/* Compact fit (T5/R4): the cell ellipsis-truncates a long registry name (e.g. MotionSegmentStarted);
+            {/* Compact fit: the cell ellipsis-truncates a long registry name (e.g. MotionSegmentStarted);
                 title carries the full name verbatim so nothing is lost — the shown text is always the registry's. */}
             <span className="hangar-hist-name" title={r.name}>{r.name}</span>
             <span className="hangar-hist-count">{r.count}</span>
@@ -192,7 +192,7 @@ function HangarCard({ entry, current, sealStatus, hasTour, onOpenRun, onOpenTour
         ))}
       </ul>
 
-      {/* supersedes_plan_id (D4): surfaced only when a manifest carries a non-zero chain — the anti-
+      {/* supersedes_plan_id: surfaced only when a manifest carries a non-zero chain — the anti-
           p-hacking tripwire made architectural. Dormant today (no published manifest carries one). */}
       {entry.supersedesPlanId && (
         <p className="hangar-supersedes">supersedes {entry.supersedesPlanId}</p>

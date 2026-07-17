@@ -63,7 +63,7 @@ describe('resolveCampaignSeed: a pinned seed resolves from the catalog, never fr
   })
 })
 
-// ── F2/F5/F8 precedent (runCatalog): a non-conforming or prototype-shaped seed id resolves to NO pin ─────────
+// ── Prototype-safety precedent (runCatalog): a non-conforming or prototype-shaped seed id resolves to NO pin ─────────
 describe('resolveCampaignSeed: grammar + prototype safety (reuse the runCatalog precedents)', () => {
   test.each([
     '../42', 'campaigns/42', 'a/b', '42/', '/42', '42/..', './42', '4 2', '4a', '', '0x2a',
@@ -82,7 +82,7 @@ describe('resolveCampaignSeed: grammar + prototype safety (reuse the runCatalog 
   })
 })
 
-describe('the base-resolution seam (F2): main-thread resolveAppBase + worker-side campaignBundleUrl join', () => {
+describe('the base-resolution seam: main-thread resolveAppBase + worker-side campaignBundleUrl join', () => {
   const DOC = 'https://kaselunt.dev/swarm-observatory/index.html' // a Pages document base (document.baseURI)
 
   test('campaignBundlePath is the base-relative seed path — derived from base+seed, never a manifest field', () => {
@@ -92,7 +92,7 @@ describe('the base-resolution seam (F2): main-thread resolveAppBase + worker-sid
     expect(campaignBundlePath(ROBUST_F3A, s91)).toBe('campaigns/robust-f3a/91/bundle.det')
   })
 
-  // F2 — resolveAppBase runs on the MAIN THREAD (a worker cannot interpret a relative Vite base — its own fetch
+  // resolveAppBase runs on the MAIN THREAD (a worker cannot interpret a relative Vite base — its own fetch
   // would resolve against the worker script url). Each deploy-base shape resolves to the correct ABSOLUTE base,
   // and the worker-side join then yields the correct absolute campaigns url. '' and './' (relative Vite bases)
   // resolve to the DOCUMENT DIRECTORY; a missing / repeated trailing slash is normalised.

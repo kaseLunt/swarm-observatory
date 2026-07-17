@@ -29,7 +29,7 @@ describe('voiceGlyph — the static provenance marks; the no-glyph law', () => {
     expect(voiceGlyph('sealed')).toBe('✓')
     expect(voiceGlyph('unsealed')).toBe('○')
     expect(voiceGlyph('attested')).toBe('•')
-    // The D4-inherited law: these narrow their claim in words, never a mark that reads as an earned ✓.
+    // The design-inherited law: these narrow their claim in words, never a mark that reads as an earned ✓.
     expect(voiceGlyph('declared-constant')).toBeNull()
     expect(voiceGlyph('derivation')).toBeNull()
     expect(voiceGlyph('presentational')).toBeNull()
@@ -103,12 +103,12 @@ describe('validateRegistration — fail loud, never coerce', () => {
   })
 })
 
-describe('validateRegistration — the W3 witness gate (a recomputed class must witness HOW it agrees)', () => {
+describe('validateRegistration — the witness gate (a recomputed class must witness HOW it agrees)', () => {
   // A ledger that keeps its decoded + scenario-constant classes (so the chip still agrees) plus one recomputed
   // class whose AgreeSource we vary. PREMISE-FIRST: the old prose-only recomputed declaration (no agree) passed
-  // before W3; now it is refused.
+  // before this gate; now it is refused.
   // `agree` is spread in only when present — exactOptionalPropertyTypes forbids setting it `undefined`, which
-  // is exactly the prose-only (no-witness) shape W3 refuses.
+  // is exactly the prose-only (no-witness) shape this gate refuses.
   const withRecomputed = (agree?: PixelClass['agree']): LensRegistration => baseReg({
     provenance: [
       cls('a', 'decoded', 'contract/x.md §1'),

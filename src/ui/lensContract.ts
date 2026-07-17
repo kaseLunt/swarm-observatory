@@ -15,14 +15,14 @@
 // verbatimModuleSyntax, and the ONE runtime import is the voices module — itself a zero-runtime-import pure
 // data leaf — so the closure stays {lensContract, voices}: two pure leaves, no heavy dependency dragged
 // behind the contract. Compile-time hue membership rides the type-only edge (LAW 2); the seven-mark glyphs
-// ride the voices leaf so this module never re-mints a voice literal (the single-source law, v0.8 W1).
+// ride the voices leaf so this module never re-mints a voice literal (the single-source law, v0.8).
 import type { PaletteKey, CategoryKey } from './theme'
 import { requireGlyph, VOICE_MARK, basisNote, type MarkKey } from './voices'
 import type { AgreeSource, AgreementResult } from './agreeSource'
 
 // ── The six authority tiers (pinned NOW, per the standing rule) ────────────────────────────────────────
 // Every visual element CLASS a lens paints classifies as exactly one of these — how it knows what it draws.
-// This vocabulary generalizes the D4 rulings: `derived-display` is the kind-histogram ruling ("index
+// This vocabulary generalizes the design rulings: `derived-display` is the kind-histogram ruling ("index
 // content, never a voice glyph") made a tier; `pinned-bits` is the bearings constraint made a tier;
 // `decoded`-inherits-the-seal is the session-earned law made a tier.
 export type ProvenanceTier =
@@ -49,7 +49,7 @@ export interface PixelClass {
   readonly tier: ProvenanceTier
   readonly source: string | null
   readonly answer: string
-  // W3 (audit A1) — a `recomputed` class MUST witness HOW it agrees with the engine: the AgreeSource union,
+  // A `recomputed` class MUST witness HOW it agrees with the engine: the AgreeSource union,
   // where the basis is the tag (a `live-inputs` re-derivation naming its input tokens + pinned form, or the
   // `decoded-consistency` honest downgrade). MANDATORY on the recomputed tier, FORBIDDEN off it (an
   // AgreeSource on any other tier is a category error) — validateRegistration enforces both. The declared
@@ -99,12 +99,12 @@ export function voiceFor(tier: ProvenanceTier, sealedThisSession: boolean): Voic
 }
 
 // The glyph a voice may wear (the shipped provenance alphabet ✓ • ○ ✗ — ProvenancePanel owns it). Returns
-// null for the voices that MUST NOT wear a glyph (the D4-inherited law): a `declared-constant`,
+// null for the voices that MUST NOT wear a glyph (the design-of-record's law): a `declared-constant`,
 // `derivation`, or `presentational` class narrows its claim in words (the chip / a note), never a mark that
 // would read as an earned ✓. A `live-check` voice resolves to a mark only once a comparison exists, so it
 // too returns null here (this function pins the STATIC marks); the LIVE mark is stamped per row by
 // `recomputedVerdict` from the class's DECLARED arm (✓ for live-inputs, ○ for decoded-consistency, ✗ on
-// disagreement) — that is where agree.basis is HONORED, not discarded (W3 F3).
+// disagreement) — that is where agree.basis is HONORED, not discarded.
 // Resolved THROUGH the ONE exhaustive Voice→mark map (voices.VOICE_MARK) — never a voice-local literal — so a
 // voice's glyph is its mark's own, and the boot guard validates the SAME map this renderer reads.
 export function voiceGlyph(voice: Voice): string | null {
@@ -112,7 +112,7 @@ export function voiceGlyph(voice: Voice): string | null {
   return mark === null ? null : requireGlyph(mark)
 }
 
-// ── The `basis` NOTE for a recomputed class — sourced from its AgreeSource ARM TAG (W3, ev99 closed) ─────
+// ── The `basis` NOTE for a recomputed class — sourced from its AgreeSource ARM TAG ─────
 // The note a surface renders beside a live-check mark comes from the DECLARATION's `basis` discriminant, not
 // a hand-passed literal — ONE truth. Because `AgreeSource['basis']` IS `Basis` (the type voices.BASIS_NOTE
 // keys on), the arm's tag and its rendered note can never drift.
@@ -120,17 +120,17 @@ export function agreeBasisNote(agree: AgreeSource): string {
   return basisNote(agree.basis)
 }
 
-// ── The recomputed-row VERDICT MARK + basis note, BOTH sourced from the class's DECLARED arm (W3 F3) ──────
+// ── The recomputed-row VERDICT MARK + basis note, BOTH sourced from the class's DECLARED arm ──────
 // The witness union must be WORN, not merely declared. Before this, every recomputed row was stamped by a bare
 // boolean → ✓/✗, discarding agree.basis: a decoded-consistency arm would have passed registration and then
 // WORN THE CHECK at the presentation layer (the union demoted to prose). This is the production mark resolver
 // both real components call, per row, with THAT row's declared arm:
 //   • a `live-inputs` agreement earns the manifest-verified ✓ (the external-oracle check);
-//   • a `decoded-consistency` agreement earns ONLY the self-consistent ○ (the W1 ring — no external oracle),
+//   • a `decoded-consistency` agreement earns ONLY the self-consistent ○ (the ring — no external oracle),
 //     NEVER the ✓ — that is the whole point of the two-arm union;
 //   • a disagreement is the ✗ (mismatch) on EITHER arm.
-// `agreed` is the BRANDED per-row outcome (AgreementResult<boolean>, F4) — a plain boolean does not type-check
-// here, so the executor's mint is load-bearing all the way to the mark. The basis NOTE (ev99 — this is
+// `agreed` is the BRANDED per-row outcome (AgreementResult<boolean>) — a plain boolean does not type-check
+// here, so the executor's mint is load-bearing all the way to the mark. The basis NOTE (this is
 // agreeBasisNote's production caller) rides alongside from the SAME arm tag, so the glyph a row wears and the
 // words beside it can never disagree about HOW the row knows.
 export interface RecomputedVerdict { readonly mark: MarkKey; readonly note: string }
@@ -171,7 +171,7 @@ export function validateRegistration(reg: LensRegistration): LensRegistration {
       fail(`${reg.id}: pixel-class '${p.id}' (${p.tier}) has no contract/ anchor — mandatory for every non-presentational tier; only presentational classes may omit it`)
     if (p.tier === 'presentational' && p.source !== null)
       fail(`${reg.id}: pixel-class '${p.id}' is presentational yet names a source '${p.source}' — presentational classes encode no data and anchor nothing`)
-    // W3 (audit A1) — the recomputed tier must WITNESS how it agrees, never self-attest in prose. A recomputed
+    // The recomputed tier must WITNESS how it agrees, never self-attest in prose. A recomputed
     // class REQUIRES an AgreeSource (the old prose-only declaration no longer passes); a live-inputs arm must
     // name at least one input token (a re-derivation with no inputs re-derives from nothing). An AgreeSource on
     // any OTHER tier is a category error — only a recompute has an agreement to witness.

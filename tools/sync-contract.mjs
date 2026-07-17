@@ -66,7 +66,7 @@ for (const [id, fixture] of [['f2a', 'f2a_seed42'], ['f3a', 'f3a_seed42'], ['f4'
 
 // index.json is built by tools/runIndex.mjs (the run list + the publish-time enrichment: kind
 // histogram + tick count decoded from the just-published bytes, and dt_us / supersedes_plan_id from
-// the manifest). The Hangar (T5b) reads this file alone to render its cards; publication.test.ts
+// the manifest). The Hangar reads this file alone to render its cards; publication.test.ts
 // proves every declared histogram against the real decoder. serializeIndex writes the exact committed
 // bytes (2-space, no trailing newline) so this generator's output equals the tracked artifact.
 writeFileSync('public/runs/index.json', serializeIndex())

@@ -6,12 +6,12 @@ import { breakSeal, recordSeal, type SealRecord } from '../ui/hangar'
 interface ViewState {
   runId: string; tick: number; fraction: number; playing: boolean; speed: number
   selectedEntity: string | null; selectedEvent: number | null; finale: boolean
-  // SESSION-SEAL (T5b, D4 checkmark economy): the runs whose ceremony sealed green THIS session (opened
-  // + trailer matched). Each record names the run AND the exact bytes its ✓ vouches for (resultId, W1);
-  // `broken` marks a seal later CONTRADICTED by a mismatched re-load of the same run (closure item 1 —
-  // rendered in the alarm ✗ register, session-terminal; the full state machine is documented on
+  // SESSION-SEAL (the checkmark economy): the runs whose ceremony sealed green THIS session (opened
+  // + trailer matched). Each record names the run AND the exact bytes its ✓ vouches for (resultId);
+  // `broken` marks a seal later CONTRADICTED by a mismatched re-load of the same run (rendered in
+  // the alarm ✗ register, session-terminal; the full state machine is documented on
   // recordSeal/breakSeal in ui/hangar.ts). The Hangar reads this to voice each card. In-memory ONLY —
-  // never localStorage, never the URL (NEVER #12): a reload re-empties it, so every ✓ (and ✗) is
+  // never localStorage, never the URL: a reload re-empties it, so every ✓ (and ✗) is
   // re-earned. This is why it lives in the store singleton (survives a run switch) and nowhere else.
   sealedRuns: SealRecord[]
   setTick(t: number): void; setPlaying(p: boolean): void; setSpeed(s: number): void
@@ -36,8 +36,8 @@ export const useViewStore = create<ViewState>((set) => ({
   // when run is absent).
   runId: DEFAULT_RUN, tick: 0, fraction: 0, playing: false, speed: 1,
   selectedEntity: null, selectedEvent: null, sealedRuns: [],
-  // FINALE (v0.5b T3): ephemeral stage-dressing state — true only at a NATURAL play-to-end rest (the Timeline
-  // transport batch writes it at the natural-end edge; ruling 5). It drives the finale display (lit journey,
+  // FINALE (v0.5b): ephemeral stage-dressing state — true only at a NATURAL play-to-end rest (the Timeline
+  // transport batch writes it at the natural-end edge). It drives the finale display (lit journey,
   // composed close-up, celebrated head / full spine). CLEARED here by any playhead MOVE — a scrub or arrow-key
   // step (setTick, move-guarded: a setTick that lands exactly where the playhead already rests — same tick,
   // fraction 0 — is zero motion and KEEPS it), a deep-link / history replay (applyLink), and starting play
@@ -46,7 +46,7 @@ export const useViewStore = create<ViewState>((set) => ({
   // from LinkState, so applyLink only ever CLEARS it (never SETS it) — a deep-link straight to
   // ?tick=<tickCount> does NOT fire the finale (natural-end is a play-path edge — an accepted asymmetry).
   finale: false,
-  // MOVE-guard (final wave): clear the finale only when the playhead actually MOVES — the clamped
+  // MOVE-guard: clear the finale only when the playhead actually MOVES — the clamped
   // new tick differs from the resting tick, OR we were mid-fraction (landing on the tick boundary IS a move).
   // An arrow-key step clamped back onto the end rail (same tick, fraction 0) is zero motion → the finale rests.
   setTick: (tick) => set((s) => {
@@ -59,7 +59,7 @@ export const useViewStore = create<ViewState>((set) => ({
   setPlaying: (playing) => set((s) => ({ playing, finale: playing ? false : s.finale })),
   setSpeed: (speed) => set({ speed: clampSpeed(speed) }),
   select: (selectedEntity, selectedEvent) => set({ selectedEntity, selectedEvent }),
-  // Seal reconciliation wiring (closure item 1) — the pure state machine lives in ui/hangar.ts
+  // Seal reconciliation wiring — the pure state machine lives in ui/hangar.ts
   // (recordSeal/breakSeal); both actions preserve reference-stability so a no-op transition (the natural
   // re-fire on every ready re-render, a break on a never-sealed run) returns the unchanged state `s` and
   // fires no update. recordSeal appends a fresh seal, no-ops on the same resultId, REPLACES on a
@@ -88,7 +88,7 @@ export const useViewStore = create<ViewState>((set) => ({
 
 // -Infinity, not 0: the throttle gates against the last ACTUAL sync, so the very first unforced
 // sync after load must never be suppressed by the page-load clock (performance.now() can still be
-// < 500 when the first step fires). With step demoted to unforced (task-7 review), a lone ArrowRight
+// < 500 when the first step fires). With step demoted to unforced, a lone ArrowRight
 // on a fresh page must still write ?tick= immediately rather than wait for a second interaction.
 let lastSync = -Infinity
 let pendingFlush: ReturnType<typeof setTimeout> | null = null

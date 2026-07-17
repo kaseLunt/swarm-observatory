@@ -38,7 +38,7 @@ test('thesisSubline is verdict-bound — self-consistent claims no external chec
   expect(thesisSubline('mismatch')).toContain('failed')
 })
 
-// ── F1: the DET-ONLY self-check voice never over-claims "every byte" — the ceremony scope, carried to the app ──
+// ── The DET-ONLY self-check voice never over-claims "every byte" — the ceremony scope, carried to the app ──
 test('det-only thesis + AT announcement never say "every byte" / "all bytes" / "end to end" — they name the trailer-checked scope', () => {
   // 8f1429c scoped the CEREMONY thesis (event & state hashes + frame counts vs the sealed trailer, NO "every
   // byte"); the app's thesis subline was missed. result_id is DERIVED from trailer-sourced case_id/
@@ -62,7 +62,7 @@ test('the independence line states the decoder was NOT written from the source',
   expect(INDEPENDENCE_LINE).toContain('byte-for-byte')
 })
 
-// ── W1: the thesis verdict WITHHOLDS on a failed identity join / absent hashes — fail-safe, never green ──
+// ── The thesis verdict WITHHOLDS on a failed identity join / absent hashes — fail-safe, never green ──
 test('thesisVerdictFor WITHHOLDS (null) when the verdict is unknown — no glyph, no false green', () => {
   // null in ⟹ null out: App passes null when loadedRunId !== runId (the resident hashes belong to a prior
   // run) or hashes are absent. The card renders NO verdict glyph/subline then — a blank beats a lie.
@@ -76,7 +76,7 @@ test('thesisVerdictFor routes a concrete verdict to the three-voice grammar (✓
   expect(thesisVerdictFor('mismatch')).toMatchObject({ glyph: '✗', cls: 'mismatch' })
 })
 
-// ── T5 / critic R6: the cold-open card collapses to a header chip once the auto-tour leaves beat 0 ──────
+// ── The cold-open card collapses to a header chip once the auto-tour leaves beat 0 ──────
 test('tourPastFirstBeat: the full card holds through beat 0 (establishing shot), collapses at beat 1', () => {
   // Beat 0 (the cold-open share moment, authored beside the establishing shot) keeps the FULL card up.
   expect(tourPastFirstBeat(true, 0)).toBe(false)

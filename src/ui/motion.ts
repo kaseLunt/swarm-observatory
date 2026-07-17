@@ -14,7 +14,7 @@ export function prefersReducedMotion(): boolean {
   wire()
   return current
 }
-// ── dt-normalized camera easing (v0.5b T1) ────────────────────────────────────────────────────────
+// ── dt-normalized camera easing ────────────────────────────────────────────────────────
 // The hand lerps in Scene's frame loop (`t += (target − t) * factor`) used FIXED per-frame factors
 // (0.15 focus + trail-frame, 0.05 follow-coast), so convergence SPEED tracked the frame rate — a 30fps
 // crawl, a 120fps snap. Derive the factor from a per-second rate instead: factor(dt) = 1 − exp(−rate·dt),
@@ -52,18 +52,18 @@ export const focusLerpFactor = (reduced: boolean, dt: number): number =>
 export const followLerpFactor = (reduced: boolean, dt: number): number =>
   reduced ? 1 : dtEase(FOLLOW_EASE_RATE, clampDt(dt))
 
-// Scrub-from-finale RE-FIT settle rate (v0.5d ruling 5). The establish-refit ease — the camera move that hands
+// Scrub-from-finale RE-FIT settle rate (a design ruling). The establish-refit ease — the camera move that hands
 // back the wide establishing frame when a scrub LEAVES a finale rest (Scene.shouldRefitOnFinaleClear) — shared
 // FOCUS_EASE_RATE with the one-shot focus cut and tour arrivals, so it WHIPPED: ~85% of the close-up→wide move
-// completed during the ~500ms drag (critic n5: ~47.7→0 u/100ms), reading as a snap, not a camera move. Give the
+// completed during the ~500ms drag (measured ~47.7→0 u/100ms), reading as a snap, not a camera move. Give the
 // refit its OWN gentler rate so the settle decelerates VISIBLY past the drag (a longer exponential tail) without a
-// lag-feel. 0.6× FOCUS_EASE_RATE (ruling 5's 0.5–0.7 band) ≈ 5.85/s: the time constant 1/rate is ~1.67× longer, so
+// lag-feel. 0.6× FOCUS_EASE_RATE (the design ruling's 0.5–0.7 band) ≈ 5.85/s: the time constant 1/rate is ~1.67× longer, so
 // the initial velocity (rate·distance) is ~40% lower and the tail runs ~1.67× longer — calibrated on the browser
-// refit-settle timing (v0.5d T1 report). SCOPED to the refit path ONLY: tour-arrival + plain-establish (the play
+// refit-settle timing. SCOPED to the refit path ONLY: tour-arrival + plain-establish (the play
 // rising edge) keep FOCUS_EASE_RATE (their feel passed two release gates). Exported additionally for tests.
 export const REFIT_EASE_RATE = FOCUS_EASE_RATE * 0.6
 
-// Scrub-from-finale re-fit ease factor (v0.5d ruling 5): a GENTLER sibling of focusLerpFactor for the establish-
+// Scrub-from-finale re-fit ease factor (a design ruling): a GENTLER sibling of focusLerpFactor for the establish-
 // refit camera move ONLY (chosen at the Scene consume by the request's refit flag). Reduced motion still snaps
 // (factor 1) — the SAME explicit bypass as focusLerpFactor, so RM keeps its instant cut.
 export const refitLerpFactor = (reduced: boolean, dt: number): number =>

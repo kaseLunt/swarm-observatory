@@ -1,4 +1,4 @@
-// Pure decision layer for the ZERO-CLICK cold open (v0.6 T6, P2 + the fix-wave W3 repair). No DOM, no
+// Pure decision layer for the ZERO-CLICK cold open. No DOM, no
 // store, no React — the arming predicate and the storage probe are unit-testable without a render harness
 // (the repo carries none), mirroring thesis.ts / hangar.ts's split of logic from glue. App owns the effect
 // that reads these; the honesty rules live HERE where a test can pin them.
@@ -10,7 +10,7 @@
 //   'off'         — veto: neither the auto-play nor the card ever fires.
 export type ZeroClickScope = 'first-visit' | 'always' | 'off'
 
-// STORAGE-AVAILABILITY PROBE (W3). 'first-visit' scope needs a store that can be both READ (has this browser
+// STORAGE-AVAILABILITY PROBE. 'first-visit' scope needs a store that can be both READ (has this browser
 // seen the nudge?) AND WRITTEN (retire it so the NEXT bare load is calm). A denied/throwing store (private
 // mode, disabled cookies) can do neither — and the old seed silently read that throw as nudgeSeen=false, so
 // EVERY bare load looked like the first and auto-played, violating 'first-visit'. Probe read+write once with
@@ -37,9 +37,9 @@ export function probeStorage(store?: Storage | undefined): boolean {
 }
 
 // THE ARMING DECISION — should the zero-click cold open (thesis card + auto-played first tour beat) fire?
-// Pure over the whole predicate so the W2/W3 branches are pinned without a live effect:
+// Pure over the whole predicate so the arming branches are pinned without a live effect:
 //   • never on 'off', never on a deep link (a shared/deep URL is not a cold open), never without a tour.
-//   • 'first-visit' additionally requires an UNSEEN marker AND an AVAILABLE store (W3): if the store is
+//   • 'first-visit' additionally requires an UNSEEN marker AND an AVAILABLE store: if the store is
 //     denied, the marker can be neither read nor persisted, so the conservative honest form is to SUPPRESS
 //     entirely (never auto-play on every visit). 'always' ignores both the marker and storage by design.
 export function shouldArmZeroClick(

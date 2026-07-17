@@ -17,7 +17,7 @@ export function TourOverlay({
   const total = active.steps.length
   return (
     <div className="tour-overlay" role="group" aria-label={`guided tour: ${active.title}`}>
-      {/* Tour TITLE — RULING 3(b): the product's name rendered NOWHERE a sighted user could see it (aria-label
+      {/* Tour TITLE — the product's name rendered NOWHERE a sighted user could see it (aria-label
           only), and the Hangar's three '▶ tour' chips are identical, naming nothing they launch. Surface the
           title here on the tour's own overlay — no new chrome, it just names the surface. aria-hidden because
           the group's aria-label already announces the same title to assistive tech (no double read). */}

@@ -1,11 +1,11 @@
 import { describe, expect, test } from 'vitest'
 import { spineRevealCount } from './spine'
 
-// spineRevealCount (v0.5c ruling 6, owner amendment): the reveal count at the playhead. e0 fires one event per
+// spineRevealCount (v0.5c, owner amendment): the reveal count at the playhead. e0 fires one event per
 // tick (seq == tick), so at tick t events 0..t are revealed; clamped to eventCount-1 (the last event) and
 // floored at 0. drawRange-style: grows with the playhead, truncates on a scrub back (a pure function of tick,
 // both directions) — the query stage (queryStageView) reuses it verbatim as its write-as-you-play head count.
-describe('spineRevealCount (query-stage reveal clock, ruling 6)', () => {
+describe('spineRevealCount (query-stage reveal clock)', () => {
   test('at tick t events 0..t are revealed, for e0 (eventCount 75)', () => {
     expect(spineRevealCount(0, 75)).toBe(0)   // tick 0: only the head event
     expect(spineRevealCount(1, 75)).toBe(1)

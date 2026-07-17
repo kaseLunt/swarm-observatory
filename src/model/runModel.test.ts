@@ -26,7 +26,7 @@ describe('tick index (E0)', () => {
   test('every tick 0..74 has exactly one event', () => {
     for (let t = 0; t < 75; t++) expect(e0.eventsByTick(asEventTick(t))).toHaveLength(1)
   })
-  test('an out-of-range tick returns the shared empty instance — no per-call allocation (debt #16, §8.2)', () => {
+  test('an out-of-range tick returns the shared empty instance — no per-call allocation', () => {
     // `?? []` allocated a FRESH empty array on every out-of-range call; `?? EMPTY` returns the module
     // singleton (the same instance eventsForSubject already hands back). Identity across two calls is the
     // observable proof the allocation is gone. Behavior is otherwise unchanged — still an empty, readonly,
@@ -64,7 +64,7 @@ describe('lazy state materialization equivalence', () => {
   test('entityStatesAt returns the cached instance on back-to-back hits', () => {
     expect(e0.entityStatesAt(asStateFrame(0))).toBe(e0.entityStatesAt(asStateFrame(0)))
   })
-  test('the state-frame / event-tick brands are non-interchangeable at the RunModel seam (A3)', () => {
+  test('the state-frame / event-tick brands are non-interchangeable at the RunModel seam', () => {
     // Compile-level pins: entityStatesAt reads the STATE-FRAME domain, eventsByTick the EVENT domain. A bare
     // number (an un-branded raw playhead) cannot index either — the confusion the wave exists to kill is now a
     // type error at this seam. @ts-expect-error fires at typecheck; the runtime call still works (brands erase).

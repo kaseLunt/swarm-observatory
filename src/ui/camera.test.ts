@@ -14,13 +14,13 @@ import {
   shouldEstablishOnMount, shouldArmFollowOnPlay,
 } from './frameChannels'
 import { FOLLOW_BIAS_MAX } from './Scene'
-// W3: the marker sizing comes from the RENDERER, not a local literal — the crop test moves if production sizing moves.
+// the marker sizing comes from the RENDERER, not a local literal — the crop test moves if production sizing moves.
 import { HEAD_R, SENSOR_MARKER_R, HEAD_CONE_H, lerpHeadPosition } from './sensingStageView'
 import { asEventTick, asStateFrame } from '../lib/brand'
 
 const ent = (pos: number[]): EntityV2 => ({ value: 0n, alive: true, pos, vel: [], headingRad: 0, speedMps: 0, turnRateRadps: 0, fuel: 0, setpoint: [] })
 
-// ── F3 — the directed-camera anchor: SUBJECT pose on a sensing run, centroid otherwise ─────────────────────
+// ── the directed-camera anchor: SUBJECT pose on a sensing run, centroid otherwise ─────────────────────
 describe('cameraAnchor — a sensing run frames the SUBJECT; non-sensing keeps the centroid byte-identical', () => {
   // Two widely-separated entities: a non-subject at x=0 and the subject at x=200. The loop accumulates the
   // centroid SUM (cx=200 over count=2 → midpoint x=100) and captures the subject's own pose (sx=200).
@@ -29,18 +29,18 @@ describe('cameraAnchor — a sensing run frames the SUBJECT; non-sensing keeps t
     expect(cameraAnchor(CX, 0, 0, COUNT, SX, 0, 0, true)).toEqual([200, 0, 0])
   })
   test('a finale close-up centred on the centroid (100) would MISS the subject (200) — the defect the anchor fixes', () => {
-    // The pre-F3 centroid anchor: for these two entities it sits 100 units off the subject — a tight close-up
+    // The prior centroid anchor: for these two entities it sits 100 units off the subject — a tight close-up
     // (the finale/tour grammar) frames empty space between the two, not the drone the evidence concerns.
     expect(cameraAnchor(CX, 0, 0, COUNT, SX, 0, 0, false)).toEqual([100, 0, 0]) // centroid = midpoint
     expect(cameraAnchor(CX, 0, 0, COUNT, SX, 0, 0, false)[0]).not.toBe(SX)      // …and it is NOT the subject
   })
-  test('NON-SENSING is byte-identical to the pre-F3 centroid (cx/count, cy/count, cz/count)', () => {
+  test('NON-SENSING is byte-identical to the prior centroid (cx/count, cy/count, cz/count)', () => {
     // The exact prior expression, pinned: useSubject false ⇒ the centroid division, untouched.
     expect(cameraAnchor(30, 60, 90, 3, 999, 999, 999, false)).toEqual([10, 20, 30])
   })
 })
 
-// ── F1 — the directed camera HOLDS the subject pose across a dropout, PLAYHEAD-INDEXED (correct under reverse
+// ── the directed camera HOLDS the subject pose across a dropout, PLAYHEAD-INDEXED (correct under reverse
 // scrub / tour jump / run switch, not just forward play) ──────────────────────────────────────────────────────
 // A multi-entity sensing run: the SUBJECT and one other entity. Admission is key membership + a non-static flight,
 // NOT per-tick presence, so the subject can drop out of a tick while the other entity remains. heldSubjectPose is
@@ -49,7 +49,7 @@ describe('cameraAnchor — a sensing run frames the SUBJECT; non-sensing keeps t
 // the earlier traversal-latch `advanceSubjectHold` (a forward-only accumulator that kept the FUTURE pose on a
 // backward scrub and could leak a prior run's pose across a switch) — the tests below pin the same held-through-
 // dropout property AND the reverse-scrub / run-switch correctness the latch could not provide.
-describe('heldSubjectPose — the sensing camera anchors on the EVIDENCE subject through a dropout (F1)', () => {
+describe('heldSubjectPose — the sensing camera anchors on the EVIDENCE subject through a dropout', () => {
   const out = (): SubjectHold => ({ has: false, x: 0, y: 0, z: 0 })
   // Build the structural trail slice heldSubjectPose reads. `positions` is interleaved xyz already hold-filled the
   // way buildTrail lays it (an absent-after-spawn frame holds the previous vertex); `first` is the first present frame.
@@ -77,7 +77,7 @@ describe('heldSubjectPose — the sensing camera anchors on the EVIDENCE subject
     expect(cameraAnchor(DROPOUT_CX, 0, 0, DROPOUT_COUNT, h.x, h.y, h.z, useSubjectAnchor)).toEqual([200, 0, 0])
   })
 
-  test('F1 REVERSE SCRUB into a dropout gap holds the PRE-gap pose (the premise-first inversion of the old latch)', () => {
+  test('REVERSE SCRUB into a dropout gap holds the PRE-gap pose (the premise-first inversion of the old latch)', () => {
     // frame 0 present x=10, frame 1 a dropout gap (buildTrail held x=10), frame 2 present x=99. The OLD traversal
     // latch, driven forward 0→1→2, ended at x=99 and NO-OPPED on the absent frame 1 — so a later BACKWARD scrub to
     // frame 1 kept the FUTURE x=99 while the trail/head rendered the held x=10 (camera and evidence disagreed). The
@@ -91,7 +91,7 @@ describe('heldSubjectPose — the sensing camera anchors on the EVIDENCE subject
     expect(h.x).toBe(trail.positions[3])              // bound to the very buffer vertex the head renders at frame 1
   })
 
-  test('F1 RUN SWITCH into a gap inherits nothing — each run derives from its OWN trail', () => {
+  test('RUN SWITCH into a gap inherits nothing — each run derives from its OWN trail', () => {
     // Switching mid-gap must not leak run A's pose. heldSubjectPose is a pure function of the trail passed, so run B's
     // lookup can only ever return run B's data. Here run B's subject has not appeared yet at frame 0 (first = 1): the
     // lookup returns false (suppress) — no inheritance from any prior run's pose is even representable.
@@ -127,7 +127,7 @@ describe('heldSubjectPose — the sensing camera anchors on the EVIDENCE subject
     expect(h.x).toBe(2)
   })
 
-  // ── F1 FRACTIONAL DROPOUT RECOVERY — the camera anchor rides the SAME t0→t1 head lerp, not the integer held pose ──
+  // ── FRACTIONAL DROPOUT RECOVERY — the camera anchor rides the SAME t0→t1 head lerp, not the integer held pose ──
   // heldSubjectPose stays the VALIDITY gate (its `has` still decides useSubjectAnchor / suppressDirected), but on a
   // dropout the anchor POSE no longer reads the integer held trail[t0]; Scene falls back to lerpHeadPosition(trail,
   // tick, fraction) — the EXACT sample the SensingStage head renders on the SAME buffer (Entities' trail === the
@@ -188,11 +188,11 @@ function stub(keys: string[], perTick: Record<string, number[]>[]): BoundsSource
   }
 }
 
-// F2 — entityStatesAt reads the STATE-FRAME domain. RunModel's accessor is branded StateFrame; typing the
+// entityStatesAt reads the STATE-FRAME domain. RunModel's accessor is branded StateFrame; typing the
 // structural BoundsSource accessor to match closes the method-bivariance hole that let a raw number — or a raw
 // EVENT tick (the historical verdict-vs-pose off-by-one) — index this frame-domain map. Both @ts-expect-error
 // directives fire at typecheck; the runtime calls still return a Map (brands erase), so the pin locks the domain.
-describe('BoundsSource.entityStatesAt — the frame-domain seam rejects raw ticks (F2)', () => {
+describe('BoundsSource.entityStatesAt — the frame-domain seam rejects raw ticks', () => {
   const src: BoundsSource = stub(['1:0'], [{ '1:0': [0, 0, 0] }, { '1:0': [1, 0, 0] }])
   test('a bare number cannot index the state-frame accessor', () => {
     // @ts-expect-error a raw number is not a StateFrame
@@ -327,7 +327,7 @@ describe('frameFor', () => {
     expect(f.target).toEqual([0, 1, 0])
   })
 
-  test('OFF-ORIGIN small run that already fits → camera offset off the bounds centre, aim at the centre (T2 rider completion)', () => {
+  test('OFF-ORIGIN small run that already fits → camera offset off the bounds centre, aim at the centre (rider completion)', () => {
     // radius 3 still fits the default distance (no pull-back), but the content sits at [2,0,-3]; the camera
     // must sit the composed offset off THAT centre (not the world origin) and look at it — else the subject
     // is either parked off to one side or rendered from far away as a sub-pixel speck.
@@ -421,12 +421,12 @@ describe('frameFor', () => {
   })
 })
 
-// finaleFraming (v0.5b T3, ruling 2): the compose-around-head close-up for the natural-end rest. TRAIL_FRAME_OPTS'
+// finaleFraming (v0.5b): the compose-around-head close-up for the natural-end rest. TRAIL_FRAME_OPTS'
 // Infinity cap would ease f1's 250u corridor to a ~340u wide shot (drone sub-pixel), and the capped fit strands
 // the drone off the composed default. finaleFraming instead builds a directed shot from scratch around the TRUE
 // head: target = head lifted; camera = head + the composed house-octant DIRECTION × distance. Pure; finite-guarded
 // at the Scene consume exactly like frameFor (a NaN head must skip activation, never wedge the ease).
-describe('finaleFraming (compose-around-head finale close-up, T3)', () => {
+describe('finaleFraming (compose-around-head finale close-up)', () => {
   const OFF: [number, number, number] = [DEFAULT_POSITION[0] - DEFAULT_TARGET[0], DEFAULT_POSITION[1] - DEFAULT_TARGET[1], DEFAULT_POSITION[2] - DEFAULT_TARGET[2]]
   const OFFLEN = Math.hypot(...OFF)
 
@@ -582,12 +582,12 @@ describe('trail-frame request channel', () => {
   })
 })
 
-// Frame-request INTENT scoping (T2, ruling 4). A request now carries an explicit intent so the establishing
+// Frame-request INTENT scoping. A request now carries an explicit intent so the establishing
 // shot can frame WITHOUT lighting the hold, and so a selection can cancel an ACTIVE establish ease while a
 // tour's own select actions can NEVER cancel a tour-arrival frame. These pin the pure channel surface; the
 // frame-side consume (which framing each intent computes) is browser-verified. Each test sets its own
 // starting state (module-scope channel object persists across tests), so they are order-independent.
-describe('frame-request intent scoping (T2)', () => {
+describe('frame-request intent scoping', () => {
   test('requestTrailFrame carries the tour-arrival intent and lights the hold (tour semantics, unchanged)', () => {
     requestEstablishFrame() // move the intent off tour-arrival first so the assertion is meaningful
     requestTrailFrame()
@@ -603,11 +603,11 @@ describe('frame-request intent scoping (T2)', () => {
     expect(trailFrameRequest.intent).toBe('establish')
     expect(trailFrameRequest.stamp).toBe(before + 1) // monotonic bump → the frame loop consumes it
     expect(trailFrameRequest.cancelled).toBe(false)  // a fresh request lowers any prior stand-down
-    expect(trailFrameRequest.refit).toBe(false)      // plain establish keeps the FOCUS rate (v0.5d ruling 5)
+    expect(trailFrameRequest.refit).toBe(false) // plain establish keeps the FOCUS rate (v0.5d)
     expect(trailHold.lit).toBe(false)                // establishing must not light the journey at play start
   })
 
-  // v0.5d ruling 5: the scrub-from-finale re-fit rides the SAME 'establish' intent (so cancelEstablishFrame stays
+  // v0.5d: the scrub-from-finale re-fit rides the SAME 'establish' intent (so cancelEstablishFrame stays
   // byte-identical) but flags refit=true so the consume eases it at the gentler rate. requestEstablishFrame RESETS
   // the flag so a later plain establish can never inherit a stale refit rate.
   test('requestRefitFrame carries the establish intent with refit=true, bumps the stamp, and does NOT light the hold', () => {
@@ -628,7 +628,7 @@ describe('frame-request intent scoping (T2)', () => {
     expect(trailFrameRequest.refit).toBe(false) // no stale gentle-rate leaks into the next plain establish
   })
 
-  test('cancelEstablishFrame stands down a RE-FIT ease too (same establish intent → a selection cancels it; T2 semantics intact)', () => {
+  test('cancelEstablishFrame stands down a RE-FIT ease too (same establish intent → a selection cancels it; semantics intact)', () => {
     requestRefitFrame() // intent 'establish', refit true
     const before = trailFrameRequest.stamp
     cancelEstablishFrame()
@@ -663,12 +663,12 @@ describe('frame-request intent scoping (T2)', () => {
   })
 })
 
-// ── Authored tour-camera shot resolution (v0.7 T4) — the shot grammar → framing, from live anchors ──────────
-// The design consult (miniwave §4.2 → T4) ruled per-beat authored arrives; these pin that each shot KIND
+// ── Authored tour-camera shot resolution (v0.7) — the shot grammar → framing, from live anchors ──────────
+// The design consult ruled per-beat authored arrives; these pin that each shot KIND
 // resolves to the right proven composition from live scene data, and degrades to null (→ the prefix-fit default)
 // when its inputs are unavailable. Structural assertions (=== the helper the grammar maps to), never brittle
 // hand-typed coordinates — the whole point of the grammar is that the coords are derived, not authored.
-describe('shotFraming (authored tour-camera shot resolution, T4)', () => {
+describe('shotFraming (authored tour-camera shot resolution)', () => {
   // FINALE_DISTANCE (Scene) = 25; the fit opts mirror TRAIL_FRAME_OPTS ≡ STAGE_FRAME_OPTS (uncapped house fit).
   const OPTS: ShotOpts = { fit: { fov: DEFAULT_FOV, margin: 1.15, lift: 1, maxDistanceFactor: Infinity }, lift: 1, headMedium: HEAD_MEDIUM_DISTANCE, headClose: 25 }
   const head: [number, number, number] = [48, 0, 22]          // f2a drone at tick 48 (three-space)
@@ -777,13 +777,13 @@ describe('shotFraming (authored tour-camera shot resolution, T4)', () => {
   })
 })
 
-// ── I-1: mount-time missed-rising-edge establish race (v0.5d T3 debt → v0.7 T4 rider; TDD deterministic repro) ──
+// ── I-1: mount-time missed-rising-edge establish race (v0.5d debt → v0.7 rider; TDD deterministic repro) ──
 // THE BUG. The establishing shot's ONLY caller was the rising-edge arm inside the store subscription that
 // Entities registers at MOUNT (Scene.tsx). A subscription attached at mount cannot catch a `playing` rising
 // edge that fired BEFORE it existed — so a run that mounts ALREADY playing-and-eligible (a slow SwiftShader
 // mount that lands after ▶, documented in e2e/smoke.spec.ts seatEarlySphere) never requested an establish, and
 // the camera stranded on the composed load vantage while the subject flew off-frame. The corrected diagnosis
-// (progress.md v0.5d T3): it is a MISSED EDGE, not a swallowed stamp — "stop the mount-seed consuming" would fix
+// (progress.md v0.5d): it is a MISSED EDGE, not a swallowed stamp — "stop the mount-seed consuming" would fix
 // nothing, because nothing ever REQUESTED. The remedy is a mount-time already-playing-and-eligible DECISION that
 // fires requestEstablishFrame after the ref seed. That decision is this pure predicate; the Scene mount-effect is
 // its thin caller (the arming path is browser/smoke-verified — no render harness in this repo).
@@ -871,13 +871,13 @@ describe('refit invariant: only an establish intent may carry refit=true', () =>
   })
 })
 
-// INVARIANT shot ⟹ intent==='tour-arrival' (v0.7 T4). The authored per-beat camera descriptor rides the
+// INVARIANT shot ⟹ intent==='tour-arrival' (v0.7). The authored per-beat camera descriptor rides the
 // 'tour-arrival' intent as a PARAMETER (the refit precedent: cancel-scope determines intent identity; variation
 // within a scope is a parameter). Only requestTrailFrame sets shot, and always to intent 'tour-arrival'; every
 // NON-tour writer resets shot=null so a stale authored shot can never be read under establish/finale/pov — which
 // is what lets Scene's cancelEstablishFrame guard and the finale/pov branches stay byte-identical. Pin both the
 // set and the reset across every writer.
-describe('shot invariant: only a tour-arrival intent may carry an authored shot (T4)', () => {
+describe('shot invariant: only a tour-arrival intent may carry an authored shot', () => {
   const SHOT = { kind: 'stage' } as const
   test('requestTrailFrame(shot) carries the shot under intent tour-arrival', () => {
     requestTrailFrame(SHOT)
@@ -906,11 +906,11 @@ describe('shot invariant: only a tour-arrival intent may carry an authored shot 
   })
 })
 
-// Tour-start camera-reset channel (v0.5d ruling 6). useTour.start() bumps this one-shot stamp so the Scene frame
+// Tour-start camera-reset channel (v0.5d). useTour.start() bumps this one-shot stamp so the Scene frame
 // loop cuts the camera to the composed LOAD vantage before step 0's caption. Bare stamp channel (focusRequest
 // house shape); the frame-side instant cut (frameFor(bounds, LOAD_FRAME_OPTS), pixel-equivalent on a plain tour)
 // is browser-verified. This pins the pure channel surface.
-describe('tour-start frame-reset channel (v0.5d ruling 6)', () => {
+describe('tour-start frame-reset channel (v0.5d)', () => {
   test('requestTourStartFrame bumps the stamp monotonically', () => {
     const before = tourStartFrameRequest.stamp
     requestTourStartFrame()
@@ -920,13 +920,13 @@ describe('tour-start frame-reset channel (v0.5d ruling 6)', () => {
   })
 })
 
-// Finale frame-request scoping (v0.5b T3, ruling 2/5). The natural-end edge sets the store finale flag; the
+// Finale frame-request scoping (v0.5b). The natural-end edge sets the store finale flag; the
 // Scene subscription arms the composed close-up via requestFinaleFrame on the finale rising edge. Unlike
 // establish it LIGHTS the hold (the reusable half of the tour machinery — the journey stays lit at rest), and
 // its intent is a THIRD class on the enum so cancelEstablishFrame (guarded to 'establish') can NEVER cancel it
 // (r2). These pin the pure channel surface; the frame-side consume (finaleFraming for a positioned run / the
 // spine-bounds fit for e0, coast+focus clears) is browser-verified.
-describe('finale frame-request scoping (T3)', () => {
+describe('finale frame-request scoping', () => {
   test('requestFinaleFrame carries the finale intent, bumps the stamp, and LIGHTS the hold (journey lit at rest)', () => {
     cancelTrailFrame() // hold cleared; move the intent off finale
     const before = trailFrameRequest.stamp
@@ -934,7 +934,7 @@ describe('finale frame-request scoping (T3)', () => {
     expect(trailFrameRequest.intent).toBe('finale')
     expect(trailFrameRequest.stamp).toBe(before + 1)
     expect(trailFrameRequest.cancelled).toBe(false)
-    expect(trailHold.lit).toBe(true) // ruling 2: the reusable half — the journey stays lit at the finale rest
+    expect(trailHold.lit).toBe(true) //: the reusable half — the journey stays lit at the finale rest
   })
 
   test('cancelEstablishFrame is a NO-OP against a finale frame (a scrub-cleared finale never cancels via the establish path; r2)', () => {
@@ -965,9 +965,9 @@ describe('finale frame-request scoping (T3)', () => {
   })
 })
 
-// Scrub-from-finale context re-fit gate (v0.5c ruling 3 — a RULED AMENDMENT of the v0.5b "clearing the finale
+// Scrub-from-finale context re-fit gate (v0.5c — a RULED AMENDMENT of the v0.5b "clearing the finale
 // never re-frames" line). At an f1 finale rest a scrub cleared the dressing correctly but stranded the camera at
-// the empty sky where the head was (the "void"); ruling 3 reverses the old line NARROWLY — leaving a finale by a
+// the empty sky where the head was (the "void"); reverses the old line NARROWLY — leaving a finale by a
 // PLAYHEAD MOVE now hands back the wide establishing frame (an establish request — framing, NO lit). The falling-
 // edge effect lives inside a Scene subscription a unit test can't cheaply mount, so the gate is extracted as a
 // pure predicate (shouldRefitOnFinaleClear) and the effect is a thin caller; TDD it exhaustively here across the
@@ -977,7 +977,7 @@ describe('finale frame-request scoping (T3)', () => {
 // finale WITHOUT moving the tick; selectRun (App.tsx:93) moves the tick but changes runId in the same batch. The
 // gate is NOT isTourActive(): start() clears finale at useTour.ts:341 BEFORE registerTourInterrupt at :347, so it
 // is provably false at that edge — the tick-move gate is the race-free detector.
-describe('shouldRefitOnFinaleClear (scrub-from-finale re-fit gate, v0.5c ruling 3 amendment)', () => {
+describe('shouldRefitOnFinaleClear (scrub-from-finale re-fit gate, v0.5c amendment)', () => {
   const st = (finale: boolean, tick: number, runId = 'f1') => ({ finale, tick, runId })
 
   // ---- the pure predicate, exhaustively across the store-batch matrix ----
@@ -1009,7 +1009,7 @@ describe('shouldRefitOnFinaleClear (scrub-from-finale re-fit gate, v0.5c ruling 
   })
 
   // ---- the channel-observable outcome: the effect is a thin caller — fire a RE-FIT establish request IFF the gate
-  // holds (v0.5d ruling 5: the scrub-from-finale path uses requestRefitFrame — the gentler-settle establish) ----
+  // holds (v0.5d: the scrub-from-finale path uses requestRefitFrame — the gentler-settle establish) ----
   const refit = (
     s: ReturnType<typeof st>, prev: ReturnType<typeof st>, positioned: boolean, boundsNonNull: boolean,
   ): void => { if (shouldRefitOnFinaleClear(s, prev, positioned, boundsNonNull)) requestRefitFrame() }
@@ -1020,7 +1020,7 @@ describe('shouldRefitOnFinaleClear (scrub-from-finale re-fit gate, v0.5c ruling 
     refit(st(false, 60), st(true, 64), true, true)
     expect(trailFrameRequest.stamp).toBe(before + 1)   // monotonic bump → the frame loop consumes it, easing off the close-up
     expect(trailFrameRequest.intent).toBe('establish') // establish = whole-trajectory framing, NOT the finale close-up (and it does not light the journey)
-    expect(trailFrameRequest.refit).toBe(true)         // v0.5d ruling 5: the re-fit gets the gentler settle rate
+    expect(trailFrameRequest.refit).toBe(true) // v0.5d: the re-fit gets the gentler settle rate
   })
   test('every NON-scrub finale clear fires NOTHING: tour-start / play-at-rest / run-switch / e0 / f0 / ordinary-scrub leave the channel untouched', () => {
     requestFinaleFrame()
@@ -1035,11 +1035,11 @@ describe('shouldRefitOnFinaleClear (scrub-from-finale re-fit gate, v0.5c ruling 
   })
 })
 
-// Revealed-trail midpoint index (T2, ruling 7): the pure index math behind the follow-aim trail bias. The
+// Revealed-trail midpoint index: the pure index math behind the follow-aim trail bias. The
 // follow pivot is biased off the live head toward the midpoint of the REVEALED path so the one-sided trail
 // balances the frame. This pins the off-by-one / clamp without needing a Float32Array; the buffer read +
 // bias lerp at the Scene call site are browser-verified.
-describe('revealedMidpointIndex (follow-aim trail bias, T2)', () => {
+describe('revealedMidpointIndex (follow-aim trail bias)', () => {
   test('midpoint vertex is floor(min(tick, count-1) / 2)', () => {
     expect(revealedMidpointIndex(64, 65)).toBe(32) // f1 at rest: head 64 → mid 32
     expect(revealedMidpointIndex(40, 65)).toBe(20) // mid-run: head 40 → mid 20
@@ -1059,7 +1059,7 @@ describe('revealedMidpointIndex (follow-aim trail bias, T2)', () => {
   })
 })
 
-// Follow-aim displacement CAP (T2 fixwave, camera.followBiasCapScale). FOLLOW_TRAIL_BIAS encodes a
+// Follow-aim displacement CAP (fixwave, camera.followBiasCapScale). FOLLOW_TRAIL_BIAS encodes a
 // SCREEN-relative composition goal ("head ~1/3 in from the leading edge") but the Scene call site applies it
 // as an UNBOUNDED world displacement d = (mid − head)·bias that GROWS with the revealed corridor — at f1 tick
 // 63 |d| ≈ 20.9u (~2.2× the horizontal half-frame) and a campaign-scale 1000u+ corridor would shove the head
@@ -1067,7 +1067,7 @@ describe('revealedMidpointIndex (follow-aim trail bias, T2)', () => {
 // below the cap it returns EXACTLY 1 so the early-run composition is applied verbatim (bit-identical to the
 // uncapped lerp). Pure, so the cap is pinned here without mounting Scene; the buffer read + the three biased
 // += at the Scene call site are browser-verified.
-describe('followBiasCapScale (follow-aim displacement cap, T2 fixwave)', () => {
+describe('followBiasCapScale (follow-aim displacement cap, fixwave)', () => {
   const BIAS = 0.15 // mirrors Scene.FOLLOW_TRAIL_BIAS — the fraction the pivot leans off the head toward mid
   // Reconstruct the Scene call site's displacement d = (mid − head)·BIAS from a head/mid pair.
   const disp = (h: readonly [number, number, number], m: readonly [number, number, number]): [number, number, number] =>
@@ -1156,12 +1156,12 @@ describe('isFiniteFraming', () => {
   }
 })
 
-// Predictive follow lead (v0.5c ruling 4). The exponential follow lags an accelerating head by ≈ v/rate;
+// Predictive follow lead (v0.5c). The exponential follow lags an accelerating head by ≈ v/rate;
 // leading the aim forward along the head velocity by lead·(v/rate) cancels the `lead` fraction of that lag.
 // The lead vector is delta·lead/(dt·rate) (v = delta/dt), clamped to maxLead world units as the always-on
 // backstop against a velocity spike (the caller's first-frame/teleport guard handles the discontinuity
 // itself). Pure — pinned here without mounting Scene; the frame-loop wiring + calibration are browser-verified.
-describe('followLead (predictive follow-lead displacement, v0.5c ruling 4)', () => {
+describe('followLead (predictive follow-lead displacement, v0.5c)', () => {
   const out: [number, number, number] = [0, 0, 0]
 
   test('lead vector is delta·lead/(dt·rate), parallel to the head velocity', () => {
@@ -1232,24 +1232,24 @@ describe('followLead (predictive follow-lead displacement, v0.5c ruling 4)', () 
   })
 })
 
-// Unselected mid-run tracking-ring gate (v0.5c ruling 5, EXTENDED by v0.5d ruling 3). Show the ground-ring at
+// Unselected mid-run tracking-ring gate (v0.5c, EXTENDED by v0.5d). Show the ground-ring at
 // the live head while an unselected, positioned, fittable run is MID-RUN — playing OR paused. The v0.5c gate hid
 // it on pause, so the pause-then-click discovery path (the sanctioned mid-run selection route) left the sub-pixel
-// subject clickable yet UNDISCOVERABLE; ruling 3 adds the paused arm via a fifth input, pausedMidRun (the caller
+// subject clickable yet UNDISCOVERABLE; adds the paused arm via a fifth input, pausedMidRun (the caller
 // computes it as !playing && 0 < tick < tickCount). Priority selection > finale > mid-run-tracking is enforced by
 // the else-if ORDER at the Scene call site; this predicate excludes selection AND finale so it reads as a complete
 // gate. The signature GREW (4 → 5 booleans), so the truth table is now 2^5 — tested EXHAUSTIVELY below.
-describe('shouldTrackWithRing (unselected mid-run tracking-ring gate, v0.5c ruling 5 + v0.5d ruling 3)', () => {
+describe('shouldTrackWithRing (unselected mid-run tracking-ring gate, v0.5c + v0.5d)', () => {
   // args order: (playing, pausedMidRun, hasSelection, finale, boundsNonNull)
   test('unselected play of a positioned fittable run → true (the tracking marker rides the head)', () => {
     expect(shouldTrackWithRing(true, false, false, false, true)).toBe(true)
   })
 
-  // CONSCIOUS FLIP (v0.5d ruling 3 — the one sanctioned test amendment of this cycle). v0.5c pinned "paused →
-  // false (the ring hides on pause)". Ruling 3 REVERSES that for a MID-RUN pause: pause-then-click is the
+  // CONSCIOUS FLIP (v0.5d — the one sanctioned test amendment of this cycle). v0.5c pinned "paused →
+  // false (the ring hides on pause)". A later ruling REVERSES that for a MID-RUN pause: pause-then-click is the
   // sanctioned discovery path, so a paused-mid-run subject must keep its marker. The v0.5c line survives only for
-  // the rests ruling 3 keeps quiet — cold (tick 0) and the natural end (both have pausedMidRun false).
-  test('MID-RUN pause → true (v0.5d ruling 3: pause-then-click is sanctioned — the marker must stay discoverable)', () => {
+  // the rests keeps quiet — cold (tick 0) and the natural end (both have pausedMidRun false).
+  test('MID-RUN pause → true (v0.5d: pause-then-click is sanctioned — the marker must stay discoverable)', () => {
     expect(shouldTrackWithRing(false, true, false, false, true)).toBe(true)
   })
   test('cold / natural-end rest (paused, but pausedMidRun false) → false (v0.5c "hides on pause" survives here)', () => {
@@ -1283,11 +1283,11 @@ describe('shouldTrackWithRing (unselected mid-run tracking-ring gate, v0.5c ruli
   })
 })
 
-// Distance-proportional tracking-ring SCALE (v0.5d ruling 2). scale = clamp(k·dist, minScale, maxScale) — a
+// Distance-proportional tracking-ring SCALE (v0.5d). scale = clamp(k·dist, minScale, maxScale) — a
 // screen-space-constant marker: as the fixed establish camera lets the head recede, the world scale grows to
 // hold the apparent size, so the marker never dies in the late climb. The floor is the v0.5c "8-at-its-
 // calibration-distance" look (byte-preserved near the calibration distance); the ceiling keeps it a marker.
-describe('ringTrackScale (distance-true tracking-ring scale, v0.5d ruling 2)', () => {
+describe('ringTrackScale (distance-true tracking-ring scale, v0.5d)', () => {
   const MIN = 8, MAX = 20, CALIB = 242
   const K = MIN / CALIB // ≈0.0331 — at CALIB the scale is exactly MIN
 
@@ -1322,14 +1322,14 @@ describe('ringTrackScale (distance-true tracking-ring scale, v0.5d ruling 2)', (
   })
 })
 
-// Aspect-compensated follow-lead (v0.5d ruling 1). FOLLOW_LEAD was calibrated at ONE canvas aspect; on a narrower
+// Aspect-compensated follow-lead (v0.5d). FOLLOW_LEAD was calibrated at ONE canvas aspect; on a narrower
 // canvas the world-unit residual lag AND the (PROTECT'd) follow bias are each a bigger screen fraction, so the head
 // rides toward the clipping edge. leadForAspect holds the head's screen fraction constant across aspects by raising
 // the effective lead in proportion to the aspect DEFICIT: leadEff = baseLead + gain·(1 − min(1, aspect/calibAspect)).
 // At or above the calibration aspect it returns baseLead EXACTLY (the v0.5c calibration is byte-preserved — the wide-
 // aspect PROTECT); on a narrower canvas it returns MORE lead. gain=(1−baseLead) cancels only the residual lag; a
 // larger (calibrated) gain also offsets the bias growth and can OVER-lead (leadEff > 1) on a narrow canvas.
-describe('leadForAspect (aspect-compensated follow-lead, v0.5d ruling 1)', () => {
+describe('leadForAspect (aspect-compensated follow-lead, v0.5d)', () => {
   const CALIB = 1.318 // an illustrative calibration aspect; the production CALIB_ASPECT is a Scene constant
   const BASE = 0.8 // mirrors Scene.FOLLOW_LEAD
   const GAIN = 0.9 // mirrors Scene.LEAD_ASPECT_GAIN order of magnitude (calibrated on the aspect sweep)
@@ -1383,13 +1383,13 @@ describe('leadForAspect (aspect-compensated follow-lead, v0.5d ruling 1)', () =>
   })
 })
 
-// ── W3: aspect-aware conjunction fit (v0.7 T4 fixwave) ──────────────────────────────────────────────────────
+// ── aspect-aware conjunction fit (v0.7 fixwave) ──────────────────────────────────────────────────────
 // shotFraming's 'conjunction' bounded only the sensor/head CENTRE points and frameFor fit VERTICAL-fov-only, so at
 // the supported ~0.78 flanked aspect the drone marker's rightmost vertex projected to NDC x ≈ 1.21 (off-screen).
 // The fix (a) bounds each marker's VISUAL extent (its ±radius box) and (b) fits against the tighter of the
 // horizontal/vertical fov. These pin the fit MATH (the pure fitDistanceForAspect) and PROVE the marker stays in
 // frame at 0.78 by projecting its worst-case vertex through a real THREE.PerspectiveCamera (pure matrix math, no WebGL).
-describe('fitDistanceForAspect (aspect-aware fit distance, W3)', () => {
+describe('fitDistanceForAspect (aspect-aware fit distance)', () => {
   const R = 40, FOV = 50, MARGIN = 1.15
 
   test('undefined / aspect ≥ 1 → the vertical-only fit EXACTLY (byte-identical to fitDistance — the wide PROTECT)', () => {
@@ -1414,9 +1414,9 @@ describe('fitDistanceForAspect (aspect-aware fit distance, W3)', () => {
   })
 })
 
-describe('shotFraming conjunction — the marker stays in frame at a narrow aspect (W3)', () => {
+describe('shotFraming conjunction — the marker stays in frame at a narrow aspect', () => {
   const OPTS: ShotOpts = { fit: { fov: DEFAULT_FOV, margin: 1.15, lift: 1, maxDistanceFactor: Infinity }, lift: 1, headMedium: HEAD_MEDIUM_DISTANCE, headClose: 25 }
-  // The marker VISUAL extents, imported from the renderer (W3 closure — no local 7/9/derivation drift-twin): HEAD_R
+  // The marker VISUAL extents, imported from the renderer (closure — no local 7/9/derivation drift-twin): HEAD_R
   // is the drone-marker cone base radius, SENSOR_MARKER_R the sensor octahedron radius. The cone is height HEAD_CONE_H
   // with the apex up (ConeGeometry is y-centred), so its base rim — the widest horizontal ring, the "rightmost
   // vertex" the finding measures — sits at y − HEAD_CONE_H/2. All three move if the renderer's marker sizing moves.
@@ -1493,13 +1493,13 @@ describe('shotFraming conjunction — the marker stays in frame at a narrow aspe
   })
 })
 
-// ── W1: the follow-arm half of a play edge (v0.7 T4 fixwave) ────────────────────────────────────────────────
+// ── the follow-arm half of a play edge (v0.7 fixwave) ────────────────────────────────────────────────
 // The mount reconciliation (I-1) wired ONLY the establish half of a play edge; a SELECTED early-play mount thus
 // armed nothing (shouldEstablishOnMount rejects a selection) and lost the vehicle until a pause/resume edge. The
 // fix splits out the follow-arm decision (positioned && playing), INDEPENDENT of establish eligibility, and shares
 // one onPlayEdge handler between the subscription arm and the mount reconciliation. These pin the pure predicate;
 // the ref-arming Scene wiring is browser/smoke-verified (no render harness in this repo — the I-1 precedent).
-describe('shouldArmFollowOnPlay (the follow-arm gate, W1)', () => {
+describe('shouldArmFollowOnPlay (the follow-arm gate)', () => {
   test('a positioned play moment arms follow (true)', () => {
     expect(shouldArmFollowOnPlay(true, true)).toBe(true)
   })
@@ -1509,10 +1509,10 @@ describe('shouldArmFollowOnPlay (the follow-arm gate, W1)', () => {
   test('positionless (e0) → false (nothing spatial to follow — the coast is dormant there)', () => {
     expect(shouldArmFollowOnPlay(false, true)).toBe(false)
   })
-  // THE W1 HEADLINE: a selected early-play mount arms follow (positioned && playing) EVEN THOUGH establish
+  // THE HEADLINE: a selected early-play mount arms follow (positioned && playing) EVEN THOUGH establish
   // correctly REJECTS it (a selection is present). The two halves of the play edge are INDEPENDENT — that is
   // exactly the independence the fix restores (before it, the mount wired only establish → follow stayed false).
-  test('a SELECTED early-play mount arms follow WHILE establish rejects — the independence W1 restores', () => {
+  test('a SELECTED early-play mount arms follow WHILE establish rejects — the independence this restores', () => {
     const selectedMount = { playing: true, selectedEntity: '1:0', tick: 0 }
     expect(shouldArmFollowOnPlay(true, selectedMount.playing)).toBe(true)             // follow ARMS
     expect(shouldEstablishOnMount(selectedMount, true, true, false, 64)).toBe(false)  // establish REJECTS (selection)
@@ -1524,13 +1524,13 @@ describe('shouldArmFollowOnPlay (the follow-arm gate, W1)', () => {
   })
 })
 
-// ── W2: step-boundary invalidation of a stale tour-arrival shot (v0.7 T4 fixwave) ───────────────────────────
+// ── step-boundary invalidation of a stale tour-arrival shot (v0.7 fixwave) ───────────────────────────
 // A tour-arrival shot request writes ONE global channel; under a render suspension the hold timer can advance the
 // driver to the next beat before the frame loop consumes it, so a resumed frame would apply the STALE shot against
 // the new beat's live anchors and suppress its follow. cancelTourArrivalFrame (fired by the driver at each step
 // boundary, i>0) invalidates the prior beat's owner. These pin the pure channel writer; the driver-integration
 // race is driven end-to-end in useTour.test.ts.
-describe('cancelTourArrivalFrame (step-boundary stand-down, W2)', () => {
+describe('cancelTourArrivalFrame (step-boundary stand-down)', () => {
   test('stands down a tour-arrival shot: raises cancelled, clears shot, bumps the stamp (a deferred consume sees the CANCEL, not the stale shot)', () => {
     requestTrailFrame({ kind: 'conjunction' }) // a live tour-arrival shot (intent tour-arrival, cancelled false)
     expect(trailFrameRequest.shot).not.toBeNull()

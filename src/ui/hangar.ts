@@ -7,17 +7,17 @@ import { badgeGlyph } from './voices'
 import type { CategoryKey } from './theme'
 import { ASSUMED_DT_US } from '../state/transport'
 
-// Pure data layer for the Hangar (T5b) and the sim-clock readout (T5c). No React, no DOM — every
+// Pure data layer for the Hangar and the sim-clock readout. No React, no DOM — every
 // function here is a total map from run facts to display strings, unit-tested in hangar.test.ts. The
 // Hangar component and the Timeline readout consume these; the honesty rules live HERE where a test
 // can pin them.
 
-// ── SIM-CLOCK (T5c) ──────────────────────────────────────────────────────────────────────────────
+// ── SIM-CLOCK ──────────────────────────────────────────────────────────────────────────────
 // A run shows a REAL sim clock only when its manifest pins an integration step that DIFFERS from the
 // app's playback assumption (ASSUMED_DT_US). Three cases, exactly matching the spec's partition:
 //   • f2a/f3a/f4 — manifest dt_us = 125000µs, a genuine timed simulation → REAL clock (mm:ss.s).
 //   • e0/f1      — det-only, no manifest, dtUs undefined → assumed voice (a false real-clock claim on
-//                  a KAT-tier run is exactly what T5c forbids).
+//                  a KAT-tier run is exactly what the sim-clock honesty rule forbids).
 //   • f0         — manifest dt_us = 1000µs, which EQUALS ASSUMED_DT_US: the recorded step and the
 //                  playback assumption coincide, so there is no distinct real-time claim to surface;
 //                  the run keeps the assumed voice (its 2-tick "0.002s" would be a meaningless clock).
@@ -26,7 +26,7 @@ export function hasRealSimClock(dtUs: number | undefined): boolean {
   return dtUs !== undefined && dtUs > 0 && dtUs !== ASSUMED_DT_US
 }
 
-// Microseconds → "m:ss.s" (the D4 sim-clock format). Sub-second precision to a tenth; minutes never
+// Microseconds → "m:ss.s" (the sim-clock format). Sub-second precision to a tenth; minutes never
 // zero-padded, seconds always two integer digits. 12_000_000µs → "0:12.0"; 6_000_000 → "0:06.0".
 export function formatSimClock(us: number): string {
   const totalSeconds = us / 1_000_000
@@ -41,7 +41,7 @@ export function realSimDuration(entry: Pick<RunEntry, 'dtUs' | 'ticks'>): string
   return hasRealSimClock(entry.dtUs) ? formatSimClock(entry.ticks * entry.dtUs!) : null
 }
 
-// The assumed-clock tooltip (W4). The card's clock line falls to the assumed voice for three run shapes;
+// The assumed-clock tooltip. The card's clock line falls to the assumed voice for three run shapes;
 // its title must state the TRUE reason, never a borrowed one:
 //   • det-only (e0/f1): a KAT-tier run with no recorded dt — playback time is assumed.
 //   • f0: a FULL-manifest run whose recorded dt (1000µs) EQUALS the 1× playback step (ASSUMED_DT_US), so
@@ -55,8 +55,8 @@ export function assumedClockTitle(entry: Pick<RunEntry, 'detOnly' | 'dtUs'>): st
   return 'no recorded dt — playback time is assumed'
 }
 
-// ── KIND HISTOGRAM (T5b; NAMES in v0.7 T5/R4) ────────────────────────────────────────────────────
-// Every kind the published runs carry now resolves to its registry name — incl. F1's motion substrate
+// ── KIND HISTOGRAM ────────────────────────────────────────────────────
+// Every kind the published runs carry now resolves to its registry name — incl. the motion substrate
 // (0x0120 MotionSegmentStarted / 0x0121 MotionStepped), added to EVENT_KIND_NAMES from the spec-3a
 // §6.5.2 registry excerpt. A kind still OUTSIDE the registry falls through to its numeric id ("kind N"),
 // the same honest fallback the Timeline/Inspector use — never blank, never invented copy.
@@ -68,7 +68,7 @@ export interface HistogramRow { kind: number; name: string; count: number; categ
 
 // Declared histogram (index.json object, string kind keys) → display rows, sorted by count DESC then
 // kind ASC (the dominant composition first, ties broken deterministically). This is DECLARED metadata
-// (D4 Part 6.2) — it wears a category IDENTITY hue, never a provenance voice glyph. proven data-true
+// — it wears a category IDENTITY hue, never a provenance voice glyph. proven data-true
 // by publication.test.ts against the real decoder.
 export function histogramRows(kinds: Record<string, number>): HistogramRow[] {
   return Object.entries(kinds)
@@ -76,17 +76,17 @@ export function histogramRows(kinds: Record<string, number>): HistogramRow[] {
     .sort((a, b) => (b.count - a.count) || (a.kind - b.kind))
 }
 
-// ── VERDICT VOICE (T5b, D4 checkmark economy) ────────────────────────────────────────────────────
+// ── VERDICT VOICE (the checkmark economy) ────────────────────────────────────────────────────
 // SESSION-EARNED ONLY: a card wears the attested voice (•) until the run has been opened AND its
 // ceremony sealed green THIS session (reload ⟹ back to attested — no persisted/build-time ✓). A seal
 // later BROKEN (a re-load of the same run failed verification) wears the ALARM voice (✗) — never ✓ and
-// never plain attested (closure item 1): D4's "✗ escalates and persists" cuts both ways — a stale green
+// never plain attested (the identity-join guard): the "✗ escalates and persists" design ruling cuts both ways — a stale green
 // over mismatching bytes is a lie, and quietly returning to • would erase witnessed session evidence.
 // The verdict text is sourced from the run's OWN identity (det-only vs full-manifest), never from any
-// sidecar — the profile-conflation tripwire (D4 Ruling 2): f3a is the CORRECT campaign, never ROBUST.
+// sidecar — the profile-conflation tripwire (a design ruling): f3a is the CORRECT campaign, never ROBUST.
 export type SealStatus = 'none' | 'sealed' | 'broken'
 export interface CardVerdict { state: Extract<BadgeState, 'attested' | 'verified' | 'mismatch'>; label: string }
-// F1 — the trust GRADE is keyed on the run's TRUSTED identity (catalogDetOnly, the in-bundle catalog pin),
+// The trust GRADE is keyed on the run's TRUSTED identity (catalogDetOnly, the in-bundle catalog pin),
 // NEVER on the RunEntry.detOnly field, which is index.json-sourced (unsigned network data). Passing the runId
 // (not the entry) closes the hole at the type level: a lying index entry — detOnly:false on a sealed det-only
 // run — can no longer make a self-consistent run render the manifest-grade ✓ / "recomputed this session". A
@@ -96,7 +96,7 @@ export function cardVerdict(runId: string, status: SealStatus): CardVerdict {
   if (status === 'broken') {
     return { state: 'mismatch', label: detOnly ? 'seal broken · a self-check mismatched this session' : 'seal broken · a re-verification mismatched this session' }
   }
-  // A2 — the ✓ (state 'verified') is reserved for a run an EXTERNAL manifest backs. A det-only run sealed
+  // The ✓ (state 'verified') is reserved for a run an EXTERNAL manifest backs. A det-only run sealed
   // this session earned a SELF-check (no external oracle), so it stays in the ATTESTED voice (•) — sharpened
   // only in its LABEL ("self-verified this session…") — never the manifest-grade green it did not earn. A
   // full-manifest run sealed this session recomputed AND matched its manifest, so it wears the ✓.
@@ -116,7 +116,7 @@ export const VOICE_GLYPH: Record<BadgeState, string> = {
   mismatch: badgeGlyph('mismatch'), attested: badgeGlyph('attested'),
 }
 
-// ── SESSION-SEAL STATE MACHINE (D4 Ruling 1 / NEVER #12; closure item 1) ─────────────────────────
+// ── SESSION-SEAL STATE MACHINE ─────────────────────────
 // Session-verified state lives in the store, never localStorage/URL. A seal record names the run AND the
 // exact bytes its ✓ vouches for (resultId) — and because the format claims byte-precision, the machine
 // must honor it at the edges (production bytes are static per deploy, so these edges are rare — but the
@@ -161,7 +161,7 @@ export function sealFor(list: SealRecord[], runId: string): SealRecord | undefin
   return list.find(s => s.runId === runId)
 }
 
-// Render-side identity guard (closure item 1's "hold only while" clause): the verified state holds only
+// Render-side identity guard (the "hold only while" clause): the verified state holds only
 // while the seal's resultId matches the currently-loaded run's resultId WHEN that run is the open one.
 // With the reconciliation effect this window is one paint at most (and in practice unreachable — every
 // Hangar card action closes the modal before a load completes) — but the render law is self-contained:
@@ -176,7 +176,7 @@ export function effectiveSealStatus(
   return 'sealed'
 }
 
-// THE IDENTITY JOIN (W1 — the one-commit run-switch race, extracted as a primitive). selectRun flips the
+// THE IDENTITY JOIN (the one-commit run-switch race, extracted as a primitive). selectRun flips the
 // store runId to the destination synchronously, but useRun still holds the PRIOR run's model/hashes for
 // the one commit right after the switch; useRun sets loadedRunId ONLY in the same atomic ready-state update
 // that publishes model+hashes, so `loadedRunId === runId` is true EXACTLY when the bytes currently resident
@@ -187,7 +187,7 @@ export function loadIsCurrent(runId: string, loadedRunId: string | null): boolea
   return loadedRunId === runId
 }
 
-// I6 — THE READY-SUBTREE GATE (the identity join generalized to the WHOLE ready tree). loadIsCurrent guarded
+// THE READY-SUBTREE GATE (the identity join generalized to the WHOLE ready tree). loadIsCurrent guarded
 // the thesis verdict and the seal, but App gated the REST of the ready tree — the Provenance ✓ rows, the stage
 // — on `model` ALONE. During the one-commit run-switch gap `model` is non-null (the PRIOR run's, still resident)
 // while the store runId has already flipped, so `Boolean(model)` painted the prior model's verified glyphs +
@@ -199,7 +199,7 @@ export function readyTreeVisible<M>(model: M | null, runId: string, loadedRunId:
   return model !== null && loadIsCurrent(runId, loadedRunId)
 }
 
-// SEAL DECISION (W1 — the seal-race fix, the cycle's most important honesty repair). A card's ✓ must
+// SEAL DECISION (the seal-race fix, the cycle's most important honesty repair). A card's ✓ must
 // vouch for the CURRENT run's OWN verified bytes, never the bytes still resident from the run we just
 // switched away from. A seal effect that keyed on effect TIMING would mint a ✓ for the NEW runId out of
 // the OLD run's verification: a false green that no later failure can unseal (there is no unseal path).
@@ -211,7 +211,7 @@ export function shouldSealRun(
   return loadIsCurrent(runId, loadedRunId) && matchesTrailer === true
 }
 
-// The mismatch twin (closure item 1) — the SAME identity join, opposite verdict: break a seal only when
+// The mismatch twin — the SAME identity join, opposite verdict: break a seal only when
 // the loaded run ITSELF failed verification. The join matters here for the mirror-image race: right after
 // a switch away from a mismatched run, the store runId names the destination while the stale ✗ hashes
 // still name the prior run — an identity-blind break would revoke the DESTINATION's seal for the prior
@@ -226,15 +226,15 @@ export function shouldBreakSeal(
 // A run's honest one-line "what it is". The f3a note names ONLY the published run's own identity — seed
 // 42, a single certified run. The OTHER seed-42 bundle (the 50-seed statistical-acceptance campaign, a
 // different case) is NOT mentioned here: attaching that campaign's claim to this card — even in words the
-// /robust/i scan couldn't see — is the exact profile-conflation the D4 rider prohibits (controller ruling
-// W2: REMOVE the sidecar-campaign sentence entirely). That campaign's story belongs to the v0.7
+// /robust/i scan couldn't see — is the exact profile-conflation the design rule prohibits (a ruling to
+// REMOVE the sidecar-campaign sentence entirely). That campaign's story belongs to the v0.7
 // Certification Wall, where it can stand as its own VERIFIED artifact with its pins-record excerpt. The
 // scans (PROFILE_CONFLATION_RE) pin that this note, the rendered verdicts, and the whole index stay clean.
 export const CARD_NOTES: Record<string, string> = {
   f3a: 'seed 42 · published as a single certified run.',
 }
 
-// F5 — a card note by run id, an OWN-property lookup (Object.hasOwn). entry.id comes from the UNSIGNED
+// A card note by run id, an OWN-property lookup (Object.hasOwn). entry.id comes from the UNSIGNED
 // runs/index.json, so a plain-object bracket lookup would inherit from Object.prototype: CARD_NOTES['__proto__']
 // returns Object.prototype and CARD_NOTES['constructor'] the Object constructor — both TRUTHY non-string values
 // that crash the Hangar when rendered as a React child. The Hangar sits OUTSIDE the run-scoped ErrorBoundary, so
@@ -245,8 +245,8 @@ export function cardNote(id: string): string | undefined {
   return Object.hasOwn(CARD_NOTES, id) ? CARD_NOTES[id] : undefined
 }
 
-// The profile-conflation tripwire (D4 rider / W2) — defined in the zero-import leaf profileConflation.ts
+// The profile-conflation tripwire — defined in the zero-import leaf profileConflation.ts
 // so the e2e suite (tsconfig.node.json, nodenext) can import the SAME binding the unit suites scan with
-// (closure item 2: the tripwire must be single-sourced — a literal copy in the smoke spec could drift
+// (the tripwire must be single-sourced — a literal copy in the smoke spec could drift
 // silently). Re-exported here for the app-side consumers (hangar.test.ts, publication.test.ts).
 export { PROFILE_CONFLATION_RE } from './profileConflation'

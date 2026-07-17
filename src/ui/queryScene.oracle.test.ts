@@ -5,8 +5,8 @@ import { RunModel } from '../model/runModel'
 import { buildQueryDraws, queryBounds, losComponents } from './queryStage'
 import { blockedCorridorBounds, observerCraneFraming, observerPoint, povFraming, CRANE_BACK_K, CRANE_LIFT_K } from './queryScene'
 
-// ── e0 AUTHORED TOUR SHOTS vs. the REAL decoded bundle (v0.8 W7) ─────────────────────────────────────────
-// The decode-true anchor test the f2a authored beats were pinned by: every W7 shot's geometry is DERIVED from
+// ── e0 AUTHORED TOUR SHOTS vs. the REAL decoded bundle (v0.8) ─────────────────────────────────────────
+// The decode-true anchor test the f2a authored beats were pinned by: every shot's geometry is DERIVED from
 // the real e0_seed42 bundle's decoded draws, never eyeballed. This decodes the tracked fixture exactly as
 // queryStage.oracle.test.ts does, then pins the three shots' anchors (tk39's blocked corridor, the drawn
 // observer's crane, tk74's clean passage) to the actual scene geometry. If the bundle is ever re-cut, these

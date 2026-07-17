@@ -1,14 +1,14 @@
 import { existsSync, readFileSync } from 'node:fs'
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
-// runs/index.json enrichment (T5b — the Hangar's data layer).
+// runs/index.json enrichment (the Hangar's data layer).
 //
 // The published run library is DESCRIBED here at publish time: title, kind histogram, real tick
 // count, and (where a manifest carries it) the integration step dt_us. The Hangar (src/ui/Hangar)
-// reads ONLY this file to render its cards — it never decodes six bundles on open (§8: the front
+// reads ONLY this file to render its cards — it never decodes six bundles on open (the front
 // door pays no decode/WebGL cost).
 //
-// TWO-VOICE SPLIT (D4 Certification Wall, Part 6.2): the kind histogram is DECLARED publish-time
+// TWO-VOICE SPLIT (Certification Wall, Part 6.2): the kind histogram is DECLARED publish-time
 // metadata — data-true but NOT a runtime-recomputed certification. It must never wear a voice glyph.
 // The declaration is PROVEN true by src/publication.test.ts, which decodes every published bundle
 // with the REAL decoder and asserts the declared histogram + tick count match, byte for byte. The
@@ -28,7 +28,7 @@ import { existsSync, readFileSync } from 'node:fs'
 // F3a title carries NO robust/statistical wordmark: the vendored f3a_seed42 is the CORRECT
 // single-target-track campaign (case 5dc77bdf, EXP-F3a-correct.json); the ROBUST 50-seed statistical
 // acceptance is a DIFFERENT bundle (case e8dcdb33, EXP-F3a-robust.json). Pinned by
-// src/publication.test.ts (T5 rider — Certification Wall D4 consult).
+// src/publication.test.ts (rider — Certification Wall consult).
 export const RUN_LIST = [
   { id: 'f1', title: 'F1 motion lifecycle (golden, det-only)', base: 'runs/f1', detOnly: true },
   { id: 'f0', title: 'F0 determinism fixture (seed 42)', base: 'runs/f0' },
@@ -78,7 +78,7 @@ export function decodeRunFacts(detBytes) {
 
 // Optional manifest-sourced fields. dt_us is present only for full-manifest runs (f0/f2a/f3a/f4);
 // det-only runs (e0/f1) omit it entirely — their Hangar card and sim-clock keep the assumed voice.
-// supersedes_plan_id is surfaced ONLY when a manifest carries a non-zero chain (D4: always visible,
+// supersedes_plan_id is surfaced ONLY when a manifest carries a non-zero chain (always visible,
 // never buried — the anti-p-hacking tripwire). None of today's manifests carry one, so it is omitted.
 function manifestExtras(id) {
   const path = `public/runs/${id}/manifest.json`

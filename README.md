@@ -22,14 +22,14 @@ cryptographic run hashes **byte-for-byte**. Every time a run loads, your browser
 re-derives those hashes from the raw bundle and shows you the receipts before it
 renders a single frame.
 
-<!-- HERO SLOT — regenerated from f1 (the default run and cold-open star: a real vehicle flying its
-     recorded corridor), per this slot's regenerate-at-flip-from-f1 mandate, via the rung-2 capture
-     clock (docs/capture.md ritual; ?run=f1&sel=1:0&capture=30, ANGLE SwiftShader, ffmpeg two-pass
-     palette). Rung-2 boundary (the honest ceiling): the playhead timeline and hold frames are
-     bit-stable on any machine; the eased-motion frames in this loop are a same-machine artifact until
-     the rung-3 visual delta seam lands. The prior e0 placeholder is kept at docs/media/hero-e0-chain.gif
-     for history. Capture-spec shape: flip-readiness-package.md §1a. -->
-![f1 motion-lifecycle run: a single byte-verified vehicle flies its recorded corridor while the camera tracks it past a live trail; the provenance panel shows det-only self-verification — case_id, result_id, event_hash, and state_trajectory_hash re-derived from the bundle with no external oracle — and the timeline plays the recorded segment chapters.](docs/media/hero-f1-flight.gif)
+<!-- HERO POSTER: a static frame (the Certification Wall after verify-all) that LINKS to the live app —
+     the site is the real demo, and a 93KB PNG is a far kinder cold-load for a first-time evaluator than the
+     multi-MB motion capture, which is preserved one click beneath it (not deleted). The prior e0 placeholder
+     is kept at docs/media/hero-e0-chain.gif for history; the capture ritual behind the motion clip is in
+     docs/capture.md. -->
+[![The Certification Wall with all 50 campaign seeds recomputed and matched byte-for-byte in your browser: a field of green check receipts, the aggregate NEES and NIS gauges on record, the ROBUST verdict, and the exact-integer census — 50 of 50 recomputed, 0 contradicted.](docs/media/wall-poster.png)](https://kaselunt.github.io/swarm-observatory/)
+
+▶ **[Watch the 6-second screen capture](docs/media/hero-f1-flight.gif)** — a single byte-verified vehicle flying its recorded corridor while the provenance panel re-derives its hashes from the bundle with no external oracle.
 
 **Live demo:** `https://kaselunt.github.io/swarm-observatory/` <!-- SLOT: goes live at flip -->
 — the front door opens on **f1**, a vehicle flying its byte-verified recorded path. Or jump
@@ -92,8 +92,7 @@ npm run conformance   # re-folds all six published run bundles (f0/e0/f1/f2a/f3a
 ```
 <!-- `npm run conformance` runs src/decode/verify.test.ts + src/publication.test.ts — the
      byte-exact golden subset isolated from lint/build/e2e — and is what
-     .github/workflows/conformance.yml verifies on every push
-     (spec: .superpowers/sdd/flip-readiness-package.md §3). -->
+     .github/workflows/conformance.yml verifies on every push. -->
 
 ## Tours and deep links
 
@@ -134,8 +133,8 @@ mine. If the commit density looks unusual, that's why — the interesting artifa
 just the app, it's the process that let it ship this fast while staying provable.
 
 Every task runs the same loop: a committed plan
-([`docs/superpowers/plans/`](./docs/superpowers/plans/) — twelve cycles so far, v0.1 through
-v0.7), a written brief, implementation, and then **two independent reviews per task** — a
+([`docs/superpowers/plans/`](./docs/superpowers/plans/) — thirteen cycles so far, v0.1 through
+v0.8), a written brief, implementation, and then **two independent reviews per task** — a
 line-level code review, and a separate adversarial pass that must produce *executable
 evidence* for its findings, not opinions. The two disagree regularly; findings are
 adjudicated (fix now / defer with a trigger / reject with reasons), and both reviewers have
@@ -156,8 +155,8 @@ questions a viewer can ask, one selection grammar, four laws, and a strict gramm
 the past may be drawn into the present frame — is ratified and binding: every new surface
 is judged against it before it ships.
 <!-- CUT-POINT C -->
-Current state of the gates: **1112 unit tests** (including the 89-test byte-exact conformance
-subset) and **28 Playwright end-to-end checks** (as of v0.7); CI runs typecheck, lint, the
+Current state of the gates: **1656 unit tests** (including the 205-test byte-exact conformance
+subset) and **34 Playwright end-to-end checks** (as of v0.8); CI runs typecheck, lint, the
 full test suite, a production build, and the browser smoke pass on every push, and has been
 green on GitHub runners since the first push. The test suite re-derives every pinned hash
 from the vendored bundles on every run.

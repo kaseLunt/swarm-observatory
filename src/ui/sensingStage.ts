@@ -9,7 +9,7 @@ import { MIN_EXTENT } from './trail'
 import type { Eligibility, Detection } from '../decode/payloads'
 import type { StateFrame } from '../lib/brand'
 
-// ── The Sensing Gauntlet — f2a kind-22 model layer (Task v07-2) ────────────────────────────────────────
+// ── The Sensing Gauntlet — f2a kind-22 model layer ────────────────────────────────────────
 // A PURE, load-path model layer that turns each decoded EligibilityEvaluated (core kind 22) payload into a
 // drawable sensing verdict, and attaches the decoded target pose the engine evaluated it against. The
 // decoder returns the payload (RunModel.eligibilityAt); this module lights it. Nothing here touches the
@@ -17,7 +17,7 @@ import type { StateFrame } from '../lib/brand'
 // pose / FOV cone / max range / occluder Q + the eligibility decision forms); the kind-22 payload layout is
 // spec-3b §11.1 (subject, sensor, in_range, in_fov, los_clear, eligible, tiebreak_applied — all Bool).
 //
-// §8: this is a LOAD-PATH layer (buildSensingStage is the one-pass sibling of buildQueryDraws / buildTrail,
+// Load budget: this is a LOAD-PATH layer (buildSensingStage is the one-pass sibling of buildQueryDraws / buildTrail,
 // run ONCE at model publish). Its allocations happen at publish time; the frame path reveals precomputed
 // data. It files the LAW-4 declaration as DATA (F2A_REGISTRATION below), against the lensContract types —
 // the FIRST conforming citizen of the provenance ledger. There is NO registry mechanism here (lookup/index
@@ -62,7 +62,7 @@ export const evaluatedFrame = (tick: number, offset: number, lastFrame: number):
 export interface DetectionMark { seq: number; tick: number; pos: Vec3; snrDb: number }
 
 // The minimal shape buildSensingStage needs — RunModel satisfies it structurally (no import cycle). entityStatesAt
-// reads the STATE-FRAME domain: its parameter is StateFrame (F2), matching RunModel's branded accessor, so a raw
+// reads the STATE-FRAME domain: its parameter is StateFrame, matching RunModel's branded accessor, so a raw
 // event tick — the exact historical verdict-vs-pose off-by-one — can no longer be substituted through this
 // structural seam (method bivariance would have let it). The one-pass build brands its derived frame index
 // (`frameTick as StateFrame`) at the call boundary below.
@@ -124,7 +124,7 @@ export function buildSensingStage(source: SensingSource): SensingStageData {
     // tick never indexes past the trajectory (state frames are 0..tickCount inclusive).
     const frameTick = Math.min(tick + TARGET_FRAME_OFFSET, source.tickCount)
     // frameTick is a non-negative integer by construction (ticks + integer offset, clamped) — brand it at this
-    // frame-domain boundary (F2, load-path).
+    // frame-domain boundary (load-path).
     const frame = source.entityStatesAt(frameTick as StateFrame)
     const st = frame.get(subject)
     const g = st ? toVec3(st.pos) : null
@@ -167,7 +167,7 @@ export interface SensingStageSource extends SensingSource {
   entityKeys(): readonly string[]
 }
 
-// ── THE SENSING SUBJECT (M7) — the entity the kind-22 verdicts are ABOUT ─────────────────────────────────
+// ── THE SENSING SUBJECT — the entity the kind-22 verdicts are ABOUT ─────────────────────────────────
 // Each kind-22 verdict NAMES a subject (SensingDraw.subject = "1:<id>", decoded from the payload's subject:U64 —
 // spec-3b §11.1). The eligible-tinted stage tints THAT entity's flight, so the stage's applicability must resolve
 // against the subject the verdicts name — NOT entityKeys()[0], which on a multi-entity run is a DIFFERENT entity
@@ -185,8 +185,8 @@ export function sensingSubject(draws: readonly (SensingDraw | null)[]): string |
   return subject
 }
 
-// ── F3 — THE SENSING-RUN CONSUMER REFERENCE (the subject key AND its instance index, resolved ONCE) ─────────
-// M7 fixed the STAGE mesh (sensingTrail tints the kind-22 subject's flight), but Scene.Entities still consumed
+// ── THE SENSING-RUN CONSUMER REFERENCE (the subject key AND its instance index, resolved ONCE) ─────────
+// The sensing-subject fix corrected the STAGE mesh (sensingTrail tints the kind-22 subject's flight), but Scene.Entities still consumed
 // entityKeys()[0]'s trail/bounds and tracked instance index 0 — so on a run whose subject is NOT the first entity
 // (a first entity 1:0 with kind-22 verdicts naming 1:7), the establishing frame, the arrival fit, the follow bias
 // and the i===0 tracking ring all followed 1:0 while the eligibility trail followed 1:7: camera + highlight on a
@@ -194,7 +194,7 @@ export function sensingSubject(draws: readonly (SensingDraw | null)[]): string |
 // the subject KEY (which flight to trail/bound) and its INDEX in entityKeys() (which instanced cone the tracking /
 // finale ring / head tint name). null when the stage does not apply (no kind-22 verdicts, a multi-subject scene,
 // or a subject absent from the key list); Scene then threads the non-sensing defaults (entityKeys()[0]'s
-// trail/bounds, index 0), byte-identical to pre-F3. Every certified bundle is single-subject with the subject at
+// trail/bounds, index 0), byte-identical to the prior behavior. Every certified bundle is single-subject with the subject at
 // index 0, so this returns { key: entityKeys()[0], index: 0 } there — no real behavior moves; the latent
 // multi-subject incoherence is what closes.
 export interface SensingSubjectRef { key: string; index: number }
@@ -210,14 +210,14 @@ export function sensingSubjectRef(
 // Does the sensing SUBJECT have a REAL, non-static flight to tint? Walks the subject's decoded poses and applies
 // the SAME emptiness bar buildTrail uses (MIN_EXTENT on the bbox diagonal): a subject absent from every frame, or
 // positioned-but-STATIC (an f0-like point), yields an EMPTY trail buffer — so the tinted stage would read NaN over
-// nothing and the honesty chip would claim decoded-real flight over a void (M7). The bbox diagonal is a
+// nothing and the honesty chip would claim decoded-real flight over a void. The bbox diagonal is a
 // permutation/sign-flip invariant, so measuring it on the NED pose equals buildTrail's three-space extent exactly.
 function subjectHasFlight(model: SensingSource, subject: string): boolean {
   let seen = false
   let minN = Infinity, minE = Infinity, minD = Infinity, maxN = -Infinity, maxE = -Infinity, maxD = -Infinity
   const n = model.tickCount + 1
   for (let t = 0; t < n; t++) {
-    // Load-path walk (the applicability gate, at model publish); brand the integer counter at the boundary (F2).
+    // Load-path walk (the applicability gate, at model publish); brand the integer counter at the boundary.
     const st = model.entityStatesAt(t as StateFrame).get(subject)
     if (!st) continue
     const p = st.pos
@@ -231,14 +231,14 @@ function subjectHasFlight(model: SensingSource, subject: string): boolean {
 }
 
 // The sensing stage applies iff the kind-22 verdicts name ONE subject AND that subject has a real flight to tint
-// (M7). This REPLACES the old `entityKeys().length > 0 && hasSensingEvents(draws)`: that gate was true for a
+// This REPLACES the old `entityKeys().length > 0 && hasSensingEvents(draws)`: that gate was true for a
 // positioned-but-static run (an empty trail buffer → NaN reads) and, on a multi-entity run, said nothing about
 // WHICH entity the verdicts were about (the tint landed on [0] regardless). Resolving against the sensing subject
 // closes both. The view (Scene) builds the SAME subject's trail (buildTrail(model, sensingSubject(...))), so the
 // gate and the tinted geometry agree on which flight the stage is about.
 export function sensingStageApplies(model: SensingStageSource): boolean {
   const draws = buildSensingStage(model).draws
-  // F4 — admission REQUIRES the subject to RESOLVE against the RENDERED key set (entityKeys(), the first-populated-
+  // Admission REQUIRES the subject to RESOLVE against the RENDERED key set (entityKeys(), the first-populated-
   // frame entities Scene instances a cone per). sensingSubjectRef returns null for (no kind-22 verdicts / a multi-
   // subject scene / a subject ABSENT from entityKeys()). That last case is the late-spawn hole: a subject that
   // first appears AFTER the initial frame has a real flight (subjectHasFlight walks EVERY frame) yet is not in
@@ -279,7 +279,7 @@ const LEDGER: readonly PixelClass[] = [
   { id: 'los-clear-recompute', tier: 'recomputed', source: `${SRC} (LOS: sensor→target segment vs occluder Q, discriminant form)`,
     answer: 'line-of-sight re-derived in-browser — the sensor→drone segment tested against the occluder sphere — compared live to the engine bit',
     agree: { basis: 'live-inputs', inputs: makeWitnessInputs('sensing:pose'), form: 'form:los-clear' } },
-  // THE FLAGSHIP (T2-W2, made a type). The live conjunction ANDs the two LIVE legs (in_range, los_clear —
+  // THE FLAGSHIP (made a type). The live conjunction ANDs the two LIVE legs (in_range, los_clear —
   // re-derived from the decoded pose) with the in_fov leg carried as the DECODED CLAIM, checked against the
   // engine's eligible bit. The arm is MINTED (makeWitnessInputs — copied, frozen, validated) FROM sensingMath's
   // OWN exported ELIGIBLE_CONJUNCTION_INPUTS, which is ALSO the executor capability's form:eligible-conjunction
@@ -308,8 +308,8 @@ const LEDGER: readonly PixelClass[] = [
 // The honesty chip — DERIVED from the ledger, test-pinned against it (chipAgreesWithLedger): it names
 // scenario constants iff the ledger has scenario-constant classes, and claims decoded-real iff the ledger
 // has decoded classes. One source of honesty per lens; the chip is its projection, not a second author.
-// Wording is owner-tweakable (G5); the honesty CONTENT is fixed by the ledger.
-//   RULING 1 (NAME): the chip now names the DETECTIONS alongside flight & eligibility — the ledger's third
+// Wording is owner-tweakable; the honesty CONTENT is fixed by the ledger.
+//   Naming choice: the chip now names the DETECTIONS alongside flight & eligibility — the ledger's third
 // decoded-real class (detection-mark, tier `decoded`) had no sighted surface, so a cold viewer met the marks
 // as an unnamed bright pile. This is the "give the ledger sentence a surface" fix on the stage's own prose
 // voice (no new chrome): honest (detections ARE decoded-real) and still names the constants, so it clears

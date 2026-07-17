@@ -5,7 +5,7 @@ import { recomputedVerdict } from './lensContract'
 import type { AgreeSource } from './agreeSource'
 import { markClass, requireGlyph } from './voices'
 
-// ── The four-gate eligibility strip (Task v07-2) — f2a's INSTRUMENT voice (LAW 3) ──────────────────────
+// ── The four-gate eligibility strip — f2a's INSTRUMENT voice (LAW 3) ──────────────────────
 // The stage draws the drama (the eligible-tinted flight); this summarises the DECISION: the four gates the
 // sensor ran this tick — in_range · in_fov · los_clear · eligible. It is the two-voice provenance grammar
 // made a strip: in_range / los_clear / eligible are RECOMPUTED in-browser and wear the live ✓ / ✗; in_fov
@@ -15,7 +15,7 @@ import { markClass, requireGlyph } from './voices'
 
 // The DECLARED AgreeSource arm for each recompute gate — resolved ONCE from the f2a registration (the
 // ask-any-pixel authority), so the mark a gate wears derives from ITS pixel-class's declared witness, not a
-// bare boolean re-decided here (W3 F3). Fail-loud at module load if a class or its arm vanished (the registry
+// bare boolean re-decided here. Fail-loud at module load if a class or its arm vanished (the registry
 // discipline, at the render boundary): a recompute gate with no witness is a wiring bug, not a blank to paint.
 const gateArmOf = (classId: string): AgreeSource => {
   const a = F2A_REGISTRATION.provenance.find(p => p.id === classId)?.agree
@@ -29,7 +29,7 @@ const GATE_ARM: Partial<Record<GateId, AgreeSource>> = {
 }
 
 // The provenance mark a gate wears + its basis note, both sourced from the single voices module (no gate-local
-// glyph literals) and the gate's DECLARED arm (W3 F3). The old v-ok/v-bad/v-claim classes are retired. A claim
+// glyph literals) and the gate's DECLARED arm. The old v-ok/v-bad/v-claim classes are retired. A claim
 // gate wears the ATTESTED • (a verdict-family mark — the `--pending` slate), never a ✓; a withheld recompute
 // (no decoded pose this tick) wears the · WITHHELD state (a no-verdict mark — stays dim). A FORMED recompute
 // derives its mark from the arm via recomputedVerdict — ✓ for a live-inputs agreement, ○ for a
@@ -64,7 +64,7 @@ export function SensingStrip({ draw }: { draw: SensingDraw }) {
               <td className={`gate-mark ${m.cls}`} title={m.title}>{m.glyph}</td>
               <td className="gate-form" title={g.note}>
                 {g.form}{g.id === 'in_fov' ? ` · half_fov ≈ ${fov.deg.toFixed(2)}°` : ''}
-                {/* W3 F3 — the arm's basis note, visible where the mark renders (ev99's note convention): a
+                {/* The arm's basis note, visible where the mark renders (the basis-note convention): a
                     live-inputs row reads "recomputed from live decoded inputs"; a decoded-consistency row
                     would read "…no external oracle" beside its ○ ring, never a mislabelled ✓. */}
                 {m.note && <span className="gate-basis">{m.note}</span>}

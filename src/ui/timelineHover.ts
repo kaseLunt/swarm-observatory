@@ -2,7 +2,7 @@
 // hover with its identity. The timeline is canvas-drawn, so there are no DOM marks to attach titles to;
 // the Timeline instead resolves "what is under the cursor" — lane from y, tick from x, then the LANE's
 // nearest event (or, for a heat-mode lane, its bin aggregate) — and hands the resolved target here to
-// build the single quiet line it writes to the canvas's native `title` (the run-switcher's R5 tooltip
+// build the single quiet line it writes to the canvas's native `title` (the run-switcher's tooltip
 // mechanism, made dynamic). Kept pure and injected (no RunModel, no kind-name table) so the identity
 // string is unit-tested exhaustively.
 //
@@ -20,7 +20,7 @@ import { identityPlate, compactPlate } from './identityPlate'
 export interface HoverTarget {
   tick: number
   // `subject` (optional) is the namespace-1 entity the event is ABOUT — named with its compact identity
-  // plate (G19). Optional so callers/tests that don't resolve a subject are unaffected.
+  // plate. Optional so callers/tests that don't resolve a subject are unaffected.
   event: { seq: number; kind: number; tick: number; parentSeq: number | null; subject?: string | null } | null
   aggregate: { count: number; startTick: number; endTick: number } | null
   chapter: { label: string; startTick: number; endTick: number } | null
@@ -28,7 +28,7 @@ export interface HoverTarget {
 
 export function hoverIdentity(t: HoverTarget, kindName: (kind: number) => string): string {
   if (t.event) {
-    // The subject clause consumes the identity plate: "event #37 · … · tick 37 · ▸ ALFA" (G19). The raw seq
+    // The subject clause consumes the identity plate: "event #37 · … · tick 37 · ▸ ALFA". The raw seq
     // stays the data-true handle; the callsign is a presentational label (never serialized).
     const subj = t.event.subject ? ` · ${compactPlate(identityPlate(t.event.subject, 'entity'))}` : ''
     const base = `event #${t.event.seq} · ${kindName(t.event.kind)} · tick ${t.event.tick}${subj}`

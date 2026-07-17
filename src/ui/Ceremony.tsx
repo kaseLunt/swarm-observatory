@@ -5,7 +5,7 @@ import { lineState, shortHex, pinTick, resultIdTick, stepMark, MARK, type LineSt
 // Three staged lines light up in sequence as the real phase advances — frames decoding (bar filled
 // by worker progress), hashes confirming (the REAL recomputed event_hash / result_id short-hex —
 // event_hash ticks ○/✓/✗ from its own trailer reproduction + manifest pin; result_id ticks the derived •
-// det-only or ✓/✗ under a manifest, F1), scene assembling (the model publishes and the app takes over).
+// det-only or ✓/✗ under a manifest), scene assembling (the model publishes and the app takes over).
 // The hashes AND their tick are always the genuine recomputed verify result threaded from useRun — never
 // decoration. The pure state/format helpers live in
 // ceremonyFormat.ts (unit-tested there); this file is the render only.
@@ -14,7 +14,7 @@ import { lineState, shortHex, pinTick, resultIdTick, stepMark, MARK, type LineSt
 
 export function Ceremony({ phase, progress, hashes, settling = false }: { phase: RunPhase; progress: number; hashes: CeremonyHashes | null; settling?: boolean }) {
   const frames = lineState('decoding', phase)
-  // Settle beat (Task v04-7): during the payoff hold the confirm line resolves to 'done' (the completed
+  // Settle beat: during the payoff hold the confirm line resolves to 'done' (the completed
   // double-✓) while the scene has not yet assembled — so we force it done here rather than promote the
   // whole phase to 'ready' (which would also mark 'scene assembling' done before the model exists).
   const confirm: LineState = settling ? 'done' : lineState('verifying', phase)
@@ -22,11 +22,11 @@ export function Ceremony({ phase, progress, hashes, settling = false }: { phase:
   const pct = Math.round(progress * 100)
   // Hashes have arrived (recomputed) from the moment 'verifying' begins; show them confirming.
   const showHashes = hashes !== null && (confirm === 'active' || confirm === 'done')
-  // Per-PIN grading (F3/F4 — a named hash row reflects its OWN comparisons, not the aggregate). Each row grades
+  // Per-PIN grading (a named hash row reflects its OWN comparisons, not the aggregate). Each row grades
   // from (a) its comparableManifestPins entry (hashes.pins — THE SAME list Provenance renders) and (b) its OWN
   // per-field trailer reproduction (hashes.trailerPins), never the aggregate matchesTrailer. So corrupting ONLY
-  // the manifest's event_hash reds event_hash beside a green result_id (F3), and corrupting ONLY the trailer's
-  // state hash keeps event_hash ✓ (its own bytes reproduced) while the step mark carries the aggregate ✗ (F4) —
+  // the manifest's event_hash reds event_hash beside a green result_id, and corrupting ONLY the trailer's
+  // state hash keeps event_hash ✓ (its own bytes reproduced) while the step mark carries the aggregate ✗ —
   // instead of over-refusing both named rows. result_id has no in-bundle trailer value (the trailer stores none),
   // so it passes `true` for reproduction: it grades from its manifest pin alone, ○ self-check when det-only.
   const pinMatch = (key: string): boolean | null =>
@@ -43,7 +43,7 @@ export function Ceremony({ phase, progress, hashes, settling = false }: { phase:
       <div className="ceremony-inner">
         <h1>verifying run</h1>
         {/* Plain-language thesis: what the staged checklist below is actually doing, in one honest line. Scoped
-            (F1) to what the in-bundle check ACTUALLY proves — the event & state hashes and the frame counts
+            to what the in-bundle check ACTUALLY proves — the event & state hashes and the frame counts
             reproduced from the bytes and matched to the run's sealed trailer. It deliberately does NOT claim
             "every byte" (that would over-claim result_id/case_id, which are derived/trailer-sourced, not checked
             here). Body size, faint — a subtitle, not a step. */}

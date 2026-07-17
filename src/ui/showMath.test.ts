@@ -9,7 +9,7 @@ import {
   showMath, num,
 } from './showMath'
 
-// SHOW-THE-MATH recompute tests (v0.6 T4a). The load-bearing oracle: recompute every kind-23 verdict from
+// SHOW-THE-MATH recompute tests (v0.6). The load-bearing oracle: recompute every kind-23 verdict from
 // the REAL decoded e0 bundle and prove the browser recomputation AGREES WITH THE ENGINE on all 75 — the
 // same fixture + decode path the model-layer oracle test uses. Plus per-form spot checks + the constitution
 // guard that this module recomputes NO bearing (never Math.atan2/trig — the pinned-libm binding).
@@ -150,14 +150,14 @@ describe('showMath card shape (the Inspector surface)', () => {
   })
 
   test('a LOS row with NO composite is UNVERIFIABLE — agree is NULL (unbrandable), never a false ✗ or tautological ✓', () => {
-    // PREMISE-FIRST (F1): the OLD path minted a brandable false (agrees(false)) on a missing composite — a valid
+    // PREMISE-FIRST: the OLD path minted a brandable false (agrees(false)) on a missing composite — a valid
     // AgreementResult a consumer could hand recomputedVerdict, producing a false ✗ MISMATCH where the honest state
     // is UNVERIFIABLE. The brand must PROVE a comparison occurred, so with no composite NO comparison runs and
     // agree is null (the type forbids branding it); unverifiable drives the '?' display. Never the old tautology
     // (derive `clear` FROM the engine's verdict, then "agree" with it → a false green).
     const los = stage.draws[39] as SightlineDraw
     const card = showMath(los, null) // composite deliberately withheld
-    expect(card.agree).toBeNull()          // UNBRANDABLE — no comparison ran (was agrees(false) pre-F1)
+    expect(card.agree).toBeNull()          // UNBRANDABLE — no comparison ran (was agrees(false) before this fix)
     expect(card.unverifiable).toBe(true)
     expect(card.verdict).toMatch(/unverifiable/i)
     // The tautology guard: flipping the engine verdict must NOT produce a brandable agreement — it stays null
@@ -251,7 +251,7 @@ test('CONSTITUTION GUARD: the recompute closure (showMath.ts + queryScenario.ts)
   expect(code).not.toMatch(/\b(?:atan2|atan|asin|acos|sin|cos|tan)\b/)
 })
 
-// ── Runtime-closure extraction via the TS AST (F5 — the backtick dynamic-import evasion, closed) ──────────
+// ── Runtime-closure extraction via the TS AST (the backtick dynamic-import evasion, closed) ──────────
 // The old regex extractor pulled dynamic-import specifiers with `import\(\s*['"]…['"]\)` — which MISSES a
 // TEMPLATE or computed specifier (import(`./camera`)), so a dynamic import could typecheck and survive into
 // emitted JS UNSEEN. Parsing with the TS compiler (ts.createSourceFile — `typescript` is the tsc-gate
@@ -277,7 +277,7 @@ function moduleEdges(name: string, src: string): ModuleEdges {
         const clause = n.importClause
         if (!clause) e.valueImports.push(s)                     // side-effect import '…' (runtime)
         else if (clause.isTypeOnly) e.typeOnlyImports.push(s)   // import type … from — declaration-level, FULLY erased
-        // Otherwise a RUNTIME edge (F3). verbatimModuleSyntax erases ONLY the declaration-level `import type`
+        // Otherwise a RUNTIME edge. verbatimModuleSyntax erases ONLY the declaration-level `import type`
         // above. An import clause with INLINE type-only specifiers but no value binding (`import { type A } from
         // './x'`) still EMITS the bare side-effect `import {} from './x'` — the module is evaluated — so it is a
         // value edge here, NOT erased. (Classifying it type-only would let a declaration-level `import type …
@@ -299,11 +299,11 @@ function moduleEdges(name: string, src: string): ModuleEdges {
 }
 const readEdges = (path: string): ModuleEdges => moduleEdges(path, readFileSync(path, 'utf8'))
 
-test('SCAN-COVERAGE PIN: showMath VALUE-imports exactly ./queryScenario; NO dynamic import survives (F5)', () => {
+test('SCAN-COVERAGE PIN: showMath VALUE-imports exactly ./queryScenario; NO dynamic import survives', () => {
   const e = readEdges('src/ui/showMath.ts')
   // (1) The only RUNTIME value edge is the zero-import scenario module — the trig scan's closure claim, checked.
   expect([...new Set(e.valueImports)].sort()).toEqual(['./queryScenario'])
-  // (2) Type-only edges are erased (verbatimModuleSyntax); ./agreeSource rides here (W3 — AgreementResult /
+  // (2) Type-only edges are erased (verbatimModuleSyntax); ./agreeSource rides here (AgreementResult /
   //     AgreeCapability are types), as do the queryStage types. Any NEW type-only source forces re-adjudication.
   for (const s of e.typeOnlyImports) expect(['./queryScenario', './queryStage', './agreeSource']).toContain(s)
   // (3) No value re-export widens the closure like an import would (`export type … from` is erased, allowed).
@@ -332,7 +332,7 @@ test('SCAN-COVERAGE PIN: showMath VALUE-imports exactly ./queryScenario; NO dyna
   expect(probe.typeOnlyImports).toEqual(['./y'])
   expect(probe.valueReExports).toEqual(['./w'])
 
-  // PREMISE-DEFEAT (F3) — the INLINE type-only edge. Under verbatimModuleSyntax `import { type A } from './x'`
+  // PREMISE-DEFEAT — the INLINE type-only edge. Under verbatimModuleSyntax `import { type A } from './x'`
   // (inline `type` specifier, NO value binding) emits the bare side-effect `import {} from './x'` — a RUNTIME
   // edge. The new walk classifies it a value import; the OLD all-inline-type branch wrongly erased it (which
   // would let `import type … from './queryStage'` be rewritten to this form to keep this pin green while

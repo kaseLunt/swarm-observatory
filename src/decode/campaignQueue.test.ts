@@ -46,7 +46,7 @@ describe('buildCampaignJobs: jobs name pinned seeds by IDS ONLY (worker owns url
     expect(built[0]!.id).toBe('42')
     expect(built[0]!.seed).toBe(42)
     expect(built[0]!.campaignId).toBe('robust-f3a')
-    // The H1 closure: a job carries no url and no expected pins â€” the worker resolves both from the catalog, so
+    // The catalog-authority closure: a job carries no url and no expected pins â€” the worker resolves both from the catalog, so
     // a caller cannot submit its own bytes/pins and mint a false 'verified'.
     expect('url' in built[0]!).toBe(false)
     expect('expected' in built[0]!).toBe(false)
@@ -151,7 +151,7 @@ describe('createCampaignQueue: cancellation (the decode-cancellation debt)', () 
   })
 })
 
-describe('createCampaignQueue: a transport fault becomes a TERMINAL error (F4 â€” no stuck seeds)', () => {
+describe('createCampaignQueue: a transport fault becomes a TERMINAL error (no stuck seeds)', () => {
   const doneEvents = (events: QueueEvent[]) =>
     events.filter((e): e is Extract<QueueEvent, { type: 'done' }> => e.type === 'done')
 
@@ -181,7 +181,7 @@ describe('createCampaignQueue: a transport fault becomes a TERMINAL error (F4 â€
 
     q.start(jobs(4))
     expect(calls).toHaveLength(2) // 2 in flight, 2 pending
-    // The client's crash handler rejects every outstanding request (F4).
+    // The client's crash handler rejects every outstanding request.
     calls[0]!.reject(new Error('campaign verify worker crashed: boom'))
     calls[1]!.reject(new Error('campaign verify worker crashed: boom'))
     await flush()
@@ -198,7 +198,7 @@ describe('createCampaignQueue: a transport fault becomes a TERMINAL error (F4 â€
     expect(q.running).toBe(false)
   })
 
-  test('a straggler rejection from a CANCELLED batch still emits nothing (the epoch fence beats the F4 error path)', async () => {
+  test('a straggler rejection from a CANCELLED batch still emits nothing (the epoch fence beats the error path)', async () => {
     const { transport, calls } = makeFakeTransport()
     const events: QueueEvent[] = []
     const q = createCampaignQueue({ concurrency: 2, transport, onEvent: e => events.push(e) })

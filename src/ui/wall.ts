@@ -2,17 +2,17 @@ import type { SeedPhase, CampaignRollup } from '../state/campaignStore'
 import type { CampaignCatalog } from '../decode/campaignCatalog'
 import type { MarkKey } from './voices'
 
-// ── THE CERTIFICATION WALL — pure view-model (v0.8 W5) ──────────────────────────────────────────────────
+// ── THE CERTIFICATION WALL — pure view-model (v0.8) ──────────────────────────────────────────────────
 // The presentation-free half of the Wall: census math, the seed phase→voice mapping, and the aggregate
 // gauge model decoded from the vendored campaign manifest. No React, no DOM — every function here is a
 // total map from campaign FACTS (the campaignStore rollup / phase, the vendored manifest bytes) to the
 // display data wallView.tsx renders. Unit-pinned in wall.test.ts where the honesty rules can be held.
 //
-// THE VOICE DISCIPLINE (D4 Rulings 1/5, the amended-consult RAIL 1): green is a receipt. A seed wears
+// THE VOICE DISCIPLINE (a design ruling): green is a receipt. A seed wears
 // integrity `verified` ONLY on the store's evidence-derived 'verified' phase (recomputed AND matched THIS
 // session); until then it rests in the ATTESTED voice (• on record — the catalog pins ARE the on-record
 // claim). A fetch FAILURE ('error' phase) is the AVAILABILITY voice — the no-verdict `unverifiable` mark
-// (?), NEVER the integrity ✗ (mismatch): absence of evidence is not contradiction (the W4 store fought
+// (?), NEVER the integrity ✗ (mismatch): absence of evidence is not contradiction (the store fought
 // nine rounds to keep the 'error' bucket distinct from integrity mismatch — this mapping must not blur it).
 // Glyphs are resolved from the ONE voices module at render (never a literal here); this file names the
 // MarkKey, so the seven-mark alphabet stays single-sourced.
@@ -42,11 +42,11 @@ export function seedVoice(phase: SeedPhase): SeedVoice {
 }
 
 // ── THE CENSUS (exact integers — the headline that separates an instrument from marketing) ──────────────
-// No percentages, no rings, no rounding: integers are the honest unit of verification (D4 Ruling 1). The
+// No percentages, no rings, no rounding: integers are the honest unit of verification (a design ruling). The
 // line reads well ALOUD — it IS the reduced-motion narration (aria-live), so it names the earned count, the
 // on-record total, and the contradicted count, appending an availability count only when a fetch has failed.
 //
-// F4 — THE NUMERATOR IS "recomputed AND matched", not "recomputed". Every CONTRADICTED seed ALSO ran a full
+// THE NUMERATOR IS "recomputed AND matched", not "recomputed". Every CONTRADICTED seed ALSO ran a full
 // in-browser recompute (that recompute is exactly what produced the ✗) — so "48 of 50 recomputed here · 2
 // contradicted" is a lie of omission: it implies only 48 were recomputed when in truth all 50 that reached a
 // verdict were, 48 matching and 2 disagreeing. The leading count is the count of clean receipts (the green ✓s
@@ -81,7 +81,7 @@ export function censusLine(rollup: CampaignRollup): string {
 // ── THE AGGREGATE GAUGES — the campaign's statistical verdict, decoded HONESTLY ─────────────────────────
 // The engine's ROBUST verdict lives in the certified aggregate bundle; its verdict.det is a DIFFERENT binary
 // format from the run bundle (DETBNDL1) that the app's frames/payloads infrastructure decodes, so it is NOT
-// in-browser decodable with reasonable effort (verdict-decode filed as a named carry in the W5 report). The
+// in-browser decodable with reasonable effort (verdict-decode filed as a named follow-up carry). The
 // honest source is the vendored, drift-gated campaign-manifest.json: it carries the certifier-recomputed
 // members (statistic + pass) and the PRECOMMITTED critical bounds as pinned f64 BITS (the bearings-class
 // discipline — pinned-bit display, NEVER a platform recompute). This module DECODES those bits to exact
@@ -119,7 +119,7 @@ const SIDEDNESS: Readonly<Record<string, string>> = { TWO: 'two-sided', ONE: 'on
 const SHORT_KIND: Readonly<Record<string, string>> = { CHI2_NEES: 'NEES', CHI2_NIS: 'NIS' }
 
 // The RAW `<key>.members` array off a JSON value — the ARRAY ITSELF (never filtered), or null when the shape is
-// absent. F2: the old reader SILENTLY DROPPED any non-object row (a `.filter(...)`), so a malformed or duplicate
+// absent. The old reader SILENTLY DROPPED any non-object row (a `.filter(...)`), so a malformed or duplicate
 // row vanished instead of failing the block; the atomic validator below needs EVERY raw element so it can reject
 // a wrong count / a malformed row / a duplicate id rather than paper over them.
 function rawMembers(v: unknown, key: string): unknown[] | null {
@@ -135,7 +135,7 @@ const str = (v: unknown): string | null => (typeof v === 'string' ? v : null)
 const obj = (v: unknown): Record<string, unknown> | null =>
   (typeof v === 'object' && v !== null ? (v as Record<string, unknown>) : null)
 
-// The parse RESULT is a discriminated union (W5 F3): the gauges either decode WHOLE (every member validated)
+// The parse RESULT is a discriminated union: the gauges either decode WHOLE (every member validated)
 // or the whole block is UNVERIFIABLE with a reason. There is no partial success — a surface that renders "some
 // of the campaign's verdict" from a manifest whose identity or shape it could not confirm is exactly the
 // fail-open lie this closes. `ok:false` drives the '?' unverifiable voice + the reason line; NEVER a mystery row.
@@ -145,7 +145,7 @@ export type GaugeModel =
 
 const invalid = (reason: string): GaugeModel => ({ ok: false, reason })
 
-// Parse the vendored manifest into the gauge model — FAIL-CLOSED, ATOMIC, and PINNED (W5 F3 + F2 + F1). The old
+// Parse the vendored manifest into the gauge model — FAIL-CLOSED, ATOMIC, and PINNED. The old
 // parse joined by test_id ONLY, silently DROPPED any member it could not fully read, accepted a +Infinity upper
 // bound (lo < hi is true for +Infinity), TRUSTED whatever statistic/pass/dof/bound the sidecar declared, and
 // never checked the manifest's identity — so a tampered/stale/truncated sidecar rendered partial, wrong-band,
@@ -155,10 +155,10 @@ const invalid = (reason: string): GaugeModel => ({ ok: false, reason })
 //     or a re-pointed one, is not our verdict);
 //   • shape — the StatResultBlock schema version, the EXACT member count, UNIQUE test_ids, and each member's
 //     kind matching the certified test_id ⇄ kind pin (no dropped, extra, duplicated, or mis-kinded member);
-//   • params atomicity (F2) — the RAW test_params_echo array is validated WHOLE before any map is built: exact
+//   • params atomicity — the RAW test_params_echo array is validated WHOLE before any map is built: exact
 //     row count, every row well-formed, test_ids the EXACT expected set (unique, no extras), kind per id — so a
 //     malformed/duplicate/wrong-kind row can no longer be silently dropped or overwrite a real one and still ok;
-//   • certified tuple (F1) — statistic, pass, dof, alpha, sidedness, and BOTH bound bit-strings must byte-match
+//   • certified tuple — statistic, pass, dof, alpha, sidedness, and BOTH bound bit-strings must byte-match
 //     the catalog pin; the render is CATALOG truth CONFIRMED by the fetch, never raw fetch truth;
 //   • bounds — both critical bits decode to FINITE doubles with lo < hi (a +Infinity upper is rejected here);
 //   • consistency — pass ⟺ the statistic sits STRICTLY inside its band (a lying pass flag cannot ride through).
@@ -184,7 +184,7 @@ export function parseCampaignGauges(manifest: unknown, cat: CampaignCatalog): Ga
   const expectedCount = cat.stat.members.length
   if (num(sp.member_count) !== expectedCount || statMembers.length !== expectedCount) return invalid(`expected exactly ${expectedCount} statistical members`)
 
-  // ── PARAMS ECHO — validated ATOMICALLY as a WHOLE before any lookup map is built (F2) ─────────────────────
+  // ── PARAMS ECHO — validated ATOMICALLY as a WHOLE before any lookup map is built ─────────────────────
   // The old code did rawMembers(...).filter (silently dropping malformed rows) then Map.set per row: a DUPLICATE
   // test_id row overwrote the real row's dof/bits (last write wins), and no count / id-set / kind check ran — so
   // a duplicate wrong-kind row could OVERRIDE a field and STILL return ok:true. Now the raw array is gated whole:
@@ -208,7 +208,7 @@ export function parseCampaignGauges(manifest: unknown, cat: CampaignCatalog): Ga
   }
   // count === expected + every id a certified member + no duplicate ⟹ the id set is EXACTLY the certified set.
 
-  // ── STATISTICAL MEMBERS — each validated against the certified tuple pin (F1) ─────────────────────────────
+  // ── STATISTICAL MEMBERS — each validated against the certified tuple pin ─────────────────────────────
   const out: GaugeMember[] = []
   const seen = new Set<number>()
   for (const raw of statMembers) {
@@ -224,7 +224,7 @@ export function parseCampaignGauges(manifest: unknown, cat: CampaignCatalog): Ga
     if (kind !== spec.kind) return invalid(`test_id ${testId} kind mismatch (want ${spec.kind})`)
 
     // The statistic + pass DECISION are pinned in the catalog — the sidecar may only ECHO them, never change
-    // them (F1). A fetched value that differs (a fabricated statistic, a flipped pass) is rejected here, so the
+    // them. A fetched value that differs (a fabricated statistic, a flipped pass) is rejected here, so the
     // gauge displays CATALOG truth confirmed by the fetch, never a coherent forgery the fetch could smuggle in.
     const statisticText = str(sm.statistic)
     if (statisticText === null) return invalid(`${kind} has no statistic`)
@@ -242,7 +242,7 @@ export function parseCampaignGauges(manifest: unknown, cat: CampaignCatalog): Ga
     const loBits = str(p.critical_lo_bits)
     const hiBits = str(p.critical_hi_bits)
     if (dof === null || alphaPpm === null || loBits === null || hiBits === null) return invalid(`${kind} params echo is incomplete`)
-    // dof / alpha / sidedness / BOTH bound bit-strings must byte-match the catalog pin (F1). The bounds are a
+    // dof / alpha / sidedness / BOTH bound bit-strings must byte-match the catalog pin. The bounds are a
     // pinned-bit DISPLAY, so a skewed bound is caught as a bit-string mismatch BEFORE it is ever decoded.
     if (dof !== spec.dof) return invalid(`${kind} dof does not match the certified pin`)
     if (alphaPpm !== spec.alphaPpm) return invalid(`${kind} alpha does not match the certified pin`)
@@ -272,13 +272,13 @@ export function parseCampaignGauges(manifest: unknown, cat: CampaignCatalog): Ga
   return { ok: true, members: out }
 }
 
-// ── THE GAUGE LOAD STATE (W5 F5) — the modal's per-open discriminated lifecycle ─────────────────────────────
+// ── THE GAUGE LOAD STATE — the modal's per-open discriminated lifecycle ─────────────────────────────
 // One retained gauges array used to conflate loading / fetch-failure / validation-failure / success into "empty
 // or not". This names all four so the surface can render each honestly and CLEAR to `loading` on every open:
 //   loading — the fetch is in flight (never show a prior open's gauges);
-//   loaded  — the manifest validated (F3) → the decoded members;
+//   loaded  — the manifest validated → the decoded members;
 //   failed  — the fetch itself failed (network / !ok) — an availability gap, the manifest "did not load";
-//   invalid — the manifest fetched but FAILED validation (F3) → the '?' unverifiable voice + the reason.
+//   invalid — the manifest fetched but FAILED validation → the '?' unverifiable voice + the reason.
 export type GaugeLoad =
   | { readonly kind: 'loading' }
   | { readonly kind: 'loaded'; readonly members: readonly GaugeMember[] }
@@ -293,7 +293,7 @@ export function gaugeLoadFromFetch(fetched: unknown, cat: CampaignCatalog): Gaug
   return model.ok ? { kind: 'loaded', members: model.members } : { kind: 'invalid', reason: model.reason }
 }
 
-// ── THE SYNCHRONOUS STOP ROUTINE (W5 F5) — one idempotent teardown for every close path ─────────────────────
+// ── THE SYNCHRONOUS STOP ROUTINE — one idempotent teardown for every close path ─────────────────────
 // The Wall's fetch-abort + queue-fence + store-reset were deferred to the effect's PASSIVE cleanup alone — a
 // scheduling window in which an in-flight verify 'done' could still write the store AFTER close. This is the ONE
 // routine every close path invokes SYNCHRONOUSLY (the close button, the backdrop, and the effect cleanup as the
@@ -313,7 +313,7 @@ export function stopWallSession(h: WallStopHandles): void {
 }
 
 // Display precision for the statistic + bounds in the gauge face (full precision rides the row title). Fixed
-// 3dp is the D4 "wrong-number-across-the-room" grain; the exact pinned text is preserved in statisticText.
+// 3dp is the "wrong-number-across-the-room" grain; the exact pinned text is preserved in statisticText.
 export function gaugeDisplay(n: number): string {
   return n.toFixed(3)
 }

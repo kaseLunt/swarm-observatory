@@ -10,10 +10,10 @@ import { agreeBasisNote } from './lensContract'
 import { basisNote, BASIS_NOTE } from './voices'
 import { F2A_REGISTRATION } from './sensingStage'
 
-// The AgreeSource witness union (v0.8 W3, audit A1) makes the echo class UNREPRESENTABLE. These pin the
+// The AgreeSource witness union (v0.8) makes the echo class UNREPRESENTABLE. These pin the
 // compile-level guarantees (the comparand cannot be named as an input; the AgreementResult brand cannot be
-// fabricated), the RUNTIME closure of the covariance hole (F1 — a comparand smuggled past the compiler is
-// refused at construction), the mint LOCK (F4 — only the two executors may stamp agreement), and the one-truth
+// fabricated), the RUNTIME closure of the covariance hole (a comparand smuggled past the compiler is
+// refused at construction), the mint LOCK (only the two executors may stamp agreement), and the one-truth
 // wiring (the basis note a surface renders comes from the arm's TAG, never a second author).
 
 // A never-CALLED function isolates a pure COMPILE pin from runtime (the call inside would throw; we only assert
@@ -45,8 +45,8 @@ describe('the echo exclusion — the comparand cannot be named as an input (comp
     expect(downgrade.basis).toBe('decoded-consistency')
   })
 
-  test('the mutable-alias contamination cannot COMPILE into a witness, and is REJECTED at runtime (F1)', () => {
-    // THE EXACT EXPLOIT F1 closes. TypeScript arrays are covariant (the unsound corner of the language), so an
+  test('the mutable-alias contamination cannot COMPILE into a witness, and is REJECTED at runtime', () => {
+    // THE EXACT EXPLOIT closes. TypeScript arrays are covariant (the unsound corner of the language), so an
     // InputToken[] aliases to a wider (InputToken|ComparandToken)[]; the comparand is pushed through the alias,
     // contaminating the underlying array. Under the OLD `readonly InputToken[]` field this passed with ZERO
     // diagnostics — through BOTH validateRegistration and the boot guard. Now:
@@ -92,8 +92,8 @@ describe('the AgreementResult brand is minted ONLY by the executor — fabricati
   })
 })
 
-// ── F4 — THE MINT LOCK: `as AgreementResult` may appear ONLY in the two executors ───────────────────────────
-describe('the AgreementResult mint is LOCKED to the two executors (F4 sweep)', () => {
+// ── THE MINT LOCK: `as AgreementResult` may appear ONLY in the two executors ───────────────────────────
+describe('the AgreementResult mint is LOCKED to the two executors (sweep)', () => {
   // SCOPE, honestly stated: this sweep targets DRIFT — a future edit reaching for `as AgreementResult` at a new
   // site to file agreement it never computed. It is NOT a defense against a hostile author (a split-string
   // cast, eval, or the Function constructor defeats ANY lexical scan); runtime-opaque values are out of scope.
@@ -136,9 +136,9 @@ describe('the AgreementResult mint is LOCKED to the two executors (F4 sweep)', (
   })
 })
 
-// ── F2 — THE MINT SITES: AST-pin every `as AgreementResult` to its EXACT sanctioned enclosing function ──────
-describe('the AgreementResult mint SITES are pinned by enclosing function, not just by file (F2)', () => {
-  // The F4 sweep above allowlists FILES: a SECOND `as AgreementResult` added INSIDE an executor — including a
+// ── THE MINT SITES: AST-pin every `as AgreementResult` to its EXACT sanctioned enclosing function ──────
+describe('the AgreementResult mint SITES are pinned by enclosing function, not just by file', () => {
+  // The mint-lock sweep above allowlists FILES: a SECOND `as AgreementResult` added INSIDE an executor — including a
   // direct cast of an UNCOMPUTED boolean — would pass it (it is "in showMath.ts"). This pins the SITES. Parse each
   // executor with the TS compiler (ts.createSourceFile — the scan-test idiom), collect every `as AgreementResult`
   // ASSERTION (an AsExpression, so a return-TYPE annotation `: AgreementResult<…>` is NOT counted — precisely what
@@ -207,7 +207,7 @@ describe('the AgreementResult mint SITES are pinned by enclosing function, not j
     expect(all).toHaveLength(4)
   })
   test('PREMISE-DEFEAT — an EXTRA cast (a direct mint of an uncomputed boolean) in a new function is CAUGHT', () => {
-    // the file-level F4 sweep waves this through (it is "inside showMath.ts"); the site pin does not.
+    // the file-level mint-lock sweep waves this through (it is "inside showMath.ts"); the site pin does not.
     const hostile = [
       'const agrees = (m: boolean): AgreementResult<boolean> => m as AgreementResult<boolean>',
       'export function recomputeAll() { const summary = {}; return summary as AgreementResult<Summary> }',
@@ -249,9 +249,9 @@ describe('the AgreementResult mint SITES are pinned by enclosing function, not j
 })
 
 // ── F2b — THE ALIAS BAN: no new nameable alias for AgreementResult may exist in src/ (makes name-matching SOUND) ─
-describe('no src/ site mints a new NAME for AgreementResult that a cast could hide behind (F2 alias ban)', () => {
-  // WHY this sweep exists — the honest residual of every checker-free mint scan (the F4 regex AND the F2 AST pin):
-  // both match the NAME 'AgreementResult'. `value as AgreementResult<b>` in any spelling is caught (F2 part a); but
+describe('no src/ site mints a new NAME for AgreementResult that a cast could hide behind (alias ban)', () => {
+  // WHY this sweep exists — the honest residual of every checker-free mint scan (the mint-lock regex AND the mint-site AST pin):
+  // both match the NAME 'AgreementResult'. `value as AgreementResult<b>` in any spelling is caught (part a); but
   // `type AR = AgreementResult<b>; value as AR` casts to a name the scans cannot enumerate, minting the brand while
   // evading BOTH layers. Closing that WITHOUT a full type-checker means forbidding the alias itself: if no src/ file
   // (outside agreeSource.ts, where the type is DEFINED) creates a new nameable alias for AgreementResult, then the

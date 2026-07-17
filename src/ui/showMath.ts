@@ -9,7 +9,7 @@ import type { QueryDraw, LosComposite } from './queryStage'
 // no-transcendental scan unaffected). Only the AgreeSource witness types + the branded outcome ride in.
 import type { AgreementResult, AgreeCapability } from './agreeSource'
 
-// ── SHOW THE MATH — the verdict-recompute layer (v0.6 T4a) ─────────────────────────────────────────────
+// ── SHOW THE MATH — the verdict-recompute layer (v0.6) ─────────────────────────────────────────────
 // A PURE, three-free module that re-derives each kind-23 verdict IN THE BROWSER from the decoded numbers,
 // using the PINNED decision forms (contract/EXP-E0-decision-forms-excerpt.md — operand order is normative,
 // doctrine §1.6). It then hands the Inspector a card: the pinned form with the decoded numbers substituted,
@@ -23,7 +23,7 @@ import type { AgreementResult, AgreeCapability } from './agreeSource'
 // rad→deg scale of it) in the CLAIM voice with its note — never the recomputed-and-matched ✓. Pure arithmetic
 // on decoded data is fine: sub/dot/cross, IEEE-exact `sqrt` and `/` (reported scalars only), boolean logic.
 //
-// TWO-VOICE PROVENANCE GRAMMAR (v0.5d bench R2, extended): the ✓ (verified voice) is EXCLUSIVELY for what is
+// TWO-VOICE PROVENANCE GRAMMAR (a design ruling, extended): the ✓ (verified voice) is EXCLUSIVELY for what is
 // genuinely recomputed-and-matched in-browser — the verdict (kinds 1/3/4) or the range scalar (kind 2). A
 // disagreement wears the ✗ (mismatch voice). The displayed pinned bits (the bearing) wear the quieter claim
 // voice — a value on record, not an independent recomputation — mirroring the provenance panel's `attested`.
@@ -171,9 +171,9 @@ export function recomputeRange(o: Vec3, g: Vec3): number {
   return Math.sqrt(dot(dl, dl))
 }
 
-// ── W3 (audit A1) — the AgreeSource capability THIS executor's recomputes actually back (PER-FORM, F2) ────
+// ── The AgreeSource capability THIS executor's recomputes actually back (PER-FORM) ──────────────────────
 // Tokens are DATA naming existing legs of this module — a LOOKUP TABLE the boot guard resolves against, never
-// an evaluator. Each FORM maps to the EXACT input tuple its leg consumes (F2 — one truth per form, not two
+// an evaluator. Each FORM maps to the EXACT input tuple its leg consumes (one truth per form, not two
 // flat sets): point-in-region re-derives from `query:probe-point`; ray-occluder from `query:ray-geometry`;
 // los-composition from the `query:component-segments`; range-scalar from `query:range-endpoints`. Each
 // comparand (the engine's own verdict / stored range_m) is a ComparandToken — un-nameable as an input, so no
@@ -234,11 +234,11 @@ export function recomputeAll(
   return summary as AgreementResult<RecomputeSummary>
 }
 
-// THE PER-ROW MINT (F4) — this executor RAN the comparison, so it (and only it) brands each row's agreement,
+// THE PER-ROW MINT — this executor RAN the comparison, so it (and only it) brands each row's agreement,
 // not just the aggregate above. `agrees` is the sanctioned boolean mint: the brand rides MathCard.agree to the
 // Inspector's mark resolver, which DEMANDS it — so a plain boolean can never enter a verdict mark, and this
 // mint cannot be deleted without breaking the type flow. Phantom brand, zero runtime cost. (The `as
-// AgreementResult` here + the summary mint above are the ONLY two in this file; the F4 sweep allowlists it.)
+// AgreementResult` here + the summary mint above are the ONLY two in this file; the sweep allowlists it.)
 const agrees = (matched: boolean): AgreementResult<boolean> => matched as AgreementResult<boolean>
 
 // Range agreement: EXACT equality — no tolerance. The recompute forms are operand-order-faithful to the
@@ -258,16 +258,16 @@ export interface MathCard {
   lines: MathLine[]     // the decoded numbers substituted into that form
   verdict: string       // OUR recomputed conclusion (INSIDE/HIT/CLEAR/…, or the recomputed range)
   engine: string        // the engine's conclusion (from result_flag) — for the mismatch voice on disagreement
-  agree: AgreementResult<boolean> | null // recomputed-and-matched (BRANDED — F4): the executor MINTS this per
+  agree: AgreementResult<boolean> | null // recomputed-and-matched (BRANDED): the executor MINTS this per
                         // row, so the Inspector's mark resolver DEMANDS the brand; a plain boolean cannot flow
                         // into a verdict mark, and deleting the mint is a COMPILE error. → ✓/✗. NULL = NO
-                        // comparison ran (a missing LOS composite): UNBRANDABLE (F1), so a no-comparison state
+                        // comparison ran (a missing LOS composite): UNBRANDABLE, so a no-comparison state
                         // can never mint a false ✗ — the type forces the unverifiable '?' path first.
   claims: MathLine[]    // display-only rows (the pinned bearing bits) — the CLAIM voice, NEVER a ✓
   claimNote?: string
   unverifiable?: boolean // we could NOT recompute (e.g. a LOS row with no composite) → the neutral '?' voice
                          // and the DISPLAY driver; agree is null (no comparison ran), not an engine mismatch —
-                         // never a ✓, and no brandable false to be misread as a ✗ (F1).
+                         // never a ✓, and no brandable false to be misread as a ✗.
 }
 
 // Compact number formatting: exact integers (the lattice fixtures) read bare; others get 4 decimals trimmed.
@@ -346,7 +346,7 @@ export function showMath(d: QueryDraw, composite: LosComposite | null): MathCard
       const sightline: MathLine = { label: 'sightline', value: `${vec(d.o)} → ${vec(d.g)}` }
       // A LOS verdict is checkable ONLY from its 3 component rays' OWN geometry. With NO composite there is
       // nothing to recompute, so NO comparison runs — and an unbrandable state cannot mint an AgreementResult:
-      // agree is NULL (F1), never a branded false. That IS the brand's contract — it PROVES a comparison
+      // agree is NULL, never a branded false. That IS the brand's contract — it PROVES a comparison
       // occurred — so a missing composite cannot manufacture a brandable false that a consumer (recomputedVerdict)
       // would read as a ✗ MISMATCH where the honest state is UNVERIFIABLE. unverifiable:true stays the display
       // driver, and this also forecloses the old tautology (derive `clear` FROM the engine's verdict, then "agree"

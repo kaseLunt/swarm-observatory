@@ -1,6 +1,6 @@
-// DEBT #17 — the stale-dist smoke footgun. `npm run smoke` starts `vite preview`, which SERVES dist/
+// The stale-dist smoke footgun. `npm run smoke` starts `vite preview`, which SERVES dist/
 // but NEVER builds it. Run smoke on a tree whose dist/ predates your source edits and the browser tests
-// pass against OLD bytes — the "17/19 illusion" (a T5b merge-verify that green-lit a change that never
+// pass against OLD bytes — the "17/19 illusion" (a merge-verify that green-lit a change that never
 // actually reached the previewed build). This guard runs BEFORE playwright and FAILS LOUD if dist/ is
 // missing or older than any bundle input, naming the exact fix.
 //

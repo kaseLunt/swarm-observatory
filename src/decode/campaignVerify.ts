@@ -17,10 +17,10 @@ import { foldAndVerify, type VerifyResult } from './verify'
 
 export type RunStatus = 'verified' | 'mismatch' | 'error'
 
-// The verdict BASIS, carried explicitly so a consumer (W5) can never confuse a campaign 'verified' with a
+// The verdict BASIS, carried explicitly so a consumer can never confuse a campaign 'verified' with a
 // det-only bundle's self-consistency. 'campaign-manifest' = recomputed-and-matched against the campaign
 // catalog's manifest-grade pins (the external oracle), NOT the bundle's own self-derived trailer. This is the
-// A2 seal-fold discipline (verify.ts TrustVerdict) applied to a campaign: manifest-grade, never attested-only.
+// seal-fold discipline (verify.ts TrustVerdict) applied to a campaign: manifest-grade, never attested-only.
 export type VerificationBasis = 'campaign-manifest'
 
 // The pins a seed is verified AGAINST — sourced from the in-bundle campaign catalog (the authority), never from
@@ -99,7 +99,7 @@ export function verifyBundleAgainstExpected(bytes: Uint8Array, expected: Campaig
 // ── THE VERIFY-MANY MESSAGE CONTRACT (worker ⇄ queue) ─────────────────────────────────────────────────────
 // A job carries ONLY the ids that name a pinned seed — NEVER a caller-chosen url or expected pins. The worker
 // RESOLVES the load URL and the expected pins from the in-bundle catalog (campaignCatalog, the authority) from
-// `campaignId` + `seed`; a caller cannot submit its own bytes/pins and mint a false 'verified' (the H1 hole,
+// `campaignId` + `seed`; a caller cannot submit its own bytes/pins and mint a false 'verified' (the authority-bypass hole,
 // closed at the worker boundary). `id` is the canonical decimal seed id (queue-side event/correlation).
 export interface VerifyJob {
   readonly id: string
@@ -119,8 +119,8 @@ export interface RunSummary extends VerifyOutcome {
 }
 
 // The single terminal 'error' RunSummary shape for every non-verified outcome that is NOT a byte-level mismatch:
-// a worker REFUSAL (unknown campaign/seed — the F1 authority boundary), a fetch/IO failure, or a TRANSPORT fault
-// the queue observes (dynamic-import, Worker construction, postMessage, or a crashed worker — F4). status is
+// a worker REFUSAL (unknown campaign/seed — the authority boundary), a fetch/IO failure, or a TRANSPORT fault
+// the queue observes (dynamic-import, Worker construction, postMessage, or a crashed worker). status is
 // ALWAYS 'error', NEVER 'verified': a refusal or fault can never mint a green. One definition so the worker and
 // the queue emit an identical shape (no drift). basis stays 'campaign-manifest' (the only basis this spine has).
 export function errorSummary(

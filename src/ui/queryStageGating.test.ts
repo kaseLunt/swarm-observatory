@@ -4,7 +4,7 @@ import { decodeBundle } from '../decode/decodeBundle'
 import { RunModel } from '../model/runModel'
 import { buildQueryDraws, hasQueryDraws, queryStageApplies, type QueryDraw } from './queryStage'
 
-// ── v0.6 MUST-FIX (critic ruling 3) — the HAS-QUERY-CONTENT gate, pinned against the REAL bundles ─────────
+// ── the HAS-QUERY-CONTENT gate, pinned against the REAL bundles ─────────
 // buildQueryDraws never returns null — a run with no kind-23 events yields an all-null seq-indexed array — so
 // `positionless` ALONE cannot tell e0 (a real query stage) apart from a positionless run whose event kinds have
 // no stage lens (f4). hasQueryDraws is the ONE predicate that does; the query stage MOUNT, its origin anchor
@@ -32,7 +32,7 @@ type Rail = 'cone' | 'timeline' | 'empty-stage'
 function classify(model: RunModel): { positionless: boolean; hasContent: boolean; mountsStage: boolean; showsChip: boolean; rail: Rail } {
   const positionless = model.entityKeys().length === 0
   const hasContent = hasQueryDraws(buildQueryDraws(model).draws)
-  const gate = queryStageApplies(model) // T6 M3 — the ONE complete stage-mount + honesty-chip + rail predicate
+  const gate = queryStageApplies(model) // the ONE complete stage-mount + honesty-chip + rail predicate
   return {
     positionless,
     hasContent,
@@ -51,7 +51,7 @@ describe('hasQueryDraws — the pure predicate', () => {
   })
 })
 
-// ── T6 M3 — the COMPLETE applicability predicate (positionless AND kind-23 draws) ────────────────────────
+// ── the COMPLETE applicability predicate (positionless AND kind-23 draws) ────────────────────────
 // The mount/chip/rail all route through queryStageApplies now; the registration registers its NAME (not the
 // CONTENT half `hasQueryDraws`, which under-described the real gate — the old pin caught a rename but not the
 // missing positionless conjunct). These pins are premise-first: the complete predicate is a DISTINCT function
@@ -78,7 +78,7 @@ describe('queryStageApplies — the ONE complete predicate the three surfaces sh
   })
 })
 
-describe('has-query-content against the REAL bundles (critic ruling 3)', () => {
+describe('has-query-content against the REAL bundles', () => {
   test('e0 HAS query content (75 kind-23 draws)', () => {
     expect(hasQueryDraws(buildQueryDraws(modelFor('e0_seed42')).draws)).toBe(true)
   })

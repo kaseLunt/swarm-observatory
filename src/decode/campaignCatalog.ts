@@ -22,7 +22,7 @@
 // TRUST BASIS: a seed the spine marks 'verified' means the worker RECOMPUTED the bundle's case_id/result_id
 // AND its sha256 and matched THESE pins. Because these pins ARE the manifest-grade campaign identity (not a
 // bundle's own self-derived trailer), that verdict is manifest-grade — RunSummary carries basis
-// 'campaign-manifest' EXPLICITLY so a consumer (W5) can never confuse it with det-only self-consistency.
+// 'campaign-manifest' EXPLICITLY so a consumer can never confuse it with det-only self-consistency.
 
 export interface CampaignSeedPin {
   readonly seed: number
@@ -33,7 +33,7 @@ export interface CampaignSeedPin {
 }
 
 // The EXPECTED aggregate-gauge identity AND the certified statistical TUPLE — the in-bundle AUTHORITY the Wall
-// validates the fetched manifest's statistical block against (W5 F3 shape + F1 values). The vendored manifest's
+// validates the fetched manifest's statistical block against (shape + values). The vendored manifest's
 // statistical_pointer "folds into nothing" (unsigned, derived), so a tampered/stale sidecar could drop a member,
 // forge a kind, skew a bound, or flip a statistic/pass; parseCampaignGauges fail-CLOSES against THESE pins rather
 // than trusting whatever the sidecar declares. The Wall thus renders CATALOG truth CONFIRMED by the fetch — never
@@ -41,7 +41,7 @@ export interface CampaignSeedPin {
 // critical-bound f64 bit-strings (the bearings-class pinned-bit display, decoded but never platform-recomputed),
 // dof, alpha (ppm), and sidedness. member_count and the test_id ⇄ kind identities complete the shape.
 //
-// TWO PIN LAYERS, one truth, independent copies (F1). This catalog is the RUNTIME authority: a fetched value that
+// TWO PIN LAYERS, one truth, independent copies. This catalog is the RUNTIME authority: a fetched value that
 // differs from a pin here is rejected, so a tampered FETCH can never reach the screen. publication.test.ts holds
 // a SECOND, independent literal copy (PINNED_GAUGES) as a CI drift gate: because it never imports these pins, a
 // COORDINATED edit that forged BOTH this catalog AND the vendored manifest to agree would still fail there (the
@@ -72,10 +72,10 @@ export interface CampaignCatalog {
   readonly verdictLevel: number   // 2 (ROBUST)
   readonly verdictLevelName: string
   readonly nSeeds: number         // 50
-  readonly attemptsPerVariant: number // 3 (D1: byte-identical across attempts; one representative vendored)
+  readonly attemptsPerVariant: number // 3 (byte-identical across attempts; one representative vendored)
   readonly base: string           // load base under public/ — seed bytes are `${base}/${seed}/bundle.det`
   readonly manifestUrl: string    // discovery-only vendored manifest (NEVER authority)
-  readonly stat: CampaignStatSpec // the expected aggregate-gauge shape (W5 F3 fail-closed validation authority)
+  readonly stat: CampaignStatSpec // the expected aggregate-gauge shape (fail-closed validation authority)
   readonly seeds: readonly CampaignSeedPin[]
 }
 
@@ -146,8 +146,8 @@ export const ROBUST_F3A: CampaignCatalog = {
   attemptsPerVariant: 3,
   base: 'campaigns/robust-f3a',
   manifestUrl: 'campaigns/robust-f3a/campaign-manifest.json',
-  // The two certified aggregate members + their full certified tuple (authority for the Wall's gauge validation,
-  // W5 F1). test_id ⇄ kind is fixed by the certifier: NEES is test_id 2, NIS is test_id 3
+  // The two certified aggregate members + their full certified tuple (authority for the Wall's gauge validation).
+  // test_id ⇄ kind is fixed by the certifier: NEES is test_id 2, NIS is test_id 3
   // (EXP-F3a-robust.json.statistical); member_count = 2. statistic/pass/dof/alpha/sidedness/bounds are the
   // certifier-recomputed values, seed-deterministic, echoed from the vendored manifest and pinned HERE so a
   // fetched deviation is rejected. These equal publication.test.ts's independent PINNED_GAUGES literals (the CI
@@ -191,7 +191,7 @@ const SEED_INDEX: ReadonlyMap<string, ReadonlyMap<string, CampaignSeedPin>> = ne
 // interpolate into a path. Every pinned seed (42..91) is canonical decimal, so all resolve; nothing else does.
 const SEED_ID_RE = /^(?:0|[1-9][0-9]*)$/
 
-// F5/F8 precedent — prototype-shaped ids that could otherwise slip through a naive lookup. None CONFORM to
+// The prototype-key precedent — prototype-shaped ids that could otherwise slip through a naive lookup. None CONFORM to
 // SEED_ID_RE (they carry letters), so the grammar already rejects them; the Map lookup is prototype-safe on its
 // own too. We keep the denylist as an explicit belt-and-suspenders mirror of resolveLoadPlan, so the contract
 // reads identically: EVERY prototype-shaped id resolves to NO pin and NO fetch.
@@ -224,7 +224,7 @@ export function campaignBundlePath(cat: CampaignCatalog, seed: CampaignSeedPin):
 // Resolve the app's deploy base to an ABSOLUTE base URL — on the MAIN THREAD, before the worker is initialised.
 // `base` is Vite's `import.meta.env.BASE_URL`: '/' at root, '/swarm-observatory/' under Pages, and — for a
 // RELATIVE Vite base — '' or './'. `baseURI` is `document.baseURI` in the browser (a test passes an explicit
-// fake — this fn takes NO DOM). Why here and not in the worker (F2): a worker's relative fetch resolves against
+// fake — this fn takes NO DOM). Why here and not in the worker: a worker's relative fetch resolves against
 // the WORKER SCRIPT url (/assets/…), so the worker cannot itself interpret a relative ('' / './') Vite base; the
 // main thread resolves it against the document base and posts the ABSOLUTE result. `base || '.'` maps an empty
 // base to the current DIRECTORY — `new URL('', baseURI)` resolves to the document URL itself (index.html and

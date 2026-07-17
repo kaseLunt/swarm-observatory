@@ -9,11 +9,11 @@ import { SPHERE, type PointDraw, type SightlineDraw } from './queryStage'
 import { makeWitnessInputs, type AgreeSource } from './agreeSource'
 import { requireGlyph, markClass, BASIS_NOTE } from './voices'
 
-// ── W3 F3 — the witness union is WORN at the mark, not demoted to prose ─────────────────────────────────
+// ── the witness union is WORN at the mark, not demoted to prose ─────────────────────────────────
 // PREMISE-FIRST: before this wave, every recomputed row was stamped by a bare boolean → ✓/✗, discarding
 // agree.basis (voiceFor gave the recomputed tier the live-check voice unconditionally, and the components
 // re-decided the mark from a boolean). A decoded-consistency arm would therefore have WORN THE CHECK (✓) — the
-// W1 ring smuggled up to a manifest-grade mark. These pin the fix: the production mark resolver consumes the
+// self-check ring smuggled up to a manifest-grade mark. These pin the fix: the production mark resolver consumes the
 // class's DECLARED arm, so a live-inputs agreement wears the ✓, a decoded-consistency agreement wears ONLY the
 // ○ ring (never the check), a disagreement is the ✗ on either arm, and the basis NOTE renders from the same tag.
 
@@ -31,7 +31,7 @@ const baseDraw: SensingDraw = {
 const inRangeGate = (d: SensingDraw) => sensingGates(d).find(g => g.id === 'in_range')!
 
 // A point-in-ball card that AGREES (recomputeBall(center).inside === true === verdict INSIDE) — its card.agree
-// is the executor's BRANDED per-row outcome, the only kind the mark resolver accepts (F4).
+// is the executor's BRANDED per-row outcome, the only kind the mark resolver accepts.
 const agreeingCard = showMath(
   { kind: 1, seq: 0, object: 1, point: SPHERE.center, verdict: 'INSIDE', tiebreak: false, d2: 0, dist: 0 } as PointDraw,
   null,
@@ -57,7 +57,7 @@ describe('recomputedVerdict — a decoded-consistency agreement earns the ○ ri
   })
 })
 
-describe('SensingStrip.gateMark — the strip wears the arm\'s mark + note (W3 F3)', () => {
+describe('SensingStrip.gateMark — the strip wears the arm\'s mark + note', () => {
   const g = inRangeGate(baseDraw)
   test('a live-inputs arm wears the ✓ with the live-inputs note', () => {
     const m = gateMark(g, liveArm)
@@ -84,7 +84,7 @@ describe('SensingStrip.gateMark — the strip wears the arm\'s mark + note (W3 F
   })
 })
 
-describe('Inspector.showMathMark — the ShowTheMath card wears the arm\'s mark + note (W3 F3)', () => {
+describe('Inspector.showMathMark — the ShowTheMath card wears the arm\'s mark + note', () => {
   test('a live-inputs arm resolves the ✓ with the live-inputs note', () => {
     const s = showMathMark(agreeingCard, liveArm)
     expect(s.mark).toBe('verified')
@@ -96,8 +96,8 @@ describe('Inspector.showMathMark — the ShowTheMath card wears the arm\'s mark 
     expect(s.mark).not.toBe('verified')
     expect(s.note).toBe(BASIS_NOTE['decoded-consistency'])
   })
-  test('a missing-composite card (agree null) resolves to the unverifiable mark, never a verdict — regardless of arm (F1)', () => {
-    // PREMISE-FIRST (F1): pre-fix a missing LOS composite minted agrees(false) — a BRANDED outcome that would
+  test('a missing-composite card (agree null) resolves to the unverifiable mark, never a verdict — regardless of arm', () => {
+    // PREMISE-FIRST: pre-fix a missing LOS composite minted agrees(false) — a BRANDED outcome that would
     // have flowed into recomputedVerdict as a ✗ MISMATCH. Now agree is null (unbrandable), so showMathMark's
     // null-narrowing forces the '?' unverifiable branch FIRST — the no-comparison state can never wear a verdict
     // mark, and the arm is irrelevant (the null short-circuits before recomputedVerdict is ever consulted).

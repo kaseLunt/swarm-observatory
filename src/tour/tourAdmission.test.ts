@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { hasTour, tourAdmitted, tourHandoffAction, TOURS } from './tours'
 import type { TrustVerdict } from '../decode/verify'
 
-// ── F1 — the ONE tour-admission predicate, consumed by all three tour entry points ─────────────────────────
+// ── the ONE tour-admission predicate, consumed by all three tour entry points ─────────────────────────
 // A tour may start iff a model is resident AND it belongs to the CURRENT run (loadIsCurrent) AND the verdict is
 // not a mismatch AND an authored tour exists (own-property). The Hangar handoff — the third entry point that had
 // neither the identity nor the verdict guard — is dispatched through tourHandoffAction, whose switch-gap behavior
@@ -23,7 +23,7 @@ describe('hasTour — an OWN-property check (never an inherited member)', () => 
   })
 })
 
-describe('tourAdmitted — model + identity + verdict + tour-exists (F1)', () => {
+describe('tourAdmitted — model + identity + verdict + tour-exists', () => {
   const SELF: TrustVerdict = 'self-consistent'
   const MISMATCH: TrustVerdict = 'mismatch'
 
@@ -51,7 +51,7 @@ describe('tourAdmitted — model + identity + verdict + tour-exists (F1)', () =>
   })
 })
 
-describe('tourHandoffAction — the Hangar → tour handoff, as a pure action (F1/F6)', () => {
+describe('tourHandoffAction — the Hangar → tour handoff, as a pure action', () => {
   const SELF: TrustVerdict = 'self-consistent'
   const MISMATCH: TrustVerdict = 'mismatch'
   const OK = false // no terminal load error
@@ -59,13 +59,13 @@ describe('tourHandoffAction — the Hangar → tour handoff, as a pure action (F
   test('IDLE: no pending tour → idle (never consume)', () => {
     expect(tourHandoffAction(null, 'e0', true, 'e0', SELF, OK)).toBe('idle')
   })
-  test('CANCEL on NAVIGATION AWAY: a pending tour for a DIFFERENT run → cancel (F6 — the arrival intent is abandoned)', () => {
+  test('CANCEL on NAVIGATION AWAY: a pending tour for a DIFFERENT run → cancel (the arrival intent is abandoned)', () => {
     // The intent was "tour f1 ON ARRIVAL at f1", but the current run is e0. Leaving it parked would let a LATER
     // plain-open of f1 start a tour on a non-tour visit (the stale-replay bug). App consumes pendingTour.
     expect(tourHandoffAction('f1', 'e0', true, 'e0', SELF, OK)).toBe('cancel')
     expect(tourHandoffAction('f1', 'e0', false, null, SELF, OK)).toBe('cancel') // even mid-load elsewhere
   })
-  test('CANCEL on TERMINAL ERROR: the pending destination\'s OWN load failed → cancel (F6 — no arrival will come)', () => {
+  test('CANCEL on TERMINAL ERROR: the pending destination\'s OWN load failed → cancel (no arrival will come)', () => {
     expect(tourHandoffAction('e0', 'e0', false, null, SELF, true)).toBe('cancel')
     // error outranks the still-loading gap: a failed load must not sit parked as 'wait' forever.
     expect(tourHandoffAction('e0', 'e0', true, 'f1', SELF, true)).toBe('cancel')

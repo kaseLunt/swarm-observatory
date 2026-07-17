@@ -1,4 +1,4 @@
-// ── THE IDENTITY PLATE — identity is typographic, not chromatic (G19) ──────────────────────────────────
+// ── THE IDENTITY PLATE — identity is typographic, not chromatic ──────────────────────────────────
 // One plate, four registers, everywhere. The app used to say "agent 1:0" in the Inspector, "the cone" in
 // empty-state copy, and "drone" in tours — three dialects for one subject, and the stage never said which
 // shape was the vehicle. LAW 2 forbids the obvious wrong answer (a hue per drone: at swarm scale that is
@@ -10,7 +10,7 @@
 // (sel=1:0) — callsigns NEVER serialize (they are presentational display labels; the key is the data-true
 // identity). A deep link shares the subject, never the label.
 
-// ── The four actor registers (B1) — the register decides the plate voice and the ledger tier ───────────
+// ── The four actor registers — the register decides the plate voice and the ledger tier ───────────
 // ENTITY   — state-backed, namespace-1, alive/pos/fuel (the drones). Present voice.
 // APPARATUS— addressable but stateless scenario equipment: the sensor (it HAS a data-true id — kind-22
 //            sensor:U64 — but its pose is a scenario constant), occluder, region bodies. Never an "alive"
@@ -20,11 +20,11 @@
 //            never the present voice — designed-ahead; no belief surface builds at f2a.
 export type ActorRegister = 'entity' | 'apparatus' | 'marker' | 'belief'
 
-// ── The actor glyph alphabet (B6) — shape = class ──────────────────────────────────────────────────────
+// ── The actor glyph alphabet — shape = class ──────────────────────────────────────────────────────
 // These appear ONLY inside identity plates (always beside a callsign — context plus non-collision). They
 // must NOT collide with the two shipped alphabets: event categories own ◆ ▲ ● ◇ ✳; provenance voices own
 // ✓ • ○ ✗. ⌖ (marker) and ◌ (belief) are the render-risk glyphs — the plate size font-stack verification
-// (T2 gate) checks them; the fallbacks are ✛ and ◯ (GLYPH_FALLBACK), swapped by a one-line change here if
+// checks them; the fallbacks are ✛ and ◯ (GLYPH_FALLBACK), swapped by a one-line change here if
 // the primary does not render.
 export const ACTOR_GLYPH: Record<ActorRegister, string> = {
   entity: '▸',    // ▸ heading chevron — a vehicle points somewhere
@@ -38,19 +38,19 @@ export const SCENARIO_BODY_GLYPH = '▢' // ▢
 // Fallbacks for the two render-risk glyphs — the font-stack verification swaps these in if ⌖ / ◌ tofu.
 export const GLYPH_FALLBACK: Partial<Record<ActorRegister, string>> = { marker: '✛', belief: '◯' } // ✛ ◯
 
-// ── G5 NAMING PLACEHOLDERS (owner gate; each a one-line swap) ──────────────────────────────────────────
-// The constitution reserves naming to the owner; these are the working defaults presented at the T2 gate.
-// Build with S2/NATO as the safe default (zero owner decision needed); if G5 picks S1 (a squadron word),
+// ── NAMING PLACEHOLDERS (owner gate; each a one-line swap) ──────────────────────────────────────────
+// The constitution reserves naming to the owner; these are the working defaults presented at the owner gate.
+// Build with the NATO scheme as the safe default (zero owner decision needed); if the owner picks the squadron scheme (a squadron word),
 // flip CALLSIGN_SCHEME to 'squadron' and set SQUADRON_WORD — one line, and the plate language updates
 // everywhere it is consumed (Inspector, timeline hover, tour captions, the strip header).
-export const CLASS_NOUN = 'drone'                          // B5: drone (recommended) | agent | craft
-export const SENSOR_NOUN = 'sensor'                        // B5: data-true (kind-22 names sensor:U64)
+export const CLASS_NOUN = 'drone'                          // options: drone (recommended) | agent | craft
+export const SENSOR_NOUN = 'sensor'                        // data-true (kind-22 names sensor:U64)
 export type CallsignScheme = 'nato' | 'squadron'
-export const CALLSIGN_SCHEME: CallsignScheme = 'nato'      // B5 S2 default; S1 = 'squadron' if G5 picks it
+export const CALLSIGN_SCHEME: CallsignScheme = 'nato'      // the safe default; 'squadron' is the alternative if the owner picks it
 export const SQUADRON_WORD = 'VANTA'                       // consumed only when CALLSIGN_SCHEME === 'squadron'
-export const F2A_TOUR_TITLE = 'What the sensor admits'     // B5: the lens's LAW-4 question in five words
+export const F2A_TOUR_TITLE = 'What the sensor admits'     // the lens's LAW-4 question in five words
 
-// NATO phonetic alphabet (S2 scheme) — genre-true, Lattice register. Past 26 → "ALFA-2" (index / 26).
+// NATO phonetic alphabet — genre-true, Lattice register. Past 26 → "ALFA-2" (index / 26).
 const NATO = [
   'ALFA', 'BRAVO', 'CHARLIE', 'DELTA', 'ECHO', 'FOXTROT', 'GOLF', 'HOTEL', 'INDIA', 'JULIETT',
   'KILO', 'LIMA', 'MIKE', 'NOVEMBER', 'OSCAR', 'PAPA', 'QUEBEC', 'ROMEO', 'SIERRA', 'TANGO',
@@ -59,16 +59,16 @@ const NATO = [
 
 // The numeric index inside an entity key "ns:id" (or a bare id). Deterministic, per-run: the derivation is
 // scoped to the id, so '1:0' in f1 and '1:0' in f2a resolve the SAME way but name different scenario
-// entities — the plate never implies a shared vehicle across runs (B4).
+// entities — the plate never implies a shared vehicle across runs.
 function idOf(key: string): number {
   const raw = key.includes(':') ? key.slice(key.indexOf(':') + 1) : key
   const n = Number.parseInt(raw, 10)
   return Number.isFinite(n) && n >= 0 ? n : 0
 }
 
-// Callsign for a namespace-1 mobile entity — declared-presentational, deterministic from the id (B4).
+// Callsign for a namespace-1 mobile entity — declared-presentational, deterministic from the id.
 // NATO: ALFA, BRAVO, …, ZULU, then ALFA-2, BRAVO-2, … past 26. Squadron: "<WORD> 00", "<WORD> 01", …
-// `scheme` defaults to the G5 placeholder CALLSIGN_SCHEME (the one-line swap); the param exists so a test
+// `scheme` defaults to the placeholder CALLSIGN_SCHEME (the one-line swap); the param exists so a test
 // can prove BOTH schemes without mutating the module constant — flipping CALLSIGN_SCHEME is the real swap.
 export function entityCallsign(key: string, scheme: CallsignScheme = CALLSIGN_SCHEME): string {
   const id = idOf(key)
@@ -90,7 +90,7 @@ function callsignFor(key: string, register: ActorRegister): string {
   return register === 'apparatus' ? apparatusCallsign(key) : entityCallsign(key)
 }
 
-// ── The plate (B3): one formatter, full + compact forms, the raw key never out of reach ────────────────
+// ── The plate: one formatter, full + compact forms, the raw key never out of reach ────────────────
 export interface Plate {
   readonly glyph: string
   readonly callsign: string
@@ -111,7 +111,7 @@ export function fullPlate(p: Plate): string { return `${p.glyph} ${p.callsign} �
 // where space allows — the consumer decides; this form omits it).
 export function compactPlate(p: Plate): string { return `${p.glyph} ${p.callsign}` }
 
-// The plate is itself a registered pixel-class (B4 joint ruling): tier `presentational`, this exact answer
+// The plate is itself a registered pixel-class (a joint ruling): tier `presentational`, this exact answer
 // sentence. The two halves ship as one honesty system — the app may be charming, and must say the charm is
 // paint. `{key}` is substituted by the consuming ledger entry (the class sentence carries no live values).
 export const PLATE_LEDGER_ANSWER =

@@ -100,7 +100,7 @@ describe('the cross-citizen invariants fail LOUD (what a single registration can
   })
 })
 
-describe('the witness boot guard resolves declared arms against the PER-FORM executor capability (W3 F2)', () => {
+describe('the witness boot guard resolves declared arms against the PER-FORM executor capability', () => {
   // A recomputed class's declared arm must name a form the executor backs AND declare EXACTLY that form's
   // required input tuple. The token union is CLOSED at compile time; this is the RUNTIME vouching that the
   // declared (form + inputs) matches the executor's per-form truth — the hole a closed type cannot close (an
@@ -137,7 +137,7 @@ describe('the witness boot guard resolves declared arms against the PER-FORM exe
     expect(() => assertAgreeSourcesBacked(mkRecomputed(makeWitnessInputs()), cap))
       .toThrow(/but that form's live leg consumes exactly/)
   })
-  test('THE CARTESIAN COUNTEREXAMPLE — in-fov-claim paired with form:in-range fails the NEW guard [F2]', () => {
+  test('THE CARTESIAN COUNTEREXAMPLE — in-fov-claim paired with form:in-range fails the NEW guard', () => {
     // PREMISE-FIRST: BOTH 'sensing:in-fov-claim' (a backed input of this executor) and 'form:in-range' (a backed
     // form) are legitimate TOKENS, so the OLD guard — which checked input membership and form membership
     // INDEPENDENTLY — waved this pairing through, even though form:in-range re-derives from the pose and never
@@ -155,7 +155,7 @@ describe('the witness boot guard resolves declared arms against the PER-FORM exe
   })
 })
 
-describe('the recomputed classes migrated to the AgreeSource witness (W3, audit A1)', () => {
+describe('the recomputed classes migrated to the AgreeSource witness', () => {
   test('every e0 recomputed class declares a live-inputs AgreeSource', () => {
     const recomputed = E0_REGISTRATION.provenance.filter(p => p.tier === 'recomputed')
     expect(recomputed.map(p => p.id).sort())

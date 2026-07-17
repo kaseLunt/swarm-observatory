@@ -28,12 +28,12 @@ describe('clampSelection (pure invariant: a deep-linked selection vs a loaded mo
   })
 })
 
-// loadRunIndex is the single-fetch seam behind debt #15: App (the run switcher) and useRun (entry
+// loadRunIndex is the single-fetch seam: App (the run switcher) and useRun (entry
 // lookup) both needed runs/index.json and each fetched it independently — two network requests for one
 // static file on every cold load. The shared memoized loader collapses that to ONE fetch while keeping
 // both call sites' behavior. Each test resets the module registry so the module-level cache starts fresh,
 // and stubs global fetch — loadRunIndex reads fetch at call time, so the stub is what it sees.
-describe('loadRunIndex (debt #15: App + useRun share ONE runs/index.json fetch)', () => {
+describe('loadRunIndex (App + useRun share ONE runs/index.json fetch)', () => {
   afterEach(() => { vi.unstubAllGlobals(); vi.resetModules() })
 
   test('concurrent callers resolve from a single network fetch', async () => {

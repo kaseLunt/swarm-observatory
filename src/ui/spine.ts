@@ -5,7 +5,7 @@
 // writes the real kind-23 geometry. Only the reveal clock survives, because the query stage reuses it verbatim
 // as its write-as-you-play head count.
 
-// The reveal count at playhead `tick` (v0.5c ruling 6, owner amendment). e0 fires one geometry-query event per
+// The reveal count at playhead `tick` (v0.5c, owner amendment). e0 fires one geometry-query event per
 // tick (event seq == tick), so at tick t the run has revealed events 0..t. QueryStage consumes this as its head
 // seq: draws 0..reveal are written, the head (seq === reveal) is the live probe. drawRange-style — it grows as
 // the playhead advances and TRUNCATES on a scrub back (a pure function of tick, BOTH directions by

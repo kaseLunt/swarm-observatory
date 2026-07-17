@@ -224,7 +224,7 @@ describe('M7 — positioned-but-STATIC: the gate withholds (an empty trail is no
   })
 })
 
-// ── F4 — a LATE-SPAWNING subject: the gate must FAIL CLOSED when the subject is absent from entityKeys() ──────
+// ── A LATE-SPAWNING subject: the gate must FAIL CLOSED when the subject is absent from entityKeys() ──────
 // entityKeys() covers only the FIRST-populated-frame entities (the cones Scene instances). A subject that first
 // appears LATER has a real flight (subjectHasFlight walks EVERY frame) yet is NOT in entityKeys(), so
 // sensingSubjectRef cannot resolve its index. The OLD gate (sensingSubject non-null + subjectHasFlight) ADMITTED
@@ -251,7 +251,7 @@ function lateSpawnSource(): SensingStageSource {
   }
 }
 
-describe('F4 — a late-spawning subject (present in the frames, ABSENT from entityKeys()) fails the gate closed', () => {
+describe('a late-spawning subject (present in the frames, ABSENT from entityKeys()) fails the gate closed', () => {
   const model = lateSpawnSource()
   const draws = buildSensingStage(model).draws
 

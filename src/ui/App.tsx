@@ -12,6 +12,7 @@ import { tourPastFirstBeat } from './thesis'
 import { Inspector } from './Inspector'
 import { HelpOverlay } from './HelpOverlay'
 import { ErrorBoundary } from './ErrorBoundary'
+import { GateScreen } from './GateScreen'
 import { TourOverlay } from './TourOverlay'
 import { Hangar } from './hangarView'
 import { CertificationWall, type CertificationWallHandle } from './wallView'
@@ -32,15 +33,15 @@ import { sensingStageApplies } from './sensingStage'
 import { honestyChipFor } from './lensRegistry'
 import './app.css'
 
-// The app's ONE piece of persistent state (Task v04-7; nudge reshaped by v0.5d bench R5c): a single
+// The app's ONE piece of persistent state: a single
 // localStorage key that retires the first-visit tour nudge forever — the nudge is a pulse TREATMENT of
 // the one tour button (plus a quiet dismiss ×), retired once a tour has ever been started or the × is
 // clicked. Deliberately one boolean key — no per-run bookkeeping.
 const NUDGE_KEY = 'so.tourNudgeSeen'
 
-// ZERO-CLICK THESIS (v0.6 T6, P2) — cold-open behavior, the SINGLE-POINT OWNER TOGGLE. The plan pins WHAT
+// ZERO-CLICK THESIS (v0.6) — cold-open behavior, the SINGLE-POINT OWNER TOGGLE. The plan pins WHAT
 // (auto cold-open first beat + verdict headline + independence line + copy-link) but NOT the scope, so this
-// one constant is the seam the owner tunes (the T6 report flags the options — this is a DEFAULT, not a
+// one constant is the seam the owner tunes (the design report flags the options — this is a DEFAULT, not a
 // decision made for the owner):
 //   'first-visit' — the auto-play + the card fire on a BARE cold open, once per browser, reusing the
 //                   tour-nudge localStorage precedent (NUDGE_KEY) VERBATIM: no new persistence, no new key.
@@ -70,7 +71,7 @@ const CAPTURE_FPS_AT_LOAD = typeof location !== 'undefined' ? parseCaptureFps(lo
 // early (a newer-dialect bundle routes to the gate screen and never reaches here); a hash/manifest mismatch
 // does NOT gate — such a bundle publishes BY DESIGN (deliberate load-and-show) and every visual surface reads
 // ✗/mismatch. So the AT must hear the same truth the ceremony shows: we thread the TRUST verdict (hashes.verdict
-// — A2's seal fold, a discriminated verdict) through and let readyAnnouncementText carry it (manifest-verified
+// — the seal fold, a discriminated verdict) through and let readyAnnouncementText carry it (manifest-verified
 // vs. self-consistent vs. loaded-but-unverified). It is concrete by the time this mounts (see the helper's note
 // + useRun's atomic model+hashes publish); the null/undefined branch is an unreachable defensive prior.
 function ReadyAnnouncement({ runId, model, verdict }: {
@@ -86,12 +87,12 @@ function ReadyAnnouncement({ runId, model, verdict }: {
   return <div className="sr-only" role="status" aria-live="polite">{msg}</div>
 }
 
-// Query-stage honesty chip (binding honesty rule; v0.6 MUST-FIX, critic ruling 3). The chip speaks the e0
+// Query-stage honesty chip (binding honesty rule; a design-review ruling). The chip speaks the e0
 // lens's honesty line — "occluder & region bodies are scenario constants" — read THROUGH the registry
 // (honestyChipFor('e0-query') === QUERY_STAGE_HONESTY, the registration's projection), so the rendered text
 // and the ledger it must agree with have ONE source. It is TRUE only where the stage actually draws those
 // bodies, so it self-gates on the COMPLETE applicability predicate (queryStageApplies — positionless AND kind-23
-// draws; T6 M3), the SAME gate Scene's mount and the Inspector rail route through: a positionless run whose event
+// draws), the SAME gate Scene's mount and the Inspector rail route through: a positionless run whose event
 // kinds carry no kind-23 draws (f4) mounts no stage and wears no chip; a positioned run never applies either. The
 // old split gate (App's outer positionless AND the chip's hasQueryDraws) is retired for the one predicate.
 // Rendered UNDER the run-scoped <ErrorBoundary> (App mounts it inside <main>), and it builds the draws itself, so
@@ -117,7 +118,7 @@ function SensingChip({ model, tourActive }: { model: RunModel; tourActive: boole
   return <div className={tourActive ? 'scene-chip scene-chip-tour' : 'scene-chip'}>{honestyChipFor('f2a-sensing')}</div>
 }
 
-// COPY-LINK PERMANENT HOME (v0.7 T5, debt #20 / LAW-4). The cold-open card's share weapon was card-only; this
+// COPY-LINK PERMANENT HOME (v0.7, LAW-4). The cold-open card's share weapon was card-only; this
 // gives it a permanent home in the app chrome (the header) so the shareable-URL affordance is reachable at all
 // times — not just during the transient cold-open card. A new ANSWER in an existing surface (LAW-4), never new
 // chrome: the SAME copyShareLink, the same honest "copied ✓" feedback (never a false confirm if the clipboard
@@ -139,14 +140,14 @@ function HeaderCopyLink({ onCopyLink }: { onCopyLink: () => Promise<boolean> }) 
 export default function App() {
   const [runs, setRuns] = useState<RunEntry[]>([])
   const [helpOpen, setHelpOpen] = useState(false)
-  // The Hangar (T5b): a modal run-library front door reachable from the header — never a takeover of the
+  // The Hangar: a modal run-library front door reachable from the header — never a takeover of the
   // default view (owner-gate posture: DEFAULT_RUN is f1 post-hero-switch; the landing-route option is flagged, not taken).
   const [hangarOpen, setHangarOpen] = useState(false)
-  // The Certification Wall (v0.8 W5): a modal campaign surface, peer to the Hangar (the same overlay idiom).
+  // The Certification Wall (v0.8): a modal campaign surface, peer to the Hangar (the same overlay idiom).
   // Reached from the Hangar's campaign entry; closing it cancels any in-flight verify (the Wall's own effect
   // cleanup fences the queue). z-index/keyboard modality mirror the Hangar exactly.
   const [wallOpen, setWallOpen] = useState(false)
-  // OPEN-GENERATION counter (W5 F5). Bumped on every open so the Wall is KEYED to a fresh generation and REMOUNTS
+  // OPEN-GENERATION counter. Bumped on every open so the Wall is KEYED to a fresh generation and REMOUNTS
   // each session — its component-local state (the gauge load, the verifying flag) starts fresh, so the first paint
   // after a reopen can never show a prior session's gauges or a stale cancel button.
   const [wallGen, setWallGen] = useState(0)
@@ -164,18 +165,18 @@ export default function App() {
   const [nudgeSeen, setNudgeSeen] = useState(() => {
     try { return localStorage.getItem(NUDGE_KEY) === '1' } catch { return false }
   })
-  // Storage AVAILABILITY, probed ONCE at mount (W3), tracked SEPARATELY from nudgeSeen. A denied/throwing
+  // Storage AVAILABILITY, probed ONCE at mount, tracked SEPARATELY from nudgeSeen. A denied/throwing
   // store reads as nudgeSeen=false above — indistinguishable from a genuine first visit — so 'first-visit'
   // scope would auto-play on EVERY bare load (it can never persist that the visit happened). The probe
   // (read+write, no persisted key) lets the arming decision suppress the zero-click open entirely when the
   // store can't back 'first-visit', rather than replay it forever. Read-only after mount: private-mode
   // availability does not change within a session.
   const [storageOk] = useState(probeStorage)
-  // ZERO-CLICK THESIS (T6): the cold-open card is open. Latched true ONCE by the arming effect below (a bare
+  // ZERO-CLICK THESIS: the cold-open card is open. Latched true ONCE by the arming effect below (a bare
   // cold open, first-visit or 'always' scope), dismissed by the card's ×. Held in state (not derived) so the
   // auto-tour's own nudge-retire (startTour → dismissNudge flips nudgeSeen) cannot yank the card mid-session.
   const [thesisOpen, setThesisOpen] = useState(false)
-  // COLD-OPEN CARD COLLAPSE (T5, critic R6): once the auto-tour leaves its opening establishing beat the full
+  // COLD-OPEN CARD COLLAPSE: once the auto-tour leaves its opening establishing beat the full
   // card collapses to a header verdict chip. A one-way LATCH (never re-expands mid-session; an interrupt that
   // resets the tour stepIndex must not bring the card back). The full card is a once-per-browser (first-visit)
   // surface: the first cold open's auto-play persists NUDGE_KEY, so a reload seeds nudgeSeen=true and the
@@ -185,7 +186,7 @@ export default function App() {
   const [thesisCollapsed, setThesisCollapsed] = useState(false)
   // Fire-once guard for the zero-click arming (also the StrictMode double-invoke guard in dev; prod is single).
   const zeroClickFiredRef = useRef(false)
-  // Prior runId for the W1 card-close effect. Seeded null and set on the effect's first run (mount), so the
+  // Prior runId for the card-close effect. Seeded null and set on the effect's first run (mount), so the
   // effect closes the cold-open card ONLY on an actual run SWITCH — never on first paint, where the arming
   // effect legitimately opens it. (runId is always a concrete string, so null is an unambiguous "unseeded".)
   const prevRunIdRef = useRef<string | null>(null)
@@ -196,7 +197,7 @@ export default function App() {
   // Same ref pattern for the Hangar so the window keydown owner can modal-capture without re-registering.
   const hangarOpenRef = useRef(false)
   useEffect(() => { hangarOpenRef.current = hangarOpen }, [hangarOpen])
-  // …and for the Wall (v0.8 W5): while it is open the transport keyboard is inert beneath it and Esc closes it.
+  // …and for the Wall (v0.8): while it is open the transport keyboard is inert beneath it and Esc closes it.
   const wallOpenRef = useRef(false)
   useEffect(() => { wallOpenRef.current = wallOpen }, [wallOpen])
   // The unified Wall CLOSE (Esc + any programmatic close): run the mounted Wall's synchronous stop routine FIRST
@@ -204,11 +205,24 @@ export default function App() {
   // synchronously — rather than leaning on the unmount cleanup alone — closes the window in which a late verify
   // 'done' could still write the store after close. Stable identity (the keydown owner closes over it).
   const closeWall = useCallback(() => { wallRef.current?.stop(); setWallOpen(false) }, [])
+  // THE ONE WALL OPEN ACTION. Both front doors — the Hangar's campaign card AND the header entry — route
+  // through this single callback, never a second open path. Seed the campaign store SYNCHRONOUSLY (from the
+  // shared campaignSeedIds source) BEFORE the keyed Wall mounts, so render 1 reads 0-of-50 with no dependence
+  // on effect timing or render lane; the store's passive subscription lands after paint, so a layout-effect
+  // seed alone would flash 0-of-0 on a non-sync-lane open. Then bump the open-generation counter so the Wall
+  // is KEYED to a fresh generation and REMOUNTS each open — its component-local state (the gauge load, the
+  // verifying flag) starts fresh, so the first paint after a reopen can never show a prior session's gauges
+  // or a stale cancel button. Finally flip `open`.
+  const openWall = useCallback(() => {
+    useCampaignStore.getState().init(campaignSeedIds(ROBUST_F3A))
+    setWallGen(g => g + 1)
+    setWallOpen(true)
+  }, [])
   const runId = useViewStore(s => s.runId)
-  // Session-seal set (T5b): drives which Hangar cards wear the earned ✓. Event-rate (changes once per
+  // Session-seal set: drives which Hangar cards wear the earned ✓. Event-rate (changes once per
   // newly-sealed run), so this App re-render never touches the frame path.
   const sealedRuns = useViewStore(s => s.sealedRuns)
-  // Finale marker (v0.5b T3): reflect the store's ephemeral finale flag onto the scene container as a
+  // Finale marker (v0.5b): reflect the store's ephemeral finale flag onto the scene container as a
   // deterministic, DOM-observable signal (data-finale on #viewport — mirrors the aria/ReadyAnnouncement
   // "state on a stable element" precedent). Event-rate (the flag flips once at natural-end and once on any
   // clear), so this App re-render never touches the frame path. The e2e smoke asserts on it.
@@ -227,13 +241,13 @@ export default function App() {
   useEffect(() => {
     if (CAPTURE_FPS_AT_LOAD === null || !model || !loadIsCurrent(runId, loadedRunId)) return
     engageCapture(captureClockOf(model), CAPTURE_FPS_AT_LOAD)
-    // Speed pin (round 3): capture pacing is speed-INDEPENDENT — captureSpeed pins the transport rate
+    // Speed pin: capture pacing is speed-INDEPENDENT — captureSpeed pins the transport rate
     // multiplier to 1 while engaged, so the fps alone encodes the capture rate. Pin the STORE to 1× on a
     // successful arm too, so the speed UI reads the true effective rate (a ?speed=8&capture= deep link
     // would otherwise light 8× while capture plays at 1×). Later speed writes (keystroke, tour
     // witnessSpeed) are display-only during capture — the capture survives them deterministically (the
     // ruling and its rationale live on captureSpeed / docs/capture.md). Gated on isCapturing(): a
-    // REFUSED arm must not touch the store — the live path stays behavior-identical (§8).
+    // REFUSED arm must not touch the store — the live path stays behavior-identical.
     if (isCapturing()) useViewStore.getState().setSpeed(1)
     return () => disengageCapture()
   }, [model, loadedRunId, runId])
@@ -244,10 +258,10 @@ export default function App() {
   const tour = useTour(model)
   // Run switch is a discrete navigation act. Reset the transport AND clear BOTH selections
   // (select(null,null), folded into the atomic setState) so no stale chain/selection carries into the
-  // new run and no stale sel/ev is written into the new run's URL (I3). syncUrl(true) — an unforced
+  // new run and no stale sel/ev is written into the new run's URL. syncUrl(true) — an unforced
   // sync mid-navigation could be throttle-dropped, leaving the URL stale.
   const selectRun = (id: string) => {
-    // finale:false is the invariant-before-publish clear (v0.5b T3, ruling 5): a natural-end finale must NEVER
+    // finale:false is the invariant-before-publish clear (a design ruling): a natural-end finale must NEVER
     // bleed into the next run. The store singleton survives the run switch (only model/Canvas remount), so the
     // flag is reset atomically HERE — before the new run's Scene mounts — alongside the transport + selections.
     useViewStore.setState({ runId: id, tick: 0, fraction: 0, playing: false, selectedEntity: null, selectedEvent: null, finale: false })
@@ -262,13 +276,13 @@ export default function App() {
   }
   const startTour = () => { dismissNudge(); tour.start(TOURS[runId]!) }
 
-  // COPY-LINK — the share weapon (T6, P2). Build the shareable URL for the CURRENT view from the URL grammar
+  // COPY-LINK — the share weapon. Build the shareable URL for the CURRENT view from the URL grammar
   // (run/tick/sel/ev/speed) and copy it. Verification state NEVER rides the URL (the NEVER-list): the link
   // reproduces the VIEW, and the recipient's own browser re-verifies from the bytes. Returns success so the
   // card can show honest "copied" feedback (never a false confirm if the clipboard is blocked).
   const copyShareLink = async (): Promise<boolean> => {
     const s = useViewStore.getState()
-    // W2 — never serialize a tour's OFF-LADDER witness pace. During the auto-played cold-open tour (and any
+    // never serialize a tour's OFF-LADDER witness pace. During the auto-played cold-open tour (and any
     // tour) the store's `speed` is a presentation artifact, not a user choice; shareSpeed collapses it to the
     // resting ladder default so the link reproduces the resting VIEW (mirrors Timeline's off-ladder guard and
     // its natural-end sync's isTourActive skip). An on-ladder user speed rides through unchanged.
@@ -286,21 +300,21 @@ export default function App() {
   const openRunFromHangar = (id: string) => { setHangarOpen(false); selectRun(id) }
   const openTourFromHangar = (id: string) => { setHangarOpen(false); selectRun(id); setPendingTour(id) }
 
-  // SESSION-SEAL RECONCILIATION (T5b, D4 checkmark economy; W1 seal-race fix + closure item 1): when THIS
+  // SESSION-SEAL RECONCILIATION (the checkmark economy; the seal-race fix + the identity-join guard): when THIS
   // run's own bytes have finished verifying (loadedRunId === runId — identity carried with the data, the
-  // load-bearing W1 guard: on the commit right after a run switch the store runId has already flipped but
+  // load-bearing guard: on the commit right after a run switch the store runId has already flipped but
   // useRun still holds the PRIOR run's model/hashes), reconcile the seal set with the verdict:
   //   • verified (matchesTrailer)  → recordSeal(runId, resultId): fresh seal, no-op on the same bytes, or
   //     REPLACE when a re-load verified DIFFERENT bytes (the ✓ names exactly what it saw).
   //   • mismatched (✗ by design)   → breakSeal(runId): a previously-sealed card flips to the alarm ✗ voice
-  //     (a stale green over demonstrably-mismatching bytes would contradict D4's "✗ escalates and
+  //     (a stale green over demonstrably-mismatching bytes would contradict the design's "✗ escalates and
   //     persists"); a never-sealed run stays attested. shouldBreakSeal carries the same identity join, so
   //     a stale ✗ from the run we just switched AWAY from can never revoke the destination's seal.
   // Both store actions are reference-stable no-ops on repeat, so the re-fire on every ready re-render is
   // inert after the first.
   useEffect(() => {
     if (!hashes) return
-    // A2 — the seal binds to the TRUST verdict, not matchesTrailer: a full-manifest run whose recomputed pins
+    // the seal binds to the TRUST verdict, not matchesTrailer: a full-manifest run whose recomputed pins
     // do not match the manifest must NEVER mint a seal (verdict 'mismatch'), even though its event/state hashes
     // reproduce the trailer. A run seals when its verdict is NOT a mismatch (manifest-verified OR self-consistent
     // — the seal predicates stay the identity-join×boolean primitive; the Hangar's cardVerdict renders a det-only
@@ -313,17 +327,17 @@ export default function App() {
     }
   }, [hashes, runId, loadedRunId])
 
-  // HANGAR → TOUR handoff (T5b; F1 — the third tour entry point, now on the ONE admission predicate). Once the
+  // HANGAR → TOUR handoff (the third tour entry point, now on the ONE admission predicate). Once the
   // run parked by a tour card is ready, start its authored tour. The guards, in order:
   //   • pendingTour !== runId → not our pending run (or none): do nothing.
   //   • model absent OR NOT loadIsCurrent → the destination is still LOADING (a stale prior model during the
   //     switch gap is non-null but names the PRIOR run): WAIT — never start against old data, never consume
-  //     pendingTour (the pre-F1 bug: a `model && …` gate started the destination's choreography on the prior
+  //     pendingTour (the earlier bug: a `model && …` gate started the destination's choreography on the prior
   //     run's bytes and cleared pendingTour, so the real destination never got its tour).
   //   • resident + current → tourAdmitted decides: admit (start) on a non-mismatch run with a tour, else REFUSE
   //     (a mismatch destination's det-only captions claim a self-check it did not earn). Either way CONSUME
   //     pendingTour — start on a valid admit, or drop a doomed request (reason discarded) so it never re-fires.
-  //   • F6 — CANCEL the parked intent on navigation to a DIFFERENT run OR a terminal load error for the pending
+  //   • CANCEL the parked intent on navigation to a DIFFERENT run OR a terminal load error for the pending
   //     destination: the intent was "tour X on ARRIVAL", so a later plain-open of X must never inherit it. `error`
   //     is a dep + input so the effect re-runs (and cancels) the instant the destination's own load fails.
   // Deps include loadedRunId + hashes + error so the effect re-runs when the gap closes, the verdict arrives, or
@@ -335,17 +349,17 @@ export default function App() {
     else if (action === 'refuse' || action === 'cancel') setPendingTour(null)
   }, [model, pendingTour, runId, loadedRunId, hashes, error])
 
-  // ZERO-CLICK THESIS arming (T6, P2; W3 storage-availability fix): on a BARE cold open, once the run is
+  // ZERO-CLICK THESIS arming (the storage-availability fix): on a BARE cold open, once the run is
   // ready, open the thesis card AND auto-play the first tour beat. The whole predicate is the pure
   // shouldArmZeroClick — scope toggle + cold-open signal + a tour existing + (for 'first-visit') an UNSEEN
-  // marker AND an AVAILABLE store (W3: a denied store can't back 'first-visit', so suppress rather than
+  // marker AND an AVAILABLE store (a denied store can't back 'first-visit', so suppress rather than
   // replay every visit). startTour() dismisses the nudge, so the pulse treatment never also fires (the
   // auto-play IS the discoverability — one cold-open voice, not two). The fire-once ref makes it idempotent
   // (and dev-StrictMode-safe). Deps [model] match the sibling effects (this eslint config does not enforce
   // exhaustive-deps); the predicate reads runId/nudgeSeen/storageOk fresh this pass.
   useEffect(() => {
     if (!model || zeroClickFiredRef.current) return
-    // F1 — WHETHER a tour may start is the ONE admission predicate (identity + verdict + tour-exists). This
+    // WHETHER a tour may start is the ONE admission predicate (identity + verdict + tour-exists). This
     // subsumes the old inline `hashes?.verdict === 'mismatch'` guard (a mismatch run's det-only captions claim a
     // self-check the bytes did not earn) and the `!!TOURS[runId]` existence check. Shipped det-only runs are
     // always self-consistent, so it never withholds in production — it makes the static self-check copy honest.
@@ -358,7 +372,7 @@ export default function App() {
     startTour() // auto-play the first tour beat — interruptible by ANY transport input (existing grammar)
   }, [model])
 
-  // COLD-OPEN CARD COLLAPSE (T5, critic R6): the full card holds through beat 0 (its cold-open share moment —
+  // COLD-OPEN CARD COLLAPSE: the full card holds through beat 0 (its cold-open share moment —
   // authored beside f1's establishing shot), then collapses to the header verdict chip once the auto-tour
   // reaches its first playback beat (tourPastFirstBeat: this run's tour active AND stepIndex ≥ 1). Latched
   // one-way — an interrupt that finishes the tour (stepIndex→0) can never re-expand the card. The full card
@@ -372,7 +386,7 @@ export default function App() {
     }
   }, [thesisOpen, thesisCollapsed, tour.active, tour.stepIndex, runId])
 
-  // W1(a) — CLOSE THE COLD-OPEN CARD ON ANY RUN SWITCH. The thesis card is a cold-open artifact: it reads the
+  // CLOSE THE COLD-OPEN CARD ON ANY RUN SWITCH. The thesis card is a cold-open artifact: it reads the
   // opening run's verdict and speaks the zero-click thesis. A run switch (Hangar card / run-switcher) makes
   // that narrative stale — worse, it would leave the PRIOR run's ✓ painted under the NEW run's name for the
   // one-commit identity window (the seal-race twin; the verdict prop's withhold guard is the second belt).
@@ -405,15 +419,15 @@ export default function App() {
       // Grammar is inert until a model is loaded: on the ceremony/gate/error screens (no header, no
       // transport) a stray Space must NOT pre-arm playback for the run that's still decoding.
       if (!model) return
-      // Hangar modal capture (T5b): the run library is a modal front door — the transport keyboard is
+      // Hangar modal capture: the run library is a modal front door — the transport keyboard is
       // inert beneath it, and Esc closes it (symmetric with the help overlay's modal capture). The
       // backdrop click and the close button are the pointer paths; this is the keyboard path.
       if (hangarOpenRef.current) {
         if (e.key === 'Escape') { e.preventDefault(); setHangarOpen(false) }
         return
       }
-      // Wall modal capture (W5): the campaign surface is a modal too — the transport keyboard is inert beneath
-      // it, and Esc closes it THROUGH the same synchronous stop routine the close button + backdrop use (F5):
+      // Wall modal capture: the campaign surface is a modal too — the transport keyboard is inert beneath
+      // it, and Esc closes it THROUGH the same synchronous stop routine the close button + backdrop use:
       // closeWall tears the session down (abort/fence/reset) before flipping `open`, never leaving it to the
       // passive unmount cleanup alone. The next open remounts a fresh Wall (the wallGen key).
       if (wallOpenRef.current) {
@@ -467,7 +481,7 @@ export default function App() {
           break
         case 'help': setHelpOpen(h => !h); break
         case 'focus': focusSelected(); break
-        // Observer's Eye (T4b): request the POV ease. notifyUserInput() above already stopped any running
+        // Observer's Eye: request the POV ease. notifyUserInput() above already stopped any running
         // tour (a camera takeover, like focus) — the reused trail-frame owner then eases to the observer vantage.
         case 'pov': requestPovFrame(); break
       }
@@ -490,17 +504,10 @@ export default function App() {
       )}
     </div>
   )
-  if (gate && !gate.ok) return (
-    <div className="screen gate">
-      <h1>this bundle speaks a newer dialect</h1>
-      <p><code>{gate.field}</code></p>
-      <p>expected <code>{gate.expected}</code></p>
-      <p>found <code>{gate.actual}</code></p>
-    </div>
-  )
-  // I6 — the current-load identity witness gates the WHOLE ready subtree, not just the thesis verdict + seals.
+  if (gate && !gate.ok) return <GateScreen gate={gate} />
+  // the current-load identity witness gates the WHOLE ready subtree, not just the thesis verdict + seals.
   // The production gate IS the tested helper readyTreeVisible(model, runId, loadedRunId) — consumed here, never a
-  // hand-inlined twin of its logic (M5: the tested gate and the production gate must be the same function). The
+  // hand-inlined twin of its logic (the tested gate and the production gate must be the same function). The
   // ready tree paints only when a model is present AND it belongs to the current run; the two ways it fails are
   // the two loading postures:
   //   • no model yet (a genuine load): show the REAL ceremony phase/hashes/progress as they arrive.
@@ -517,8 +524,8 @@ export default function App() {
   }
 
   // The cold-open verdict, joined by IDENTITY (loadIsCurrent) so a prior run's ✓ never paints under a new run's
-  // name — WITHHELD (null) when the resident hashes don't belong to the run on stage or none exist (W1 fail-safe,
-  // never a false green). It is the TRUST verdict itself (A2 — the seal fold): a manifest-mismatching run reads ✗
+  // name — WITHHELD (null) when the resident hashes don't belong to the run on stage or none exist (a fail-safe,
+  // never a false green). It is the TRUST verdict itself (the seal fold): a manifest-mismatching run reads ✗
   // here, a det-only run reads ○ self-consistent (never the manifest-grade green), a manifest-verified run ✓.
   // Shared by the full card and its collapsed header chip so both speak one verdict voice.
   const thesisVerdict = loadIsCurrent(runId, loadedRunId) && hashes ? hashes.verdict : null
@@ -544,25 +551,38 @@ export default function App() {
           </svg>
           <h1>swarm observatory</h1>
         </div>
-        {/* Run switcher surfaces the runs/index.json titles as native tooltips (v0.5d bench R5b) — the
+        {/* Run switcher surfaces the runs/index.json titles as native tooltips (v0.5d) — the
             smallest honest surface: the ids stay the compact switch labels, the authored titles ("E0
             geometry sweep (golden, det-only)") answer "which run is this?" on hover/focus. */}
         <nav>{runs.map(r => <button key={r.id} title={r.title} className={r.id === runId ? 'active' : ''} onClick={() => selectRun(r.id)}>{r.id}</button>)}</nav>
-        {/* The Hangar front door (T5b): opens the run-library overlay. Placed beside the run switcher —
+        {/* The Hangar front door: opens the run-library overlay. Placed beside the run switcher —
             the least-invasive coherent entry (reachable from the header, not a takeover of the default view).
             Gated on runs so it never opens an empty library. */}
         {runs.length > 0 && (
           <button className="hangar-open" onClick={() => setHangarOpen(true)}>hangar</button>
         )}
+        {/* Certification Wall front door: the app's hero surface — the byte-verification wall and, inside it,
+            the "test the seal" tamper demo — reachable directly from the persistent chrome, not only three
+            interactions deep behind the Hangar. Routes through the SAME openWall action the Hangar's campaign
+            card uses (one open path — the synchronous store seed + keyed remount), never a second entry. Not
+            gated on the run index: the campaign is independent of which run is loaded, so the wall is always
+            reachable once the app is interactive. Styled to match the header controls (.wall-open ≡ .hangar-open).
+            Two label spans (CSS-swapped at ≤1080px): the full "certification wall" at desktop widths, the compact
+            "wall" at narrow widths so a tour-bearing header stays within the viewport (no overflow) without hiding
+            the entry. The hidden span is display:none, so the button's accessible name is always the visible label. */}
+        <button className="wall-open" onClick={openWall}>
+          <span className="wall-open-full">certification wall</span>
+          <span className="wall-open-short">wall</span>
+        </button>
         {/* Guided-tour launcher: shown only when an authored tour exists for the current run. The
             header renders only after the model is ready (past the !model gate), so model-readiness is
             already guaranteed here. Clicking starts (restart-safe); interrupts are source-signaled and
             the overlay's × calls stop() — no keyboard key is bound (transport grammar is frozen).
-            ONE tour CTA (v0.5d bench R5c): the first-visit nudge is a TREATMENT of this button (the
+            ONE tour CTA (v0.5d): the first-visit nudge is a TREATMENT of this button (the
             accent wash + nudge-pulse ring, plus the quiet dismiss ×), never a second button — two CTAs
             for one action made the chrome compete with itself. Starting a tour or dismissing retires
             the treatment forever (NUDGE_KEY). */}
-        {/* F1 — the ▶ button is the third tour entry point, gated on the ONE admission predicate (tour-exists +
+        {/* the ▶ button is the third tour entry point, gated on the ONE admission predicate (tour-exists +
             identity + verdict): withheld on a MISMATCH run (its det-only captions claim a self-check the mismatched
             bytes did not earn), admitted for every honest run. model is non-null here (past the readyTree gate) and
             loadIsCurrent holds, so tourAdmitted reduces to "a tour exists AND the current verdict isn't a mismatch". */}
@@ -577,10 +597,10 @@ export default function App() {
             )}
           </div>
         )}
-        {/* Copy-link permanent home (T5, #20): the share weapon, now always reachable in the app chrome — not
+        {/* Copy-link permanent home: the share weapon, now always reachable in the app chrome — not
             only inside the transient cold-open card. Gated on runs so it never offers a link before a run loaded. */}
         {runs.length > 0 && <HeaderCopyLink onCopyLink={copyShareLink} />}
-        {/* Collapsed cold-open card (T5, critic R6): once the auto-tour leaves beat 0 the full card becomes this
+        {/* Collapsed cold-open card: once the auto-tour leaves beat 0 the full card becomes this
             header verdict chip — the existing verdict voice, × still dismisses. Gated on thesisOpen && collapsed. */}
         {thesisOpen && thesisCollapsed && <ThesisChip verdict={thesisVerdict} onDismiss={dismissThesis} />}
         {/* Mobile-only (CSS-hidden ≥901px). Each toggle opens its panel and closes the other. */}
@@ -595,18 +615,18 @@ export default function App() {
       {/* Keyed on runId so a caught error clears when the operator switches runs (fresh boundary). */}
       <ErrorBoundary key={runId}>
         <Inspector model={model} open={panelOpen === 'inspector'} />
-        {/* stage-enter: the CEREMONY HANDOFF (T6, R6) — a one-shot CSS fade-up as the stage takes over from
+        {/* stage-enter: the CEREMONY HANDOFF — a one-shot CSS fade-up as the stage takes over from
             the load ceremony (the stage "fades up beneath" while the confirmed hash lines settle into their
             provenance rows). Fires on this element's mount, i.e. exactly at the ceremony→app handoff; no rAF,
-            no frame work, no fake delay (§8 load budget holds). Reduced-motion collapses it to an instant show. */}
+            no frame work, no fake delay (the load budget holds). Reduced-motion collapses it to an instant show. */}
         <main id="viewport" className="stage-enter" data-finale={finale ? 'true' : 'false'}>
           <Scene model={model} />
           {/* Honesty chip: the query stage's probe geometry is decoded-real, but the occluder & region
               BODIES (sphere / box / triangle) are scenario constants, not bundle state — the chip states
               exactly that (QUERY_STAGE_HONESTY). QueryStageChip self-gates on the COMPLETE applicability
-              predicate (queryStageApplies — positionless AND kind-23 draws; T6 M3), the same gate Scene's mount
+              predicate (queryStageApplies — positionless AND kind-23 draws), the same gate Scene's mount
               uses, so it appears iff the stage actually draws those bodies (never over f4's void, never on a
-              positioned run) — no App-side outer gate to drift from the mount. TOUR POSTURE (v0.5d bench R7c,
+              positioned run) — no App-side outer gate to drift from the mount. TOUR POSTURE (v0.5d,
               honesty priority): while this run's tour caption bar is up it can occlude the chip's lower-left
               berth — the chip is the honesty contract and is NEVER covered, so it lifts to the viewport's
               top-left for the tour's duration (CSS). The class flips at tour start/stop (event-rate re-render
@@ -620,7 +640,7 @@ export default function App() {
         <Timeline model={model} />
       </ErrorBoundary>
       <HelpOverlay open={helpOpen} onClose={() => setHelpOpen(false)} />
-      {/* The Hangar run-library overlay (T5b). DOM/React only — no WebGL, no frame loop (§8). tourRunIds
+      {/* The Hangar run-library overlay. DOM/React only — no WebGL, no frame loop. tourRunIds
           = the runs with authored tours (their cards make the tour the primary action). */}
       <Hangar
         open={hangarOpen}
@@ -633,21 +653,11 @@ export default function App() {
         onClose={() => setHangarOpen(false)}
         onOpenRun={openRunFromHangar}
         onOpenTour={openTourFromHangar}
-        onOpenWall={() => {
-          setHangarOpen(false)
-          // Seed the campaign store AT THE OPEN ACTION — synchronously, BEFORE the keyed Wall mounts (W5). Render 1
-          // of that fresh mount then reads a store already at 0-of-50 in ANY lane, so the first painted frame is
-          // correct with no dependence on effect timing (the Wall's layout-effect seed can't own the first frame:
-          // zustand subscribes in a passive effect, so a default/transition-lane mount would paint 0-of-0 for one
-          // frame). The Wall keeps its layout-effect seed as the StrictMode-replay backstop; both are idempotent.
-          useCampaignStore.getState().init(campaignSeedIds(ROBUST_F3A))
-          setWallGen(g => g + 1)
-          setWallOpen(true)
-        }}
+        onOpenWall={() => { setHangarOpen(false); openWall() }}
       />
-      {/* The Certification Wall (W5): the campaign surface. DOM/React only — no WebGL, no frame loop (§8). Peer
+      {/* The Certification Wall: the campaign surface. DOM/React only — no WebGL, no frame loop. Peer
           modal to the Hangar. Rendered ONLY while open AND keyed on the open-generation counter, so each open is
-          a fresh MOUNT (F5): the first paint after a reopen shows the loading state + 0-of-50 census + verify-all
+          a fresh MOUNT: the first paint after a reopen shows the loading state + 0-of-50 census + verify-all
           CTA, never a prior session's gauges or cancel button. Esc/close route through closeWall (synchronous
           stop); the Wall's own button + backdrop stop it directly, so every close path fences the queue. */}
       {wallOpen && <CertificationWall key={wallGen} ref={wallRef} onClose={() => setWallOpen(false)} />}
@@ -661,10 +671,10 @@ export default function App() {
       {tour.active?.runId === runId && (
         <TourOverlay active={tour.active} stepIndex={tour.stepIndex} caption={tour.caption} onStop={tour.stop} />
       )}
-      {/* THE ZERO-CLICK THESIS CARD (T6, P2): the cold-open surface — verdict headline (the run's REAL verify
+      {/* THE ZERO-CLICK THESIS CARD: the cold-open surface — verdict headline (the run's REAL verify
           result), the in-app independence line, and the copy-link share weapon. Opened by the arming effect on
           a bare cold open; held until × so the share affordance survives an auto-tour interrupt.
-          W1(b/c) — the verdict is passed ONLY when the resident hashes provably belong to the run on stage
+          the verdict is passed ONLY when the resident hashes provably belong to the run on stage
           (loadIsCurrent joins loadedRunId===runId, the same primitive the seal effect gates on) AND hashes
           exist; otherwise it is WITHHELD (null → no glyph/subline). This kills the old `?? true` fail-GREEN:
           on the most trust-critical surface a blank beats painting a prior run's ✓ under a new run's name. */}

@@ -1,5 +1,5 @@
-// ── THE VOICES MODULE — the single source for the seven trust marks (v0.8 W1) ──────────────────────────
-// The design bench ruled the trust-voice system AT CEILING and FROZEN at SEVEN marks. Before v0.8 those
+// ── THE VOICES MODULE — the single source for the seven trust marks (v0.8) ──────────────────────────
+// The trust-voice system is ruled AT CEILING and FROZEN at SEVEN marks. Before v0.8 those
 // seven were minted as loose literals across every surface (ceremony ticks, provenance rows, the thesis
 // card, the hangar, show-the-math, the sensing gate strip, the lens ledger) — and the attested `•` had
 // already DRIFTED to three different hue tokens across four surfaces. This module is the extraction: the
@@ -21,7 +21,7 @@
 // ev99 asked whether a mark reached by LIVE decoded inputs should read differently from one reached by
 // DECODED self-consistency. Ruling: that distinction is a NOTE, not a glyph. The seven-mark alphabet is
 // frozen; a voice may carry a `basis` annotation (see `Basis` / `basisNote`) rendered as note TEXT beside
-// the mark, but it never mints an eighth glyph. (W3's witness-union closes the two-arm `basis` tag; W1 only
+// the mark, but it never mints an eighth glyph. (the witness-union closes the two-arm `basis` tag; this module only
 // files the convention so the note vocabulary is single-sourced when it lands.)
 import type { PaletteKey } from './theme'
 import type { BadgeState } from './badges'
@@ -57,7 +57,7 @@ export interface Mark {
 }
 
 // ── THE SEVEN MARKS (the single source — CATEGORY idiom: one typed const map) ────────────────────────────
-// Canonical hue decisions (v0.8 W1):
+// Canonical hue decisions (v0.8):
 //   • verified → `verified` (green) · mismatch → `mismatch` (red): the shipped integrity pair, unchanged.
 //   • selfConsistent → `pending` (slate): the no-external-oracle self-check ring, unchanged.
 //   • attested → `pending` (slate): THE DRIFT FIX. The `•` wore three tokens across four surfaces
@@ -94,7 +94,7 @@ export function requireGlyph(id: MarkKey): string {
 // The hangar cards carry a BadgeState (badges.ts), the data-layer enum. It maps onto the mark alphabet 1:1,
 // so the hangar sources its GLYPH here (single-sourced) while keeping BadgeState as its CSS hook. `pending`
 // is the ○ self-check; the others share the mark's own name.
-//   F1 — this seam maps EVERY 'pending' to the ○ self-check, which is correct wherever 'pending' means "a
+// this seam maps EVERY 'pending' to the ○ self-check, which is correct wherever 'pending' means "a
 // self-check ran and matched" (the hangar's only use). It is NOT the disambiguator for the ProvenancePanel:
 // there a det-only 'pending' splits into a trailer-CHECKED ○ vs a NO-CLAIM row that adjudicated nothing, so
 // provenanceFormat threads an explicit per-row `mark` (null = glyphless) rather than routing its glyph
@@ -142,15 +142,15 @@ export const VOICE_MARK = {
   unsealed: 'selfConsistent',  // ○ — recomputed-but-unsealed self-check ring
   attested: 'attested',        // • — a pinned value on record, no in-browser oracle
   'live-check': null,          // ✓/✗ only once a comparison exists — the recompute surface stamps it, not a static mark
-  'declared-constant': null,   // a scenario constant narrows its claim in the chip — no glyph (D4)
-  derivation: null,            // a declared derivation — no glyph (D4)
+  'declared-constant': null,   // a scenario constant narrows its claim in the chip — no glyph
+  derivation: null,            // a declared derivation — no glyph
   presentational: null,        // encodes no data — no glyph
 } as const satisfies Record<Voice, MarkKey | null>
 
 // ── ev99 — the `basis` note vocabulary (note text, NEVER a glyph) ───────────────────────────────────────
 // A verdict reached from LIVE decoded inputs vs one reached from DECODED self-consistency is a NOTE-level
 // distinction. These strings render beside a mark as a `.prov-note` / `.gate-note`-style sub-line; the glyph
-// is unchanged. `Basis` is now the AgreeSource union's discriminant (W3's witness-union OWNS the two arm
+// is unchanged. `Basis` is now the AgreeSource union's discriminant (the witness-union OWNS the two arm
 // tags); this module keys its note vocabulary on that ONE type, so the arm's tag and the note it renders can
 // never drift. Re-exported so `Basis` stays nameable from voices for any existing importer (type-only, erased).
 export type { Basis }

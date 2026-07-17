@@ -1,20 +1,20 @@
 :root { color-scheme: dark; font-family: 'Segoe UI', system-ui, sans-serif; }
 body { margin: 0; background: var(--bg-void); color: var(--text-primary); }
-/* STABLE STAGE VIEWPORT (v0.5d bench R1): the inspector track is a FIXED 280px, permanently reserved —
+/* STABLE STAGE VIEWPORT (a design ruling): the inspector track is a FIXED 280px, permanently reserved —
    never the old minmax(0, auto) that collapsed to 0 with no selection and re-opened ~250px on select,
    snapping the 3D canvas sideways and corrupting every held frame (tour arrivals, the finale hero-click,
    Esc). With both side tracks fixed (280px | 320px) the canvas size is INVARIANT across selection
    changes at every desktop width; the Inspector renders a designed empty state into the reserved column
    (see .inspector-idle). 280px comfortably holds the widest inspector content (measured ~215px natural
-   at the T1 calibration window) while keeping the stage generous. Below 1081px the overlay-drawer mode
+   at the calibration window) while keeping the stage generous. Below 1081px the overlay-drawer mode
    takes over (media query below) and the canvas is full-width regardless of selection — invariant there
    by construction. NOTE: the follow-lead CALIB_ASPECT in Scene.tsx is calibrated against THIS geometry;
-   re-measure it if these tracks change (v0.5d T3 re-sweep). */
+   re-measure it if these tracks change (a later re-sweep). */
 .app { display: grid; grid-template: "header header header" auto "inspector viewport panel" 1fr "timeline timeline timeline" auto / 280px minmax(360px, 1fr) 320px; height: 100vh; }
 header { grid-area: header; display: flex; gap: 1rem; align-items: center; padding: 0.5rem 1rem; border-bottom: 1px solid var(--border); }
 /* Wordmark lockup (identity thread): the inline radar mark locked left of the wordmark, one calm gap.
    Size/tracking come from the display-tier token (type.css .app header h1) — this rule owns only the
-   uppercase brand voice, colour, and the mark/word alignment. CHROME DISCIPLINE (v0.5d bench R5a):
+   uppercase brand voice, colour, and the mark/word alignment. CHROME DISCIPLINE (a design ruling):
    the wordmark reads in dim steel, not the accent — chrome frames the stage, it never competes with it
    (the accent belongs to selection and live CTAs). The radar MARK keeps its accent cyan (inline SVG):
    one small point of identity, the words recede. Tracking is untouched. */
@@ -25,7 +25,7 @@ header h1 { margin: 0; text-transform: uppercase; color: var(--text-dim); white-
    itself; the R3F canvas inside is a replaced element and can otherwise assert its intrinsic buffer size.
    Belt-and-suspenders with the mobile column fix below, which is the one that actually matters in
    Chromium (see comment at the 1080px media query). */
-/* Backdrop vignette (Task 2 §2): a radial gradient BEHIND the transparent-cleared canvas — brightest
+/* Backdrop vignette: a radial gradient BEHIND the transparent-cleared canvas — brightest
    just below centre (under where the resting subject sits), dying to the near-black frame corners. This
    is the atmosphere layer; the scene's own fog colour matches --vignette-center so the horizon is
    seamless. Sits on #viewport (not body) so it's scoped to the stage. */
@@ -33,20 +33,20 @@ header h1 { margin: 0; text-transform: uppercase; color: var(--text-dim); white-
   grid-area: viewport; min-height: 0; min-width: 0; position: relative;
   background: radial-gradient(ellipse 90% 90% at 50% 58%, var(--vignette-center), var(--vignette-edge) 76%);
 }
-/* Honesty chip for the presentational causal spine (Task v04-4): pinned to the viewport's lower-left
+/* Honesty chip for the presentational causal spine: pinned to the viewport's lower-left
    corner (clear of the bottom-right dev perf overlay), faint so it declares-without-shouting. Pointer-
    transparent so it never intercepts an orbit drag / pointer-miss deselect on the canvas beneath it. */
 .scene-chip {
   position: absolute; left: 12px; bottom: 10px; pointer-events: none; user-select: none;
   font-size: var(--fs-mono); letter-spacing: 0.04em; color: var(--text-faint);
 }
-/* Tour posture (v0.5d bench R7c, honesty priority): the tour caption bar floats over the viewport's
+/* Tour posture (a design ruling, honesty priority): the tour caption bar floats over the viewport's
    lower band and could OCCLUDE the chip (e0 stop 3, browser-verified) — and the chip is the honesty
    contract: it is NEVER covered. While a tour caption is up the chip lifts to the viewport's top-left
    (nothing else renders there; the header sits above the viewport), same voice, same quiet size. */
 .scene-chip-tour { bottom: auto; top: 10px; }
 .inspector { grid-area: inspector; overflow-y: auto; border-right: 1px solid var(--border); padding: 1rem; font-size: 0.8rem; }
-/* Designed empty state (v0.5d bench R1): the reserved inspector column with nothing selected. Quiet,
+/* Designed empty state (a design ruling): the reserved inspector column with nothing selected. Quiet,
    honest chrome — a dim "no selection" over a fainter how-to-summon hint, centered in the column like
    the ceremony screen. Never louder than the stage; tones are the existing dim/faint text voices. */
 .inspector-idle { display: grid; place-content: center; }
@@ -73,7 +73,7 @@ header h1 { margin: 0; text-transform: uppercase; color: var(--text-dim); white-
 .chainmeta { color: var(--text-dim); font-variant-numeric: tabular-nums; }
 .flag-true { color: var(--verified); }
 .flag-false { color: var(--mismatch); }
-/* Show the Math (v0.6 T4a): the verdict-recompute surface in the inspector — a new ANSWER, not new chrome
+/* Show the Math (v0.6): the verdict-recompute surface in the inspector — a new ANSWER, not new chrome
    (LAW 4). TOKENS ONLY (LAW 2): the ✓/✗ reuse the verified/mismatch voices exactly as the provenance panel
    does; the pinned form + the bearing CLAIM row wear the quieter dim/faint voices (a claim on record, no ✓). */
 .showmath-form { margin: 0 0 0.4rem; font-family: var(--type-mono); font-size: var(--fs-label); color: var(--text-dim); }
@@ -83,15 +83,15 @@ header h1 { margin: 0; text-transform: uppercase; color: var(--text-dim); white-
 .showmath-verdict.verified { color: var(--verified); }
 .showmath-verdict.mismatch { color: var(--mismatch); }
 .showmath-verdict.unverifiable { color: var(--text-dim); } /* no-verdict: could not recompute — never the verified/mismatch pair (stays dim) */
-.showmath-verdict.self { color: var(--pending); } /* ○ self-consistent — a decoded-consistency arm's ring (no external oracle), NEVER the ✓ (W3 F3) */
+.showmath-verdict.self { color: var(--pending); } /* ○ self-consistent — a decoded-consistency arm's ring (no external oracle), NEVER the ✓ */
 .showmath-glyph { flex: none; }
 .showmath-claim { margin: 0.4rem 0 0; font-family: var(--type-mono); font-size: var(--fs-label); color: var(--text-dim); }
 .showmath-claim-val { display: block; }
 .showmath-note { display: block; font-family: var(--type-family); font-size: var(--fs-label); color: var(--text-faint); letter-spacing: 0.01em; margin-top: 1px; }
-.showmath-basis { color: var(--text-dim); } /* the arm's basis note beside the verdict mark (W3 F3 — ev99's note convention) */
+.showmath-basis { color: var(--text-dim); } /* the arm's basis note beside the verdict mark (ev99's note convention) */
 .showmath-agg { margin: 0.6rem 0 0; font-size: var(--fs-label); color: var(--text-faint); letter-spacing: 0.04em; }
 
-/* THE FOUR-GATE SENSING STRIP (Task v07-2) — f2a's instrument voice. The two-voice grammar as a strip:
+/* THE FOUR-GATE SENSING STRIP — f2a's instrument voice. The two-voice grammar as a strip:
    in_range / los_clear / eligible are recomputed (✓ verified / ✗ mismatch — the shipped pair, no new hue);
    in_fov is the claim voice (• in the dim token, never a ✓). Reuses the showmath token vocabulary. */
 .identity-plate { font-variant-numeric: tabular-nums; } /* the data-true key rides in tabular figures */
@@ -110,9 +110,9 @@ header h1 { margin: 0; text-transform: uppercase; color: var(--text-dim); white-
 .gate-mark.mismatch { color: var(--mismatch); }
 .gate-mark.attested { color: var(--pending); }
 .gate-mark.withheld { color: var(--text-dim); }
-.gate-mark.self { color: var(--pending); } /* ○ self-consistent — a decoded-consistency arm's ring, NEVER the ✓ (W3 F3) */
+.gate-mark.self { color: var(--pending); } /* ○ self-consistent — a decoded-consistency arm's ring, NEVER the ✓ */
 .gate-form { font-family: var(--type-mono); font-size: var(--fs-label); color: var(--text-faint); }
-.gate-basis { display: block; font-size: var(--fs-label); color: var(--text-dim); letter-spacing: 0.01em; margin-top: 1px; } /* the arm's basis note beside the gate mark (W3 F3) */
+.gate-basis { display: block; font-size: var(--fs-label); color: var(--text-dim); letter-spacing: 0.01em; margin-top: 1px; } /* the arm's basis note beside the gate mark */
 .gate-tiebreak { margin: 0.4rem 0 0; font-size: var(--fs-label); color: var(--text-dim); letter-spacing: 0.02em; }
 .gate-note { margin: 0.4rem 0 0; font-size: var(--fs-label); color: var(--text-faint); letter-spacing: 0.01em; line-height: 1.4; }
 .gate-note .attested { color: var(--pending); } /* the in-fov claim word, in the canonical attested slate */
@@ -135,7 +135,7 @@ header h1 { margin: 0; text-transform: uppercase; color: var(--text-dim); white-
 .provenance tr.verified td.prov-glyph { color: var(--verified); }
 .provenance tr.mismatch td.prov-glyph { color: var(--mismatch); }
 .provenance tr.pending td.prov-glyph { color: var(--pending); }
-/* Attested (v0.5d bench R2, two-voice discipline): a manifest claim on record but NOT recomputed — the
+/* Attested (a design ruling, two-voice discipline): a manifest claim on record but NOT recomputed — the
    • wears the same no-verdict slate as pending (LAW 2: no new colors; both are "unverified" voices,
    distinguished by glyph + note), pointedly never the verified green. */
 .provenance tr.attested td.prov-glyph { color: var(--pending); }
@@ -185,7 +185,7 @@ button.active { border-color: var(--accent); color: var(--accent); }
    no-op; the opacity/width transitions collapse to instant via theme.css's --dur-*:0ms block. */
 .ceremony-inner { width: min(30rem, 86vw); text-align: left; }
 .ceremony-inner h1 { font-size: var(--fs-h1); letter-spacing: var(--tracking-h1); text-transform: uppercase; color: var(--accent); margin: 0 0 0.55rem; }
-/* Plain-language thesis (Task v04-7): a body-size, faint subtitle seating just under the display-tier
+/* Plain-language thesis: a body-size, faint subtitle seating just under the display-tier
    H1 that says what the staged checklist is actually doing. Honest — the hashes it ticks are real. */
 .ceremony-thesis { margin: 0 0 1.6rem; color: var(--text-faint); font-size: var(--fs-body); line-height: 1.45; max-width: 42ch; }
 .ceremony-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1rem; }
@@ -198,7 +198,7 @@ button.active { border-color: var(--accent); color: var(--accent); }
    mismatch red, overriding the green .done color above (same specificity — must follow it in source
    order to win). Matches the per-hash .ctick.mismatch so the step and its rows never disagree. */
 .cstep.mismatch .cmark { color: var(--mismatch); }
-/* Self-consistent (det-only) step mark (A2 — the seal fold): a done self-consistent 'hashes confirming'
+/* Self-consistent (det-only) step mark (the seal fold): a done self-consistent 'hashes confirming'
    step marks ○ in the neutral pending hue, overriding the green .done above (same specificity, follows it
    in source order) — the self-check voice, never the manifest-grade green a det-only run did not earn. */
 .cstep.self .cmark { color: var(--pending); }
@@ -217,13 +217,13 @@ button.active { border-color: var(--accent); color: var(--accent); }
 /* Self-consistent (det-only) hash tick: ○ in the neutral pending hue — reproduced its own trailer, but
    no external oracle backs it, so never the manifest-grade green ✓ (the ProvenancePanel ○ idiom). */
 .ctick.self { color: var(--pending); }
-/* Attested/derived hash tick (F1): the • result_id wears on a det-only run — DERIVED from the sealed inputs
-   with no in-bundle oracle. It now truly MIRRORS THE PANEL'S • (v0.8 W1 drift fix): the canonical attested
+/* Attested/derived hash tick: the • result_id wears on a det-only run — DERIVED from the sealed inputs
+   with no in-bundle oracle. It now truly MIRRORS THE PANEL'S • (v0.8 drift fix): the canonical attested
    token is `--pending` (the ProvenancePanel's), converged here from the old `--text-faint` — one attested
    voice across all four surfaces. Never the ✓; ○ and • share the slate, distinguished by glyph. */
 .ctick.attested { color: var(--pending); }
 @keyframes ctick { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: none; } }
-/* Settle beat (Task v04-7): a one-shot confident pop on the completed ✓ marks during the ~400ms payoff
+/* Settle beat: a one-shot confident pop on the completed ✓ marks during the ~400ms payoff
    hold before the ceremony dissolves — the "verified" landing is felt, not just held. Reduced-motion
    skips the beat in useRun (no settling class is ever set then), so this is inert for those readers. */
 .ceremony.settling .cstep.done .cmark { animation: settle-pop var(--dur-base) var(--ease-out); transform-origin: center; }
@@ -232,13 +232,13 @@ button.active { border-color: var(--accent); color: var(--accent); }
 /* Det-only dt disclosure (ProvenancePanel): the assumed 1000µs step reads in --text-faint so the
    guess is never presented as an authoritative, manifest-pinned value. */
 .provenance td.assumed { color: var(--text-faint); }
-/* ── CEREMONY HANDOFF (v0.6 T6, R6) — shared-CONTENT continuity from the load ceremony into the app. As the
+/* ── CEREMONY HANDOFF (v0.6) — shared-CONTENT continuity from the load ceremony into the app. As the
    ceremony dissolves and the stage takes over, the stage FADES UP beneath (#viewport.stage-enter) while the
    two hash rows the ceremony ticked (result_id / event_hash) SETTLE into their provenance rows (a short drop
    + fade to rest). The confirmed lines are the SAME real recomputed hashes in both places — honest continuity,
    not decoration. Pure one-shot CSS on the token easing: fires on each element's MOUNT, i.e. exactly at the
    ceremony→app handoff, riding the ceremony's own real decode timing — no rAF, no per-frame work, no fake
-   delay (§8 load budget holds). Reduced motion shows both instantly (guarded below). ──────────────────────── */
+   delay (the load budget holds). Reduced motion shows both instantly (guarded below). ──────────────────────── */
 #viewport.stage-enter { animation: stage-fade-up var(--dur-slow) var(--ease-out) both; }
 @keyframes stage-fade-up { from { opacity: 0; } to { opacity: 1; } }
 .provenance tr[data-prov-key="result_id"], .provenance tr[data-prov-key="event_hash"] {
@@ -283,8 +283,8 @@ button.active { border-color: var(--accent); color: var(--accent); }
    canvas's own CSS width or of #viewport's min-width:0 above (verified live -- min-width:0 on the item
    alone did not stop the overflow; pinning the track's own min sizing function to a fixed 0 via minmax
    did). Without this, the "no minimum" claim above is false and the page scrolls horizontally at
-   exactly the widths this breakpoint change was meant to fix -- found during round-1 fix verification
-   at 1000px, see task-v02b-3-report.md. */
+   exactly the widths this breakpoint change was meant to fix -- found during fix verification
+   at 1000px. */
 @media (max-width: 1080px) {
   header { position: relative; z-index: 45; background: var(--bg-void); }
   .app { grid-template: "header" auto "viewport" 1fr "timeline" auto / minmax(0, 1fr); }
@@ -308,7 +308,7 @@ button.active { border-color: var(--accent); color: var(--accent); }
    over the header/panels but below the help modal (50). */
 .tour-start { border-color: var(--border-bright); color: var(--accent); }
 .tour-start:hover, .tour-start:focus-visible { border-color: var(--accent); background: var(--bg-elevated); }
-/* First-visit tour nudge (Task v04-7; reshaped by v0.5d bench R5c): ONE tour CTA — the nudge is a
+/* First-visit tour nudge (reshaped by a design ruling): ONE tour CTA — the nudge is a
    TREATMENT of the launcher button itself (accent wash + soft pulsing ring, plus a quiet × to dismiss),
    never a second button. Purely tonal: no size/typography delta, so retiring the treatment never
    reflows the header. Retired forever (one localStorage key) once a tour is started or it is dismissed. */
@@ -334,7 +334,7 @@ button.active { border-color: var(--accent); color: var(--accent); }
   animation: fade-in var(--dur-base) var(--ease-out);
   pointer-events: none;
 }
-/* Tour title (RULING 3b) — a quiet eyebrow naming the product the tour launches; the caption row sits below.
+/* Tour title — a quiet eyebrow naming the product the tour launches; the caption row sits below.
    textDim + mono + tracked caps so it reads as a label, never competing with the caption's primary voice. */
 .tour-title { margin: 0; color: var(--text-dim); font-size: var(--fs-mono); letter-spacing: 0.09em; text-transform: uppercase; }
 .tour-row { display: flex; align-items: center; gap: 0.75rem; }
@@ -348,11 +348,25 @@ button.active { border-color: var(--accent); color: var(--accent); }
 .tour-stop { flex: none; width: 1.7rem; height: 1.7rem; padding: 0; border-radius: 50%; line-height: 1; font-size: 1rem; color: var(--text-dim); pointer-events: auto; }
 .tour-stop:hover, .tour-stop:focus-visible { border-color: var(--accent); color: var(--accent); }
 
-/* ── THE HANGAR (T5b) — run-library modal front door. Instrument posture: bgPanel/border registers,
-   no glow, no elevation games (D4 Part 3). Two integrity voices only; category IDENTITY hues on the
+/* ── THE HANGAR — run-library modal front door. Instrument posture: bgPanel/border registers,
+   no glow, no elevation games. Two integrity voices only; category IDENTITY hues on the
    histogram bars. DOM only — no frame path. ─────────────────────────────────────────────────────── */
 .hangar-open { border-color: var(--border-bright); color: var(--text-dim); letter-spacing: 0.04em; }
 .hangar-open:hover, .hangar-open:focus-visible { border-color: var(--accent); color: var(--accent); }
+/* Certification Wall header entry: the persistent front door to the byte-verification wall + tamper demo.
+   Same chrome register as the hangar entry beside it (dim steel at rest, lifting to the transport accent on
+   hover/focus) — one quiet header control, never a marketing shout. */
+.wall-open { border-color: var(--border-bright); color: var(--text-dim); letter-spacing: 0.04em; }
+.wall-open:hover, .wall-open:focus-visible { border-color: var(--accent); color: var(--accent); }
+/* Label condense: the full "certification wall" at desktop widths, the compact "wall" at ≤1080px so the
+   always-on entry never pushes a tour-bearing header past the viewport (the ≤1080px narrow band, where the
+   panel-toggles also appear). The hidden span is display:none — excluded from the accessible name — so the
+   button reads "certification wall" wide and "wall" narrow, always exactly the visible text. */
+.wall-open-short { display: none; }
+@media (max-width: 1080px) {
+  .wall-open-full { display: none; }
+  .wall-open-short { display: inline; }
+}
 .hangar-backdrop { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(5, 8, 12, 0.6); z-index: 50; animation: fade-in var(--dur-base) var(--ease-out); }
 .hangar-panel {
   display: flex; flex-direction: column; gap: 1rem;
@@ -366,7 +380,7 @@ button.active { border-color: var(--accent); color: var(--accent); }
 .hangar-empty { margin: 0; color: var(--text-dim); font-size: var(--fs-body); }
 .hangar-empty code { font-family: var(--type-mono); color: var(--text-faint); }
 .hangar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: 0.9rem; }
-/* The card is the exact container the v0.7 Certification Wall expands into (D4 6.4): head band /
+/* The card is the exact container the v0.7 Certification Wall expands into: head band /
    instrument zone / field zone, flex-column with actions pinned to the bottom so cards align. */
 .hangar-card {
   display: flex; flex-direction: column; gap: 0.55rem; min-height: 12rem;
@@ -377,13 +391,13 @@ button.active { border-color: var(--accent); color: var(--accent); }
 .hangar-card-head h3 { margin: 0; font-size: var(--fs-body); color: var(--text-primary); line-height: 1.3; }
 /* Earned verdict voice: the glyph carries the integrity hue (verified green / attested slate); the
    label stays quiet text. ✓ only appears when the store says this run sealed green this session. The
-   attested • uses the canonical `--pending` slate (v0.8 W1 drift fix — converged from the old `--text-faint`
+   attested • uses the canonical `--pending` slate (v0.8 drift fix — converged from the old `--text-faint`
    so the Hangar's • matches the ProvenancePanel's, the single attested voice). */
 .hangar-verdict { display: inline-flex; align-items: baseline; gap: 0.35rem; font-size: var(--fs-label); color: var(--text-dim); letter-spacing: 0.02em; }
 .hangar-glyph { flex: none; font-size: 0.9rem; line-height: 1; }
 .hangar-verdict.verified .hangar-glyph { color: var(--verified); }
 .hangar-verdict.attested .hangar-glyph { color: var(--pending); }
-/* BROKEN seal (closure item 1): a session-sealed run whose later re-load mismatched wears the full alarm
+/* BROKEN seal: a session-sealed run whose later re-load mismatched wears the full alarm
    register — glyph AND label in the house --mismatch token (the .showmath-verdict.disagree precedent;
    zero new tokens) so a revoked ✓ can never be mistaken for quiet attested chrome. */
 .hangar-verdict.mismatch { color: var(--mismatch); }
@@ -392,7 +406,7 @@ button.active { border-color: var(--accent); color: var(--accent); }
 .hangar-card-clock { margin: 0; }
 .hangar-clock { font-variant-numeric: tabular-nums; font-size: var(--fs-label); color: var(--text-dim); letter-spacing: 0.03em; }
 .hangar-clock.assumed { color: var(--text-faint); }
-/* DECLARED kind histogram (D4 6.2) — identity-hued bars, tabular counts, NO voice glyph. */
+/* DECLARED kind histogram — identity-hued bars, tabular counts, NO voice glyph. */
 .hangar-hist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.2rem; }
 .hangar-hist-row { display: grid; grid-template-columns: 3.5rem 1fr auto; align-items: center; gap: 0.5rem; }
 .hangar-hist-bar { justify-self: start; height: 0.45rem; border-radius: 2px; opacity: 0.8; }
@@ -405,10 +419,10 @@ button.active { border-color: var(--accent); color: var(--accent); }
 .hangar-secondary { color: var(--text-dim); }
 .hangar-disclaimer { margin: 0; padding-top: 0.2rem; text-align: center; font-size: var(--fs-label); color: var(--text-faint); letter-spacing: 0.02em; }
 
-/* ── THE ZERO-CLICK THESIS CARD (v0.6 T6, P2) — the cold-open share surface. Top-center, above the stage and
+/* ── THE ZERO-CLICK THESIS CARD (v0.6) — the cold-open share surface. Top-center, above the stage and
    clear of the header, the bottom-center tour caption, and the tour-lifted honesty chip (top-left). Instrument
    posture: bgPanel / border-bright, one soft shadow, no glow (chrome discipline — the accent belongs to the
-   copy CTA). Tokens only (LAW 2). DOM only, no frame path (§8). z-index 47: over the stage + tour caption (46),
+   copy CTA). Tokens only (LAW 2). DOM only, no frame path. z-index 47: over the stage + tour caption (46),
    under the help/hangar modals (50). ──────────────────────────────────────────────────────────────────────── */
 .thesis-card {
   position: fixed; top: 4.2rem; left: 50%; transform: translateX(-50%); z-index: 47;
@@ -428,7 +442,7 @@ button.active { border-color: var(--accent); color: var(--accent); }
 .thesis-verdict.verified { color: var(--verified); }
 .thesis-verdict.mismatch { color: var(--mismatch); }
 /* Self-consistent (det-only) headline: the neutral pending hue — trailer self-consistency, no external
-   manifest, so never the manifest-grade green (A2 — the seal fold keeps the voices separate). */
+   manifest, so never the manifest-grade green (the seal fold keeps the voices separate). */
 .thesis-verdict.self { color: var(--pending); }
 .thesis-glyph { flex: none; }
 .thesis-sub { margin: 0 0 0.7rem; color: var(--text-dim); font-size: var(--fs-label); line-height: 1.45; }
@@ -437,15 +451,15 @@ button.active { border-color: var(--accent); color: var(--accent); }
 .thesis-copy { border-color: var(--border-bright); color: var(--accent); }
 .thesis-copy:hover, .thesis-copy:focus-visible { border-color: var(--accent); background: var(--bg-elevated); }
 
-/* ── FRONT-DOOR POLISH (v0.7 T5) ─────────────────────────────────────────────────────────────────────
-   Copy-link permanent home (#20) + the collapsed cold-open verdict chip (critic R6). Tokens only, no new
+/* ── FRONT-DOOR POLISH (v0.7) ─────────────────────────────────────────────────────────────────────
+   Copy-link permanent home + the collapsed cold-open verdict chip. Tokens only, no new
    chrome: the copy-link reads in the same quiet dim register as the hangar/help chrome affordances, and the
    chip wears the SAME verified/mismatch verdict tokens the full card does — header-scale. ──────────────── */
-/* Copy-link permanent home (#20): a quiet chrome button — chrome frames the stage, never competes (the accent
+/* Copy-link permanent home: a quiet chrome button — chrome frames the stage, never competes (the accent
    belongs to selection/CTAs), lifting to the transport cyan on hover exactly like .hangar-open / .help-toggle. */
 .header-copy { border-color: var(--border); color: var(--text-dim); letter-spacing: 0.04em; white-space: nowrap; }
 .header-copy:hover, .header-copy:focus-visible { border-color: var(--accent); color: var(--accent); }
-/* Collapsed cold-open card (critic R6): the full card's verdict voice, compacted into the header once the
+/* Collapsed cold-open card: the full card's verdict voice, compacted into the header once the
    auto-tour leaves beat 0. The verdict hue rides the glyph + word (the full card's .thesis-verdict tokens,
    header-scale); × dismisses (stops the tour, retires the chip for the session). No copy-link here — it has
    its own permanent home above (.header-copy). */
@@ -457,11 +471,11 @@ button.active { border-color: var(--accent); color: var(--accent); }
 .thesis-chip-dismiss { flex: none; width: 1.5rem; height: 1.5rem; padding: 0; border-radius: 50%; line-height: 1; font-size: 0.95rem; color: var(--text-dim); }
 .thesis-chip-dismiss:hover, .thesis-chip-dismiss:focus-visible { border-color: var(--accent); color: var(--accent); }
 
-/* ── THE CERTIFICATION WALL (v0.8 W5) — the campaign certification surface. Reuses the Hangar's modal
+/* ── THE CERTIFICATION WALL (v0.8) — the campaign certification surface. Reuses the Hangar's modal
    grammar (backdrop / panel / focus trap) — the app's established overlay idiom, not new chrome. Instrument
    posture: bgPanel/border registers, NO glow, NO bloom (DOM only, no canvas). At rest a DIM field of
    attested dots — zero integrity green, zero glow — every ✓ a session-earned receipt. Two colour systems,
-   never cross-spent: integrity voices (green/slate/red/dim) on the seeds; the R3 verdict pair on the
+   never cross-spent: integrity voices (green/slate/red/dim) on the seeds; the verdict pair on the
    gauges' statistical decisions only. ──────────────────────────────────────────────────────────────── */
 .wall-backdrop { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(5, 8, 12, 0.6); z-index: 50; animation: fade-in var(--dur-base) var(--ease-out); }
 .wall-panel {
@@ -483,7 +497,7 @@ button.active { border-color: var(--accent); color: var(--accent); }
 .wall-mono { font-family: var(--type-mono); }
 
 /* GAUGES — the statistical instrument row. The pass mark's HUE is the verdict pair (a certified decision),
-   its GLYPH the attested • (on record) — the two colour systems kept distinct (D4 Ruling 5/6). */
+   its GLYPH the attested • (on record) — the two colour systems kept distinct. */
 .wall-gauges { list-style: none; margin: 0; padding: 0.6rem 0; display: flex; flex-direction: column; gap: 0.55rem; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
 .wall-gauge { display: grid; grid-template-columns: 3.2rem 4.5rem 1fr auto auto; align-items: center; gap: 0.7rem; }
 .wall-gauge-kind { font-size: var(--fs-label); color: var(--text-primary); letter-spacing: 0.04em; }
@@ -498,7 +512,7 @@ button.active { border-color: var(--accent); color: var(--accent); }
 .wall-gauge-fail { color: var(--verdict-negate); }
 .wall-gauge-empty, .wall-gauges-empty { margin: 0; font-size: var(--fs-label); color: var(--text-dim); }
 .wall-gauges-empty code { font-family: var(--type-mono); color: var(--text-faint); }
-/* FAIL-CLOSED gauge state (F3): the manifest fetched but did not validate as this campaign's verdict. The '?'
+/* FAIL-CLOSED gauge state: the manifest fetched but did not validate as this campaign's verdict. The '?'
    is the no-verdict unverifiable mark — DIM (two-family law), never a verdict hue. A reason rides beside it. */
 .wall-gauges-invalid { margin: 0; padding: 0.6rem 0; display: flex; align-items: baseline; gap: 0.4rem; font-size: var(--fs-label); color: var(--text-dim); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
 .wall-gauges-invalid code { font-family: var(--type-mono); color: var(--text-faint); }
@@ -541,7 +555,7 @@ button.active { border-color: var(--accent); color: var(--accent); }
 .wall-close { align-self: center; color: var(--text-dim); }
 .wall-close:hover, .wall-close:focus-visible { border-color: var(--accent); color: var(--accent); }
 
-/* ── THE TAMPER MOMENT (v0.8 W6) — the ✗ path made demonstrable, beneath the census. DOM only, no frame loop.
+/* ── THE TAMPER MOMENT (v0.8) — the ✗ path made demonstrable, beneath the census. DOM only, no frame loop.
    Marks are sourced from the voices module in the TSX (never a CSS-side glyph); these rules only carry hue +
    layout. The verified/mismatch classes are the sanctioned voice classes (verified green = a real receipt,
    mismatch red = a real contradiction). ── */
@@ -570,7 +584,7 @@ button.active { border-color: var(--accent); color: var(--accent); }
 .tamper-row { display: grid; grid-template-columns: 1.1rem auto 1fr; align-items: baseline; gap: 0.45rem; }
 .tamper-mark { font-size: 0.9rem; line-height: 1; text-align: center; }
 .tamper-row.verified .tamper-mark { color: var(--verified); }
-.tamper-row.self .tamper-mark { color: var(--pending); } /* ○ self-consistent — a trailer-self ring (no external oracle), NEVER the ✓ (F3) */
+.tamper-row.self .tamper-mark { color: var(--pending); } /* ○ self-consistent — a trailer-self ring (no external oracle), NEVER the ✓ */
 .tamper-row.unverifiable .tamper-mark { color: var(--text-dim); } /* ? no-verdict — a pin that could not be formed (stays dim) */
 .tamper-row.mismatch .tamper-mark { color: var(--mismatch); }
 .tamper-row.mismatch .tamper-key { color: var(--mismatch); }

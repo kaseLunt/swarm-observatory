@@ -6,7 +6,7 @@ import { trailHold } from './frameChannels'
 import { PALETTE, hexToThree } from './theme'
 import { TRAIL_HEAD_ALPHA, TRAIL_TAIL_ALPHA, TRAIL_FADE_TICKS, type Trail } from './trail'
 
-// Head-relative trail fade (Task v04-2 §1). The precomputed positions never change; alpha is a pure
+// Head-relative trail fade. The precomputed positions never change; alpha is a pure
 // function of how many ticks a vertex sits BEHIND the currently-revealed head (uHead - aIndex), written
 // once per frame as a uniform beside setDrawRange. This replaces the old per-vertex RGBA ramp that baked
 // alpha against the FINAL run length — which rendered the tick-1 head at ~0.07 alpha (a near-invisible
@@ -34,11 +34,11 @@ const TRAIL_FRAG = /* glsl */ `
   }
 `
 
-// Fading polyline of the subject's recorded path (Task 2 §3). The WHOLE path is precomputed once at model
+// Fading polyline of the subject's recorded path. The WHOLE path is precomputed once at model
 // load (buildTrail, lifted to <Scene> so bounds reuse the same walk) — positions + a per-vertex index —
 // and the frame loop only advances drawRange to reveal the traveled portion and points uHead at the head.
 // Zero per-frame allocation; drawRange + a uHead write each frame, plus a hold-light uFadeTicks write ONLY
-// when the tour-hold state changes (Task v0.5a-2): a hold at rest lights the whole revealed path, and any
+// when the tour-hold state changes: a hold at rest lights the whole revealed path, and any
 // playback returns the comet. Renders nothing for runs without a drawable trajectory (e0 has no positioned
 // entities; f0 is a static point) — trailHold is inert there (the useFrame early-returns on a null line).
 export function TrajectoryTrail({ trail }: { trail: Trail }) {
@@ -76,7 +76,7 @@ export function TrajectoryTrail({ trail }: { trail: Trail }) {
   // <primitive> objects are owned by us, not auto-disposed by r3f — release GPU buffers when the trail
   // changes or the scene unmounts (the Canvas remounts per run switch, so this also covers run changes).
   useEffect(() => () => { line?.geo.dispose(); line?.mat.dispose() }, [line])
-  // Last-APPLIED hold-light state (Task v0.5a-2). Seeded false to match the memo's initial uFadeTicks
+  // Last-APPLIED hold-light state. Seeded false to match the memo's initial uFadeTicks
   // (TRAIL_FADE_TICKS = comet), so a resting run writes the uniform ZERO times until a hold actually lights
   // it. Ref (not state) — a fade switch must never trigger a React render, and this rides the frame path.
   const appliedLitRef = useRef(false)
@@ -87,11 +87,11 @@ export function TrajectoryTrail({ trail }: { trail: Trail }) {
     const { tick, playing } = useViewStore.getState()
     line.geo.setDrawRange(0, Math.min(tick + 1, line.count))
     line.uHead.value = Math.min(tick, line.count - 1)
-    // Rising-edge clear (§8, doubles as the comet-return): any live playback drops the hold-light, so a tour's
+    // Rising-edge clear (within the load budget, doubles as the comet-return): any live playback drops the hold-light, so a tour's
     // NEXT play step travels with the comet and a manual play after a lit finale returns the comet. Cheap
     // idempotent boolean write while playing; a no-op read otherwise.
     if (playing) trailHold.lit = false
-    // Hold-light fade switch — ONE uniform write ON CHANGE only (§8), ref-guarded. Fully-lit path while a
+    // Hold-light fade switch — ONE uniform write ON CHANGE only (within the load budget), ref-guarded. Fully-lit path while a
     // tour hold dwells at rest (lit && !playing); comet otherwise. A steady state writes nothing.
     const lit = trailHold.lit && !playing
     if (lit !== appliedLitRef.current) {

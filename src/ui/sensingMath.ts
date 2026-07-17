@@ -9,7 +9,7 @@ import type { SensingDraw } from './sensingStage'
 // the no-transcendental scan unaffected). Only the AgreeSource witness types + the branded outcome ride in.
 import type { AgreementResult, AgreeCapability, InputToken } from './agreeSource'
 
-// ── SHOW THE MATH (sensing) — the verdict-recompute layer for f2a (Task v07-2) ─────────────────────────
+// ── SHOW THE MATH (sensing) — the verdict-recompute layer for f2a ─────────────────────────
 // A PURE, three-free module that re-derives each recomputable kind-22 gate IN THE BROWSER from the decoded
 // numbers, using the PINNED decision forms (contract/EXP-F2a-scene-and-sensing-excerpt.md — operand order
 // is normative, doctrine §1.6). The app already re-derives the HASHES on load; this re-derives the sensing
@@ -70,7 +70,7 @@ export function recomputeEligible(inRange: boolean, inFov: boolean, losClear: bo
   return inRange && inFov && losClear
 }
 
-// ── W3 (audit A1) — the AgreeSource capability THIS executor's live legs actually back ───────────────────
+// ── The AgreeSource capability THIS executor's live legs actually back ───────────────────
 // Tokens are DATA naming existing legs of this module — a LOOKUP TABLE the boot guard resolves against, never
 // an evaluator. The eligible conjunction's inputs are exported as ONE constant so the f2a flagship
 // registration and this executor cannot drift on what the LIVE conjunction really consumes: the two LIVE legs
@@ -80,7 +80,7 @@ export function recomputeEligible(inRange: boolean, inFov: boolean, losClear: bo
 export const ELIGIBLE_CONJUNCTION_INPUTS: readonly InputToken[] =
   ['sensing:in-range-live', 'sensing:los-clear-live', 'sensing:in-fov-claim']
 
-// The PER-FORM witness tuples sensingMath's live legs back (F2 — one truth per form). form:in-range and
+// The PER-FORM witness tuples sensingMath's live legs back (one truth per form). form:in-range and
 // form:los-clear each re-derive from `sensing:pose`; form:eligible-conjunction consumes exactly the three
 // ELIGIBLE_CONJUNCTION_INPUTS — and its tuple IS that same exported constant (reference identity), so the
 // flagship registration and this executor cannot drift on what the LIVE conjunction really consumes: the boot
@@ -95,10 +95,10 @@ export const SENSING_AGREE_CAPABILITY: AgreeCapability = {
   decoded: [],
 }
 
-// THE PER-ROW MINT (F4) — mirrors showMath's. This executor RAN the comparison, so `agrees` brands each gate's
+// THE PER-ROW MINT — mirrors showMath's. This executor RAN the comparison, so `agrees` brands each gate's
 // live agreement; the brand rides GateLine.agree to the SensingStrip's mark resolver, which DEMANDS it, so a
 // plain boolean can never enter a verdict mark and the mint cannot be deleted without a compile error. Phantom
-// brand, zero cost. (This `as AgreementResult` + the summary mint below are the ONLY two in this file — the F4
+// brand, zero cost. (This `as AgreementResult` + the summary mint below are the ONLY two in this file — the brand-mint
 // sweep allowlists it.)
 const agrees = (matched: boolean): AgreementResult<boolean> => matched as AgreementResult<boolean>
 
@@ -110,7 +110,7 @@ export interface GateLine {
   label: string            // small-caps at the consumer
   decoded: boolean         // the decoded gate bit (the lane) — always shown
   voice: GateVoice         // 'recompute' → live ✓/✗ ; 'claim' → pinned, never a ✓
-  agree: AgreementResult<boolean> | null // recompute-vs-engine agreement, BRANDED per row (F4 — the executor
+  agree: AgreementResult<boolean> | null // recompute-vs-engine agreement, BRANDED per row (the executor
                            // mints it; the strip's mark resolver demands the brand). null for the claim voice
                            // or a poseless draw (no comparison was formed — nothing to brand).
   form: string             // the pinned decision form (verbatim-ish, doctrine §1.6)

@@ -16,8 +16,8 @@ import { HORIZON_HOPS, HORIZON_OPTS, causalNeighborhood, type NeighborhoodSummar
 import type { StateFrame } from '../lib/brand'
 import { markClass, requireGlyph, type MarkKey } from './voices'
 
-// draw.kind → the e0 recomputed pixel-class whose DECLARED AgreeSource arm a ShowTheMath card's verdict wears
-// (W3 F3). Resolved ONCE at module load, fail-loud if a class or its arm drifted (the registry discipline at
+// draw.kind → the e0 recomputed pixel-class whose DECLARED AgreeSource arm a ShowTheMath card's verdict wears.
+// Resolved ONCE at module load, fail-loud if a class or its arm drifted (the registry discipline at
 // the render boundary). The verdict mark is then derived from the arm, not a bare boolean, so a
 // decoded-consistency arm would wear the ○ ring — never the ✓ — and render its basis note beside the mark.
 const queryArmOf = (classId: string): AgreeSource => {
@@ -32,14 +32,14 @@ const QUERY_VERDICT_ARM: Record<QueryDraw['kind'], AgreeSource> = {
   4: queryArmOf('los-verdict'),
 }
 
-// The verdict mark + basis note for a ShowTheMath card, derived from the class's DECLARED arm (W3 F3). An
+// The verdict mark + basis note for a ShowTheMath card, derived from the class's DECLARED arm. An
 // unverifiable card (no basis to recompute — a missing LOS composite) stays the ? no-verdict state; otherwise
-// the mark comes from recomputedVerdict, which DEMANDS card.agree's brand (F4) and HONORS agree.basis (✓ for a
+// the mark comes from recomputedVerdict, which DEMANDS card.agree's brand and HONORS agree.basis (✓ for a
 // live-inputs agreement, ○ for a decoded-consistency one, ✗ on disagreement).
 export function showMathMark(card: MathCard, arm: AgreeSource): { mark: MarkKey; note: string } {
   // A null agree = NO comparison ran (a missing LOS composite) → the '?' no-verdict state. Narrowing on it
   // reduces card.agree from AgreementResult<boolean> | null to the branded boolean recomputedVerdict DEMANDS,
-  // so a null can NEVER reach a verdict mark — the typecheck forces this branch first (F1). card.unverifiable
+  // so a null can NEVER reach a verdict mark — the typecheck forces this branch first. card.unverifiable
   // is the display driver and coincides with agree===null (the executor sets both in the missing-composite arm).
   if (card.agree === null) return { mark: 'unverifiable', note: '' }
   return recomputedVerdict(arm, card.agree)
@@ -56,7 +56,7 @@ export interface ChainMeta {
   truncated: NeighborhoodSummary['truncated']          // a per-hop breadth cut, if any
 }
 
-// The Inspector's chainmeta declaration (consult-legibility-miniwave §1.3; v0.8 W2) — the ONE place the collapsed
+// The Inspector's chainmeta declaration — the ONE place the collapsed
 // ancestry is declared, and it lives in EXISTING chrome (no new surface). The counts are the horizon-bounded
 // neighbourhood's RETAINED up/down — the same members the stage and timeline light. " · nearest N shown" is
 // appended IFF the chain actually extends beyond the horizon on either side (a cheap boundary probe), so it never
@@ -97,18 +97,18 @@ export function Inspector({ model, open = false }: { model: RunModel; open?: boo
     (n: number) => { useViewStore.getState().select(model.subjectOf(n) ?? sel, n); syncUrl(true) },
     [model, sel],
   )
-  // Empty-state voice, THREE-way (v0.6 MUST-FIX, critic ruling 3 — honest empty state, constitution LAW 4):
+  // Empty-state voice, THREE-way (v0.6 — honest empty state, constitution LAW 4):
   //   • positioned run (f0/f1/f2a/f3a) → a cone IS on the stage → "click the cone, or the timeline".
   //   • positionless WITH a query stage (e0) → no cone, but the timeline drives the stage → "click the timeline".
   //   • positionless with NO stage lens (f4 — its event kinds carry no kind-23 draws, so the stage stays a
   //     grid) → must NOT invite a click on geometry that isn't there; name the real surfaces instead.
   // hasStageContent reuses the ONE complete applicability predicate (queryStageApplies — positionless AND kind-23
-  // draws; T6 M3 — the same gate Scene's mount and the honesty chip route through), so all sites agree on "does
+  // draws; the same gate Scene's mount and the honesty chip route through), so all sites agree on "does
   // the stage apply here". Its `&&` short-circuit builds draws only for a positionless run; memoised per model,
   // under App's run-scoped ErrorBoundary, so a malformed-bundle throw lands on the boundary as the stage's does.
   const positionless = useMemo(() => model.entityKeys().length === 0, [model])
   const hasStageContent = useMemo(() => queryStageApplies(model), [model])
-  // DESIGNED EMPTY STATE (v0.5d bench R1 — stable stage viewport). The inspector column is permanently
+  // DESIGNED EMPTY STATE (stable stage viewport). The inspector column is permanently
   // RESERVED in the desktop grid (app.css: fixed first track), because mounting/unmounting this aside
   // resized the 3D canvas ~250px sideways on every selection change — corrupting every held frame (tour
   // arrivals, the finale hero-click, Esc). With the column always occupied, no selection renders quiet,
@@ -130,7 +130,7 @@ export function Inspector({ model, open = false }: { model: RunModel; open?: boo
   )
   // The state panel reads the entity at the RAW playhead frame — offset 0, the committed integer tick (this is
   // the data panel's own semantics; the rendered cone applies the sensing offset separately). Brand the clamped
-  // frame StateFrame at this accessor boundary (A3). NOTE: on a sensing run this frame is one step behind the
+  // frame StateFrame at this accessor boundary. NOTE: on a sensing run this frame is one step behind the
   // cone's evaluated frame (k vs k+1) — a deliberate divergence, flagged for the bench, not changed here.
   const t = Math.min(tick, model.tickCount)
   const st = sel ? model.entityStatesAt(t as StateFrame).get(sel) : undefined
@@ -138,7 +138,7 @@ export function Inspector({ model, open = false }: { model: RunModel; open?: boo
     <aside className={open ? 'inspector open' : 'inspector'}>
       {sel && (
         <section>
-          {/* Identity is typographic (G19): the full plate retires "agent {key}" — glyph · callsign · class
+          {/* Identity is typographic: the full plate retires "agent {key}" — glyph · callsign · class
               noun · data-true key. The raw key still rides the URL (sel=…); the callsign never serializes. */}
           <h2 className="identity-plate">{fullPlate(identityPlate(sel, 'entity'))}</h2>
           {st ? (
@@ -218,7 +218,7 @@ const EventDetail = memo(function EventDetail({ model, seq, onPick }: { model: R
   )
 })
 
-// SHOW THE MATH (v0.6 T4a, directive II.3) — the Q5 "can I trust this pixel?" answer for a selected kind-23
+// SHOW THE MATH (v0.6) — the Q5 "can I trust this pixel?" answer for a selected kind-23
 // query, rendered as a new ANSWER inside the Inspector instrument (LAW 4: no new chrome). The pinned decision
 // form (contract/EXP-E0-decision-forms-excerpt.md) with the decoded numbers substituted, then the verdict
 // RECOMPUTED in-browser (showMath — pure arithmetic, NEVER a bearing) and compared to the engine's: a match
@@ -233,9 +233,9 @@ function ShowTheMath({ model, seq }: { model: RunModel; seq: number }) {
   const draw = stage.draws[seq]
   if (!draw) return null
   const card = showMath(draw, draw.kind === 4 ? losComponents(seq, stage) : null)
-  // The verdict mark is derived from the class's DECLARED AgreeSource arm (W3 F3), not re-decided from a bare
+  // The verdict mark is derived from the class's DECLARED AgreeSource arm, not re-decided from a bare
   // boolean: ? unverifiable (recompute impossible — a no-verdict state, never a false ✗) · ✓ verified /
-  // ○ self-consistent (per the arm's basis) · ✗ mismatch (disagreed). card.agree's brand (F4) makes this
+  // ○ self-consistent (per the arm's basis) · ✗ mismatch (disagreed). card.agree's brand makes this
   // load-bearing — a plain boolean cannot flow into the mark resolver.
   const { mark: vmark, note } = showMathMark(card, QUERY_VERDICT_ARM[draw.kind])
   return (
@@ -253,7 +253,7 @@ function ShowTheMath({ model, seq }: { model: RunModel; seq: number }) {
           ? card.verdict
           : `recompute ${card.verdict}${card.agree ? ' · matches engine' : ` · engine ${card.engine}`}`}</span>
       </p>
-      {/* W3 F3 — the arm's basis note, visible beside the mark (ev99's note convention): a live-inputs row
+      {/* the arm's basis note, visible beside the mark (ev99's note convention): a live-inputs row
           reads "recomputed from live decoded inputs"; a decoded-consistency row would read "…no external
           oracle" beside its ○ ring, so the union is worn at the mark, never demoted to prose. */}
       {note && <p className="showmath-note showmath-basis">{note}</p>}

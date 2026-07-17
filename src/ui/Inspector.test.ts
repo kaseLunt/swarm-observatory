@@ -3,7 +3,7 @@ import { chainMetaText, type ChainMeta } from './Inspector'
 import { HORIZON_HOPS, HORIZON_OPTS, causalNeighborhood } from './chain'
 import type { RunModel } from '../model/runModel'
 
-// The chainmeta declaration (consult-legibility-miniwave §1.3; v0.8 W2) — the collapsed-ancestry chip, rendered in
+// The chainmeta declaration (a design consult; v0.8) — the collapsed-ancestry chip, rendered in
 // EXISTING chrome (the Inspector's chainmeta span, no new surface). The up/down counts are the horizon-bounded
 // neighbourhood's RETAINED members — the SAME set the stage/timeline/links draw, never a whole-chain total (a
 // bounded count presented as the total is the exact lie this wave kills). " · nearest N shown" is appended IFF the
@@ -12,7 +12,7 @@ import type { RunModel } from '../model/runModel'
 const meta = (m: Partial<ChainMeta>): ChainMeta =>
   ({ up: 0, down: 0, upBeyond: false, downBeyond: false, truncated: null, ...m })
 
-describe('chainMetaText — the Inspector chainmeta chip (consult §1.3; W2 count-true)', () => {
+describe('chainMetaText — the Inspector chainmeta chip (count-true)', () => {
   test('bare counts when the whole chain is within the horizon (never overclaims)', () => {
     expect(chainMetaText(meta({}))).toBe('0 up · 0 down')
     // exactly AT the horizon on both sides but nothing beyond → the whole chain is lit, so no aggregation is claimed.
@@ -38,13 +38,13 @@ describe('chainMetaText — the Inspector chainmeta chip (consult §1.3; W2 coun
   })
 })
 
-// F3 — INTEGRATED chip test: the wide-leaf-star false horizon. A BREADTH cut is not a DEPTH claim. A root with 65
+// INTEGRATED chip test: the wide-leaf-star false horizon. A BREADTH cut is not a DEPTH claim. A root with 65
 // leaf children under HORIZON_OPTS (maxPerHop 64) drops one child, but the chain ENDS at hop 1 — no descendant
 // horizon is crossed. Before the fix chain.ts forced descendantsBeyond = true on ANY per-hop truncation, so the
 // chip read "nearest 3 shown · 1 dropped" — a false horizon claim. End to end (causalNeighborhood → ChainMeta →
 // chainMetaText, exactly as EventDetail builds it, probeHorizon on) the chip must disclose the drop WITHOUT
 // claiming a horizon it never probed.
-describe('chainMetaText × causalNeighborhood — wide-leaf star does not claim a false horizon [F3]', () => {
+describe('chainMetaText × causalNeighborhood — wide-leaf star does not claim a false horizon', () => {
   const ROOT = 500
   const leafStar = (): RunModel => ({
     childrenOf(seq: number): readonly number[] {

@@ -12,7 +12,7 @@ import { prefersReducedMotion } from '../ui/motion'
 // ── Pure, schedulable core (exported for the node-env unit tests) ────────────────────────────────
 // The hook glue below needs a DOM + the live store and cannot run under the node-env vitest runner;
 // these two pure predicates carry the load-bearing logic and are unit-tested in useTour.test.ts. The
-// glue is verified by Task 5's browser + smoke passes.
+// glue is verified by the browser + smoke passes.
 
 // A 'play' step is complete once the (integer) playhead reaches or passes its target tick.
 // Exported for tests: unit-tested directly in useTour.test.ts (see the section note above).
@@ -31,7 +31,7 @@ export const arrived = (tick: number, to: number): boolean => tick >= to
 // Two more belt-residue notes: (a) a pointer-miss click when nothing is already selected produces no
 // delta (null→null on both fields) and so does not interrupt — nothing observable changed, this is
 // deliberate, not a gap; (b) camera orbit (OrbitControls) touches no store state at all, so it
-// deliberately does NOT interrupt either (§5.5: the tour never continuously drives the camera — the
+// deliberately does NOT interrupt either (the tour never continuously drives the camera — the
 // focus ease triggered by a 'focus' action is one-shot, not ongoing ownership).
 // Exported for tests: unit-tested directly in useTour.test.ts (see the section note above).
 export function isForeignWrite(
@@ -83,9 +83,9 @@ export function createDriver(setView: SetView, modelRef: { current: RunModel | n
   let engine: TourState = { stepIndex: -1, status: 'idle' }
   let phase: Phase = 'static'
   let playTarget: number | null = null
-  // AUTHORED per-beat camera arrive (v0.7 T4). The CURRENT step's `arrive` descriptor (or null), captured in
+  // AUTHORED per-beat camera arrive (v0.7). The CURRENT step's `arrive` descriptor (or null), captured in
   // enterStep and read at the four fire sites below — mirroring playTarget's lifecycle (a step attribute, not a
-  // stepActions action, so tourEngine stays untouched: the arch-lead ruling / the `caption` precedent). null =
+  // stepActions action, so tourEngine stays untouched: a design ruling / the `caption` precedent). null =
   // today's behavior byte-for-byte (a play beat frames the trajectory-so-far; a static beat holds the frame).
   let pendingArrive: TourShot | null = null
   // The user's transport speed captured at start(), restored ONLY on natural completion (see finish).
@@ -137,7 +137,7 @@ export function createDriver(setView: SetView, modelRef: { current: RunModel | n
     const step = tour.steps[i]
     if (step === undefined) return // noUncheckedIndexedAccess guard; the engine never indexes OOB
     clearTimers() // single-delivery insurance: no stale hold may straddle a step boundary
-    // STEP-BOUNDARY CAMERA INVALIDATION (v0.7 T4 fixwave, W2) — the sibling of clearTimers above: no stale
+    // STEP-BOUNDARY CAMERA INVALIDATION (v0.7 fixwave) — the sibling of clearTimers above: no stale
     // TRAIL-FRAME shot may straddle a step boundary either. The prior beat's tour-arrival request writes ONE
     // global channel; under a render suspension the hold timer (a plain setTimeout) can reach HERE before the
     // frame loop consumed it, so a resumed frame would apply beat N-1's stale shot against beat N's live anchors
@@ -151,7 +151,7 @@ export function createDriver(setView: SetView, modelRef: { current: RunModel | n
     if (i > 0) cancelTourArrivalFrame()
     phase = 'static'
     playTarget = null
-    pendingArrive = step.arrive ?? null // T4: this step's authored camera arrive (fresh each step → no stale leak)
+    pendingArrive = step.arrive ?? null // this step's authored camera arrive (fresh each step → no stale leak)
     setView({ active: tour, stepIndex: i, caption: step.caption })
 
     const actions = stepActions(step)
@@ -174,8 +174,8 @@ export function createDriver(setView: SetView, modelRef: { current: RunModel | n
     })
 
     if (play === null) {
-      // STATIC beat (scrub/select, no playback). T4: fire the authored arrive HERE — a static beat gets a
-      // camera arrive only when it declares one (opt-in), so every pre-T4 static beat stays pixel-identical
+      // STATIC beat (scrub/select, no playback). Fire the authored arrive HERE — a static beat gets a
+      // camera arrive only when it declares one (opt-in), so every static beat without one stays pixel-identical
       // (no request). The scrub already landed inside the bracket above, so the tick is current when Scene
       // resolves the shot (the onArrived/RM ordering law: request AFTER the actions land). This is the new
       // capability the "authored against static frames" beats (f2a b1/b5) needed — they held a dead frame before.
@@ -197,7 +197,7 @@ export function createDriver(setView: SetView, modelRef: { current: RunModel | n
     if (arrived(cur, target)) {
       // Already at/past the target (e.g. a scrub landed on it): no playback to run. Land + complete.
       bracket(() => { store.getState().setTick(target); store.getState().setPlaying(false) })
-      // T4: this play beat still gets its authored arrive (opt-in — only when declared, so an un-authored
+      // this play beat still gets its authored arrive (opt-in — only when declared, so an un-authored
       // already-arrived beat stays byte-identical: no request). AFTER the bracket, so the tick is landed.
       if (pendingArrive !== null) requestTrailFrame(pendingArrive)
       dispatch('actionsComplete')
@@ -220,7 +220,7 @@ export function createDriver(setView: SetView, modelRef: { current: RunModel | n
     if (prefersReducedMotion()) {
       bracket(() => { store.getState().setTick(target); store.getState().setPlaying(false) })
       // Mirror onArrived's ordering: tick is already snapped to `target` above, so Scene reads the correct
-      // arrived tick when it consumes this request. T4: pass the authored arrive (RM PARITY — same shot,
+      // arrived tick when it consumes this request. Pass the authored arrive (RM PARITY — same shot,
       // delivered as an instant cut via the shared focusLerpFactor factor-1 snap; null = the trajectory-so-far
       // default). A reduced-motion tour is therefore composed with the SAME authored frames, just cut not eased.
       requestTrailFrame(pendingArrive)
@@ -258,7 +258,7 @@ export function createDriver(setView: SetView, modelRef: { current: RunModel | n
     })
     // Frame at the arrival hold: a NATURAL play-step arrival requests a trail frame; Scene eases the camera to
     // the arrival shot. This lives ONLY in onArrived — user interrupts route through stop()/finish() and so
-    // never trigger the framing (point 1). T4: pass the step's authored arrive — an authored beat composes its
+    // never trigger the framing (point 1). Pass the step's authored arrive — an authored beat composes its
     // vantage (compose-around-head, sensing conjunction, stage), null the trajectory-so-far default (byte-
     // identical). The tick was just snapped to `target`, so Scene reads the correct arrived tick when it consumes.
     requestTrailFrame(pendingArrive)
@@ -269,7 +269,7 @@ export function createDriver(setView: SetView, modelRef: { current: RunModel | n
     if (tour === null) return
     const step = tour.steps[i]
     if (step === undefined) return
-    // Dwell is NOT motion (v0.5d bench R4): holdFor returns the authored holdMs for everyone — reduced
+    // Dwell is NOT motion (v0.5d): holdFor returns the authored holdMs for everyone — reduced
     // motion no longer shortens holds (they are caption-READING time, authored 3500-6000ms for reading;
     // the old 1200ms rm cap gave rm users LESS reading time). Reduced motion's job is done elsewhere: a
     // play step's witness-paced flight SNAPS in startPlay (setTick to the target, no playback), and the
@@ -303,7 +303,7 @@ export function createDriver(setView: SetView, modelRef: { current: RunModel | n
   const unsubscribe = (): void => { if (unsub !== null) { unsub(); unsub = null } }
 
   // Tear the tour down and (optionally) reflect the resting state into the URL. ALWAYS restore the
-  // user's pre-tour ladder speed. Rationale (Task v04-7): witness pacing (startPlay) replaces `speed`
+  // user's pre-tour ladder speed. Rationale: witness pacing (startPlay) replaces `speed`
   // with an off-ladder presentation rate on every play step, so during a tour the store's `speed` is
   // NEVER a user choice — leaving it in place would poison USER playback with the tour's slow rate.
   // A user speed GESTURE that interrupts still wins: it calls notifyUserInput() (→ stop → this restore)
@@ -373,7 +373,7 @@ export function createDriver(setView: SetView, modelRef: { current: RunModel | n
     // first step lacks a playhead move would otherwise open over a stale finale. Bracketed so a restarting prior
     // tour's still-live subscription ignores the write (symmetric with the setPlaying below).
     bracket(() => { store.setState({ finale: false }); store.getState().setPlaying(false) }) // stop any in-flight autoplay from a prior tour
-    // TOUR-START CAMERA RESET (v0.5d ruling 6): put the camera on the composed LOAD vantage the choreography was
+    // TOUR-START CAMERA RESET (v0.5d): put the camera on the composed LOAD vantage the choreography was
     // authored against, so step 0's caption opens on the correct stage from EVERY entry state — a finale rest
     // (camera parked ~25u off the corridor's far head, ~241u from where step 0 expects it), a mid-run orbit, or
     // cold. This is the ONE sanctioned tour-file change; the reset routes through Scene's requestTourStartFrame
@@ -382,7 +382,7 @@ export function createDriver(setView: SetView, modelRef: { current: RunModel | n
     // Not bracketed: it is a module-channel stamp bump, not a store write, so the tour subscription is unaffected.
     // On a PLAIN tour the camera is already at the vantage, so the cut is pixel-equivalent (a no-op). It precedes
     // dispatch('start') below, so it is in place before step 0's own actions (e.g. f1's focus) run.
-    // STEP-0 ARBITRATION (v0.7 T4 closure, W1): SUPERSEDE the trail-frame channel UNCONDITIONALLY — idle starts
+    // STEP-0 ARBITRATION (v0.7 closure): SUPERSEDE the trail-frame channel UNCONDITIONALLY — idle starts
     // included — before the tour-start posture is requested. A NATURAL completion nulls `tour` WITHOUT cancelling
     // the channel (it routes engine 'done' → finish(), skipping stop()'s cancelTrailFrame so the final wide framing
     // converges during the last hold), so a completed tour's FINAL arrival shot survives PENDING (cancelled:false,

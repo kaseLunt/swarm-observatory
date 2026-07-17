@@ -85,7 +85,7 @@ describe('buildTrail', () => {
     expect([t2.positions[0], t2.positions[1], t2.positions[2]]).toEqual([40, 0, 0])
   })
 
-  // `first` — the frame of the subject's FIRST PRESENT tick (F1). camera.heldSubjectPose reads it to know where
+  // `first` — the frame of the subject's FIRST PRESENT tick. camera.heldSubjectPose reads it to know where
   // the hold-filled buffer stops being a real presence and starts being a pre-spawn back-fill: frames < first
   // have no present pose ≤ k, so the directed camera suppresses rather than anchors on the fabricated back-fill.
   test('first = the subject\'s first-present frame (0 when present from tick 0)', () => {

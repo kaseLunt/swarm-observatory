@@ -5,7 +5,7 @@ import {
 } from './identityPlate'
 
 // Identity is typographic, not chromatic: one plate, four registers. These pin the deterministic per-run
-// callsign derivation, the full/compact forms, the sensor-as-apparatus register, and both G5 schemes (so
+// callsign derivation, the full/compact forms, the sensor-as-apparatus register, and both callsign schemes (so
 // the swap is proven), plus the honesty declaration (the plate is presentational paint).
 
 describe('entityCallsign — deterministic, per-run, from the entity key', () => {
@@ -16,12 +16,12 @@ describe('entityCallsign — deterministic, per-run, from the entity key', () =>
     expect(entityCallsign('1:26', 'nato')).toBe('ALFA-2')
     expect(entityCallsign('1:53', 'nato')).toBe('BRAVO-3') // 53 = 26*2 + 1
   })
-  test('squadron scheme (G5 S1): the squadron word + a 2-digit index — proven so the swap is one line', () => {
+  test('squadron scheme: the squadron word + a 2-digit index — proven so the swap is one line', () => {
     expect(entityCallsign('1:0', 'squadron')).toBe('VANTA 00')
     expect(entityCallsign('1:7', 'squadron')).toBe('VANTA 07')
     expect(entityCallsign('1:12', 'squadron')).toBe('VANTA 12')
   })
-  test('the default scheme is NATO (the safe S2 default that needs no owner decision)', () => {
+  test('the default scheme is NATO (the safe default that needs no owner decision)', () => {
     expect(entityCallsign('1:0')).toBe('ALFA')
   })
   test('a bare id (no namespace) resolves the same way; a malformed key is register 0', () => {
@@ -71,7 +71,7 @@ describe('nouns retire the old dialects', () => {
     expect(nounFor('entity')).toBe(CLASS_NOUN)
     expect(nounFor('marker')).toBe(CLASS_NOUN)
     expect(nounFor('apparatus')).toBe(SENSOR_NOUN)
-    expect(CLASS_NOUN).toBe('drone') // the G5 default noun (retires "agent" / "the cone")
+    expect(CLASS_NOUN).toBe('drone') // the default noun (retires "agent" / "the cone")
   })
 })
 

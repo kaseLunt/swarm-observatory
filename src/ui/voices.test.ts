@@ -6,8 +6,8 @@ import {
 } from './voices'
 import type { BadgeState } from './badges'
 
-// ── THE VOICES MODULE — the single source for the seven trust marks (v0.8 W1) ──────────────────────────
-// These pin the design bench's ruling as executable law over the MODULE ITSELF: the two-family taxonomy,
+// ── THE VOICES MODULE — the single source for the seven trust marks (v0.8) ──────────────────────────
+// These pin the design ruling as executable law over the MODULE ITSELF: the two-family taxonomy,
 // the frozen seven-glyph alphabet (each glyph unique), the attested-token hue fixed to one slate, and the
 // ev99 basis convention (a note, never a glyph). The migration + app.css consolidation are pinned separately
 // in voicesMigration.test.ts (they belong with the migration commit).
@@ -76,7 +76,7 @@ describe('ev99 — the basis NOTE convention (a note, NEVER a glyph)', () => {
   })
 })
 
-describe('VOICE_MARK — the exhaustive rendered-voice → mark map (F3)', () => {
+describe('VOICE_MARK — the exhaustive rendered-voice → mark map', () => {
   test('the three glyph-bearing voices resolve to ✓ ○ •; the four wordless voices map to null', () => {
     expect(VOICE_MARK.sealed).toBe('verified')          // ✓ — decoded-inherited session seal
     expect(VOICE_MARK.unsealed).toBe('selfConsistent')  // ○ — recomputed-but-unsealed self-check

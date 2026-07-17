@@ -1,6 +1,6 @@
-// ── THE LENS REGISTRY — the mechanism that holds registrations and answers ask-any-pixel (Task v07-6) ──
+// ── THE LENS REGISTRY — the mechanism that holds registrations and answers ask-any-pixel ──
 // lensContract.ts is the TYPES + the fail-loud per-lens validation (a leaf, zero runtime imports). This is
-// the MECHANISM the standing rule (U11/S5) exists to produce: the one place that holds every lens's LAW-4
+// the MECHANISM the standing rule exists to produce: the one place that holds every lens's LAW-4
 // declaration, lets surfaces QUERY it (the honesty-chip line, the ask-any-pixel authority of a class), and
 // re-validates every citizen at module load — fail-loud, so a lens that ships a false or duplicate claim
 // crashes the app at boot rather than lying in an interaction. The registry's reason to exist is
@@ -27,7 +27,7 @@ import type { AgreeCapability } from './agreeSource'
 
 function fail(msg: string): never { throw new Error(`lensRegistry: ${msg}`) }
 
-// SINGLE-VOICE-SOURCE GUARD (v0.8 W1 — F3). Every voice a lens can render must resolve to a glyph the ONE
+// SINGLE-VOICE-SOURCE GUARD (v0.8). Every voice a lens can render must resolve to a glyph the ONE
 // voices module sanctions — a lens (or a drifted mapping) that mints a glyph outside the seven-mark alphabet
 // is a false-authority claim, so refuse loud at boot rather than paint an un-owned mark in an interaction.
 // This is DRIVEN BY the exhaustive Voice→mark map (voices.VOICE_MARK, `satisfies Record<Voice, MarkKey|null>`),
@@ -52,10 +52,10 @@ function assertVoiceAlphabetSingleSourced(): void {
   }
 }
 
-// ── W3 (audit A1) — THE WITNESS BOOT GUARD: declared arms resolved against the executor's capability ────
+// ── THE WITNESS BOOT GUARD: declared arms resolved against the executor's capability ────
 // A recomputed class WITNESSES its agreement with an AgreeSource (lensContract enforces its presence); this
 // resolves the arm's declared TOKENS against the ACTUAL capability of the executor whose live legs mint its
-// AgreementResult — an unknown / unbacked token fails LOUD at boot, the W1 voice-guard idiom at the witness
+// AgreementResult — an unknown / unbacked token fails LOUD at boot, the voice-guard idiom at the witness
 // tier. The lens→executor map is here (the aggregation point that imports both executors' capabilities); a
 // lens that paints recomputed classes but names no executor cannot be vouched, so that too is a boot failure.
 const EXECUTOR_CAPABILITY: Readonly<Record<string, AgreeCapability>> = {
@@ -75,8 +75,8 @@ function sameTokenSet(a: readonly string[], b: readonly string[]): boolean {
 
 // Resolve every recomputed class's AgreeSource against its executor capability. Pure + fail-loud: the registry
 // runs it per citizen at module load; a test drives it in isolation on a hand-built pair. A live-inputs arm's
-// FORM must be one the executor backs, AND its declared inputs must set-EQUAL that form's required tuple (F2 —
-// the per-form check that closes the Cartesian hole: independent input/form membership let inputs pair with any
+// FORM must be one the executor backs, AND its declared inputs must set-EQUAL that form's required tuple (the
+// per-form check that closes the Cartesian hole: independent input/form membership let inputs pair with any
 // backed form). A decoded-consistency arm's decoded token must be backed.
 export function assertAgreeSourcesBacked(reg: LensRegistration, cap: AgreeCapability | undefined): void {
   const recomputed = reg.provenance.filter(p => p.tier === 'recomputed')
@@ -105,11 +105,11 @@ const CITIZENS: readonly LensRegistration[] = [E0_REGISTRATION, F2A_REGISTRATION
 // precedent, at the registry tier). A duplicate lens id or a duplicate pixel-class id within a lens is not a
 // degraded registry to file best-effort — it is an ambiguous ask-any-pixel key, so refuse loud at publish.
 const REGISTRY: ReadonlyMap<string, LensRegistration> = (() => {
-  assertVoiceAlphabetSingleSourced() // fail-loud: the rendered voice alphabet is the ONE voices module's (W1)
+  assertVoiceAlphabetSingleSourced() // fail-loud: the rendered voice alphabet is the ONE voices module's
   const byId = new Map<string, LensRegistration>()
   for (const reg of CITIZENS) {
     validateRegistration(reg) // idempotent re-check — the per-lens contract, enforced again on aggregation
-    assertAgreeSourcesBacked(reg, EXECUTOR_CAPABILITY[reg.id]) // W3: every recomputed witness resolves against its executor
+    assertAgreeSourcesBacked(reg, EXECUTOR_CAPABILITY[reg.id]) // every recomputed witness resolves against its executor
     if (byId.has(reg.id)) fail(`duplicate lens id '${reg.id}' — every registered lens owns a unique id`)
     const classIds = new Set<string>()
     for (const p of reg.provenance) {

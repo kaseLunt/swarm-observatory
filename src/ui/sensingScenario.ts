@@ -41,7 +41,7 @@ export const FOV_HALF_RAD = 0.9272952180016122            // atan2(48,36) as an 
 export const OCCLUDER_C: Vec3 = [41.0, 41.0, 0.0]
 export const OCCLUDER_R2 = 41.0
 
-// ── Target motion (F1-certified machinery, consumed as certified) ───────────────────────────────────────
+// ── Target motion (-certified machinery, consumed as certified) ───────────────────────────────────────
 // Straight north-running flight: e(k) = 48.0 constant; per-tick northing step v_eff·dt_s = 16·0.125 = 2.0
 // m/tick exactly; n(k) = n0 + 2k, with n0 = -58 - phase·2 (the seed axis). These lattice facts describe the
 // DECODED trajectory (surfaced from state frames, not recomputed here); pinned for the tour's framing and

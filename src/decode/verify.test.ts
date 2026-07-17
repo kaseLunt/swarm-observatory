@@ -23,7 +23,7 @@ describe.each(cases)('independent re-fold of $det', ({ det, pins }) => {
     expect(v.tickCount).toBe(Number(pins.tick_count))
     expect(v.matchesTrailer).toBe(true)
   })
-  test('F2: every per-field trailer comparison (trailerPins) is exposed and true on a clean fold', () => {
+  test('every per-field trailer comparison (trailerPins) is exposed and true on a clean fold', () => {
     expect(v.trailerPins).toEqual({ eventHash: true, stateTrajectoryHash: true, eventCount: true, tickCount: true })
     // matchesTrailer is exactly the AND of the four per-field pins — one source, no drift.
     expect(v.matchesTrailer).toBe(
@@ -32,10 +32,10 @@ describe.each(cases)('independent re-fold of $det', ({ det, pins }) => {
   })
 })
 
-// ── F2/F4 — PER-FIELD trailer tamper: corrupt ONE stored trailer hash, CRC-fix, fold ───────────────────────
+// ── PER-FIELD trailer tamper: corrupt ONE stored trailer hash, CRC-fix, fold ───────────────────────
 // Flip one byte of a stored trailer HASH (CRC-fixed so the frame decodes) → the recomputed value no longer
 // matches that field's stored trailer value, so ONLY that field's trailerPins flips false while its siblings
-// stay true. This is the premise the det-only Provenance row (F2) and the ceremony event_hash row (F4) grade on.
+// stay true. This is the premise the det-only Provenance row and the ceremony event_hash row grade on.
 function tamperTrailerField(det: string, payloadOffset: number) {
   const bytes = new Uint8Array(readFileSync(`contract/fixtures/${det}`)).slice()
   let off = FILE_HEADER_LEN
@@ -56,7 +56,7 @@ function tamperTrailerField(det: string, payloadOffset: number) {
 const OFF_EVENT_HASH = 32
 const OFF_STATE_HASH = 64
 
-test('F2: tampering ONLY the trailer event_hash flips trailerPins.eventHash, leaves the siblings + matchesTrailer', () => {
+test('tampering ONLY the trailer event_hash flips trailerPins.eventHash, leaves the siblings + matchesTrailer', () => {
   const v = tamperTrailerField('e0_seed42.det', OFF_EVENT_HASH)
   expect(v.trailerPins.eventHash).toBe(false)
   expect(v.trailerPins.stateTrajectoryHash).toBe(true)
@@ -65,10 +65,10 @@ test('F2: tampering ONLY the trailer event_hash flips trailerPins.eventHash, lea
   expect(v.matchesTrailer).toBe(false)
 })
 
-test('F4: tampering ONLY the trailer state hash flips stateTrajectoryHash, but event_hash reproduced fine', () => {
+test('tampering ONLY the trailer state hash flips stateTrajectoryHash, but event_hash reproduced fine', () => {
   const v = tamperTrailerField('e0_seed42.det', OFF_STATE_HASH)
   expect(v.trailerPins.stateTrajectoryHash).toBe(false)
-  expect(v.trailerPins.eventHash).toBe(true) // the ceremony event_hash row grades from THIS — stays ✓ (F4)
+  expect(v.trailerPins.eventHash).toBe(true) // the ceremony event_hash row grades from THIS — stays ✓
   expect(v.matchesTrailer).toBe(false)        // the aggregate (step mark / seal) refuses
 })
 

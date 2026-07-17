@@ -8,12 +8,12 @@ import { ROBUST_F3A } from '../decode/campaignCatalog'
 import { requireGlyph } from './voices'
 import { useCampaignStore } from '../state/campaignStore'
 
-// ── W6: THE TAMPER MOMENT renders the side-by-side ✗/✓ (a real client mount, DOM only — no WebGL) ──────────
+// ── THE TAMPER MOMENT renders the side-by-side ✗/✓ (a real client mount, DOM only — no WebGL) ──────────
 // Mounts the panel, stubs fetch with the REAL seed-42 bytes, clicks the demo, and asserts the two per-pin chains
 // paint: the pristine column in the verified voice with an all-agree chain (✓ external pins beside ○ trailer-self
 // rings), the tampered column in the mismatch voice with event_hash ✗ + result_id ✗ (bundle sha-256 ✗ too) and the
 // untouched fields still in their earned voice. Also pins the honesty rails (the browser-memory-copy copy, the
-// untouched store) and F4 (the Wall's synchronous abort stops a late demo fetch from writing state after teardown).
+// untouched store) and the abort guard (the Wall's synchronous abort stops a late demo fetch from writing state after teardown).
 
 ;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -64,7 +64,7 @@ describe('TamperDemoPanel: the tamper moment renders the side-by-side refusal', 
     const [published, flipped] = cols
 
     // PRISTINE column: the verified voice; NO mismatch. The chain is 3 external ✓ (result_id/case_id/bundle sha-256)
-    // beside 4 trailer-self ○ rings (event_hash/state hash/event_count/tick_count) — the F3 honest picture.
+    // beside 4 trailer-self ○ rings (event_hash/state hash/event_count/tick_count) — the honest picture.
     expect(published!.querySelector('.tamper-verdict')?.className).toContain('verified')
     expect(published!.querySelectorAll('.tamper-row.mismatch')).toHaveLength(0)
     expect(published!.querySelectorAll('.tamper-row.verified')).toHaveLength(3)
@@ -110,7 +110,7 @@ describe('TamperDemoPanel: the tamper moment renders the side-by-side refusal', 
     expect(useCampaignStore.getState().rollup.mismatched).toBe(0)
   })
 
-  test('F4 — the Wall’s synchronous abort (shared ref) stops a late demo fetch from writing state after teardown', async () => {
+  test('the Wall’s synchronous abort (shared ref) stops a late demo fetch from writing state after teardown', async () => {
     // A controllable fetch that stays pending until we resolve it — the demo is caught mid-fetch.
     let resolveFetch!: (r: Response) => void
     const pending = new Promise<Response>((res) => { resolveFetch = res })
@@ -127,7 +127,7 @@ describe('TamperDemoPanel: the tamper moment renders the side-by-side refusal', 
     act(() => { container.querySelector<HTMLButtonElement>('.tamper-cta')!.click() })
     expect(abortRef.current).not.toBeNull()
 
-    // The Wall closes: its SYNCHRONOUS stop aborts the shared ref (F4) while the fetch is still in flight.
+    // The Wall closes: its SYNCHRONOUS stop aborts the shared ref while the fetch is still in flight.
     act(() => { abortRef.current!.abort() })
 
     // The fetch resolves LATE (after teardown). The aborted-signal guard swallows it — no 'done' result, no error.

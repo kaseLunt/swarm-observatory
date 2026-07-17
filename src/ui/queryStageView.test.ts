@@ -15,7 +15,7 @@ import {
   type QueryDraw, type LosComposite, type RayDraw, type SightlineDraw, type RangeBearingDraw, type Vec3,
 } from './queryStage'
 
-// Query-stage renderer tests (v0.6 T3, waves 2–3). Provable-without-a-Canvas concerns:
+// Query-stage renderer tests (v0.6). Provable-without-a-Canvas concerns:
 //   1. THE NOT-YET GHOST's geometry lookup — the selected event's own line / contact entry, drawn from the
 //      SAME precomp the written path reads, so the ghost is byte-identical to the form it fills in to; and its
 //      per-kind inventory matches the written form (k4 BLOCKED line ends at the blocker's hit point).
@@ -180,7 +180,7 @@ describe('bloom threshold — dimmed contacts + the ghost never bloom, bound THR
   })
 })
 
-// ── EMPHASIS DECAY + THE AGGREGATION HORIZON (consult-legibility-miniwave §§1.2 / 2) ──────────────────────
+// ── EMPHASIS DECAY + THE AGGREGATION HORIZON ──────────────────────
 // The selection LINE law, bound through the renderer's own exported colour helpers so the pins track the
 // renderer, not a transcript. selectedLineColor returns SHARED module constants for the lit cases (subject /
 // neighbourhood) — the allocation-free design — and writes `out` for the beyond-horizon ambient case.
@@ -224,7 +224,7 @@ describe('emphasis decay — the HOP_DECAY registers (symmetric, direction-blind
   })
 })
 
-describe('selectedLineColor — the horizon law + ghost-ignition choreography (consult §§1.2 / 1.5)', () => {
+describe('selectedLineColor — the horizon law + ghost-ignition choreography', () => {
   test('subject → accent (SOLE bloom); hops 1/2/3 → the decay registers; hop 4+ → ambient × yield (fades to black)', () => {
     const ev = 40, hop = hopMap(ev), out = new THREE.Color()
     expect(selectedLineColor(out, line(40), ev, hop, 40)).toBe(SELECTED)          // subject — the shared accent const
@@ -240,7 +240,7 @@ describe('selectedLineColor — the horizon law + ghost-ignition choreography (c
   })
   test('GHOST ignition: nothing violet until the head closes within HORIZON_HOPS of the ghost, then hop by hop', () => {
     // ev = 74 selected as a ghost (ev > reveal). As the playhead advances 70→73 the revealed ancestor lights in
-    // DECREASING hop order — the earned-approach wake (§1.5); arrival at 74 is the accent fill-in. Each is a cut.
+    // DECREASING hop order — the earned-approach wake; arrival at 74 is the accent fill-in. Each is a cut.
     const ev = 74, hop = hopMap(ev), out = new THREE.Color()
     expect(selectedLineColor(out, line(70), ev, hop, 70)).not.toBe(ROLE_BY_HOP[2])                  // seq 70 is hop 4 — not yet violet
     expect(lum(selectedLineColor(out, line(70), ev, hop, 70))).toBeLessThan(BLOOM_LUMINANCE_THRESHOLD)
@@ -325,14 +325,14 @@ describe('the invariant — nothing selectable is stage-silent, all 75 e0 events
   })
 })
 
-// ── W2: the SELECTED line paint-range reducer (the untested stateful seam that hid the stale-band bug) ─────
+// ── The SELECTED line paint-range reducer (the untested stateful seam that hid the stale-band bug) ─────
 // Under a standing selection the beyond-horizon lines carry a reveal-dependent ambient×yield×fade colour; the
 // paint range must cover EVERY line whose fade changed across the reveal delta. The shipped `from` anchored on
 // the NEW fade window alone, so a multi-tick FORWARD jump stranded the OLD window's lines (which crossed
 // fade→0 mid-jump) at their pre-jump ambient×0.3. The reducer anchors `from` on min(prev,new) − LINE_FADE_TICKS
 // so the old lower edge is always in range. Pinned directly on a contiguous seq array (seq == index → the
 // window maths is transparent: lowerIndex(S) == S, prefixCount(R) == R+1).
-describe('linePaintRange — the pure paint-range reducer (W2)', () => {
+describe('linePaintRange — the pure paint-range reducer', () => {
   const seqs = Int32Array.from({ length: 50 }, (_, i) => i) // seq == index
   const FADE = 6 // mirror of LINE_FADE_TICKS
 
@@ -377,17 +377,17 @@ describe('linePaintRange — the pure paint-range reducer (W2)', () => {
   })
 })
 
-// ── W1 (closure round): a SELECTED LOS COMPOSITE lights only its GEOMETRICALLY-DISTINCT component corridors ─
+// ── A SELECTED LOS COMPOSITE lights only its GEOMETRICALLY-DISTINCT component corridors ─
 // THE DEFECT THIS CLOSES (confirmed by geometry): validateLosComposite pins each component's (o,g)
 // IDENTICAL to the composite argv, and a CLEAR composite has NO HIT — so every MISS component's corridor is
-// BYTE-THE-SAME o→g segment as the composite's own accent subject sightline. The wave-1 overlay drew all three,
+// BYTE-THE-SAME o→g segment as the composite's own accent subject sightline. The earlier overlay drew all three,
 // stacking three additive ROLE_BY_HOP instances ON the subject → the payoff CLEAR sightline read violet, not
 // accent (one-segment-one-owner, violated). THE FIX — ownership by geometric distinctness: draw a component
 // ONLY when its corridor DIFFERS from the composite's drawn subject segment, i.e. a HIT that is not the
 // firstBlocker (a MISS corridor is the subject; the firstBlocker's hit point is exactly where the BLOCKED
 // subject dies). So a CLEAR composite draws ZERO overlay corridors (subject alone), and a BLOCKED composite
 // draws only the distinct HIT corridors the subject's single death point does not already show. Deselect ⟹ empty.
-describe('writeCompositeComponentCorridors — ownership by geometric distinctness (W1, closure round)', () => {
+describe('writeCompositeComponentCorridors — ownership by geometric distinctness', () => {
   const mkMesh = (): THREE.InstancedMesh =>
     new THREE.InstancedMesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial(), HORIZON_HOPS)
   const readColor = (m: THREE.InstancedMesh, i: number): THREE.Color =>

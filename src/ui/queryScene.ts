@@ -1,7 +1,7 @@
 import { queryBounds, SPHERE, BOX, TRIANGLE, type QueryDraw, type Vec3, type LosComposite } from './queryStage'
 import { boundsFromPositions, type Bounds, type Framing } from './camera'
 
-// ── Query-stage render helpers (v0.6 T3) ──────────────────────────────────────────────────────────────
+// ── Query-stage render helpers (v0.6) ──────────────────────────────────────────────────────────────
 // PURE, three-free support math for the query stage renderer (queryStageView.tsx). Kept out of the model
 // layer (queryStage.ts) — that layer PARSES payloads into drawables; this decides how the accumulating
 // stage READS them: which act a probe belongs to, how a spent ray fades behind the head, when each
@@ -10,11 +10,11 @@ import { boundsFromPositions, type Bounds, type Framing } from './camera'
 // any hot path is a non-goal here (these run in the event-rate build, never per frame) — but they allocate
 // nothing beyond the one returned value regardless.
 
-// The three acts (design draw inventory §3.1; temporally disjoint fan sources). Act I "learn the objects"
+// The three acts (the design draw inventory; temporally disjoint fan sources). Act I "learn the objects"
 // (point/range/ray probes sweep S→B→T), Act II "sightlines from origin" (5 LOS composites), Act III "the
 // drawn observer" (establish O, then 4 LOS composites from it). The two source fans — origin (0,0,0) for
 // acts I/II, observer O for act III — never fire in the same tick, so an act-graded ambient tone keeps
-// the two fans from reading as one snarl at the accumulated rest (§2.4 hairball ruling).
+// the two fans from reading as one snarl at the accumulated rest (the hairball ruling).
 export const ACT_I_END = 35 // last seq of act I (learn the objects)
 export const ACT_II_END = 55 // last seq of act II (origin LOS battery)
 export const ACT_III_START = 56 // first seq of act III (the drawn observer)
@@ -27,7 +27,7 @@ export function actOf(seq: number): 1 | 2 | 3 {
   return 3
 }
 
-// Head-relative line decay (§2.4: fade the LINES, persist the contacts + solids). Mirrors the trajectory
+// Head-relative line decay (fade the LINES, persist the contacts + solids). Mirrors the trajectory
 // trail's shader math (trail.ts: alpha = clamp(1 − behind/span)) but stepped at EVENT rate, not per frame:
 // on a positionless run nothing moves within a tick (seq == tick, one event per tick), so a per-frame uHead
 // uniform would smooth a sub-tick gap that never renders. The head ray (seq === head) is full voice (1); a
@@ -84,7 +84,7 @@ export function observerPoint(draws: readonly (QueryDraw | null)[]): Vec3 | null
   return null
 }
 
-// ── OBSERVER'S EYE — the POV preset (v0.6 T4b, directive II.6) ──────────────────────────────────────────
+// ── OBSERVER'S EYE — the POV preset (v0.6) ──────────────────────────────────────────
 // Stand where the seed-drawn observer stands (O, read from the act-III argv — never assumed) and look toward
 // the interrogated theatre (the solids + contacts centroid, queryBounds.solidsContacts). BLOCKED sightlines
 // eclipse into the occluder; the world is seen from the observer's own vantage. Returned in THREE-space (the
@@ -92,10 +92,10 @@ export function observerPoint(draws: readonly (QueryDraw | null)[]): Vec3 | null
 // consume writes it directly. Null when there is no drawn observer OR no interrogated geometry (honest empty
 // state — the preset becomes a no-op; f0/f1 have neither). Pure; three-free (just index math); unit-tested.
 //   DEVIATION (disclosed): the aim is the tick-INVARIANT theatre centroid, not the live per-tick sightline
-// endpoint — a stable §8-clean preset (one framing per model, eased on demand via the reused trail-frame
+// endpoint — a stable load-budget-clean preset (one framing per model, eased on demand via the reused trail-frame
 // owner) over a per-frame tracking aim; the live sightline is already drawn on the stage. frameFor is not
 // used here (it composes an OFFSET from a centroid — it cannot stand the camera AT an arbitrary point O);
-// only the EASE machinery is reused (directive: "§8-clean by reuse").
+// only the EASE machinery is reused (load-budget-clean by reuse).
 export function povFraming(draws: readonly (QueryDraw | null)[]): Framing | null {
   const o = observerPoint(draws)
   const theatre = queryBounds(draws).solidsContacts
@@ -119,7 +119,7 @@ export function missRayEndpoint(o: Vec3, dir: Vec3, len: number): Vec3 {
   return [o[0] + dir[0] * s, o[1] + dir[1] * s, o[2] + dir[2] * s]
 }
 
-// ── e0 AUTHORED TOUR SHOTS (v0.8 W7) — decode-true vantages for the query-stage tour ─────────────────────
+// ── e0 AUTHORED TOUR SHOTS (v0.8) — decode-true vantages for the query-stage tour ─────────────────────
 // Two shots the query-stage tour arrives on, composed from the SAME decoded geometry the stage draws (the v0.7
 // discipline: every tour number re-derived from the model, never eyeballed). Both flip NED→three with the self-
 // contained basis-B convention (x=n, y=−d, z=e) the renderer + povFraming use, so what is framed is what is
@@ -168,7 +168,7 @@ export function blockedCorridorBounds(composites: ReadonlyMap<number, LosComposi
 // and lift are authored FRACTIONS of the theatre radius — scene-scaled, so the crane can never rot on a
 // re-decode into a magic absolute. Returns a complete three-space Framing (like povFraming — a directed vantage,
 // not a fittable box), or null when there is no drawn observer or theatre (honest empty state).
-// Calibrated on browser screenshots (v0.8 W7): back 0.8·R seats the eye at ~15% of frame height (a foreground
+// Calibrated on browser screenshots (v0.8): back 0.8·R seats the eye at ~15% of frame height (a foreground
 // marker, not a speck), and lift 0.15·R drops the observer to the lower third (a 3/4 crane) with the theatre it
 // interrogates above/ahead — the eye clearly introduced, its sightlines fanning up into the world it questions.
 export const CRANE_BACK_K = 0.8 // pull-back behind the eye, in theatre-radius units

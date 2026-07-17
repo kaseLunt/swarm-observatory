@@ -1,4 +1,4 @@
-// ChainLinks (extracted MOVE-ONLY from Scene.tsx — v0.6 T0 Wave B): cross-entity causal-link segments
+// ChainLinks (extracted MOVE-ONLY from Scene.tsx): cross-entity causal-link segments
 // for the selected event's chain, interpolated to track the moving cones exactly.
 import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
@@ -11,14 +11,14 @@ import type { StateFrame, TransportTick } from '../lib/brand'
 import { PALETTE } from './theme'
 import { causalNeighborhood, HORIZON_OPTS } from './chain'
 
-// Module-scope scratch OWNED by this file (v0.6 T0 Wave B): the link-endpoint interpolation below reuses
-// these tuples every frame with zero allocation (§8). Before the split ChainLinks borrowed Scene's scratch,
+// Module-scope scratch OWNED by this file: the link-endpoint interpolation below reuses
+// these tuples every frame with zero allocation (the load budget). Before the split ChainLinks borrowed Scene's scratch,
 // which held together only because r3f runs Entities' frame callback first — an implicit cross-component
 // ordering contract this file-local scratch retires (9 numbers buy the independence).
 const scratchA: [number, number, number] = [0, 0, 0]
 const scratchB: [number, number, number] = [0, 0, 0]
 const scratchP: [number, number, number] = [0, 0, 0]
-// The link frame-loop cursor: reused every frame (§8, file-local like the tuples above).
+// The link frame-loop cursor: reused every frame (the load budget; file-local like the tuples above).
 const linkCursor: FrameCursor = { t0: 0 as StateFrame, t1: 0 as StateFrame }
 
 // The worst-case member count of the HORIZON_OPTS neighbourhood: self + maxHop single-parent ancestors +
@@ -77,7 +77,7 @@ export function ChainLinks({ model }: { model: RunModel }) {
     // Reuses this file's OWN module scratch vectors (see top of file) — zero alloc, no cross-component ordering.
     const vs = useViewStore.getState()
     const fraction = vs.fraction
-    // A3 boundary: brand the store playhead (a plain TransportTick) into the event domain, then resolve the
+    // The accessor boundary: brand the store playhead (a plain TransportTick) into the event domain, then resolve the
     // cursor. ChainLinks tracks cross-entity links at the raw tick's committed frame — offset 0 (no sensing
     // evaluation shift; the links follow the SAME poses the non-sensing cone renders). This retires the second
     // copy of the hand-rolled successor-clamp cursor idiom (now owned solely by resolveCursor).
@@ -104,7 +104,7 @@ export function ChainLinks({ model }: { model: RunModel }) {
   return (
     // renderOrder 1 (with the selection ring) so the transparent chain composites AFTER the opaque cones
     // and the depth-writing scene; depthWrite:false so a half-opaque link never punches a hole in the
-    // depth buffer that pops the trail / selection ring / grid drawn behind it (Task v04-2 §4).
+    // depth buffer that pops the trail / selection ring / grid drawn behind it.
     <lineSegments frustumCulled={false} renderOrder={1}>
       <bufferGeometry ref={geoRef}>
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />

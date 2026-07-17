@@ -26,7 +26,7 @@ export function lineState(represents: RunPhase, phase: RunPhase): LineState {
 // PHASE glyphs (not trust-voice marks); the `done` ✓ IS the verified voice, so it is sourced from voices.ts.
 export const MARK: Record<LineState, string> = { pending: '▪', active: '▸', done: requireGlyph('verified') }
 
-// ── VERDICT-AWARE CEREMONY TICKS (A2 — the seal fold, made visible without collapsing its voices) ────────
+// ── VERDICT-AWARE CEREMONY TICKS (the seal fold, made visible without collapsing its voices) ────────
 // The ceremony's two hash rows and its step mark carry the TrustVerdict, so a self-consistent det-only run is
 // never shown the manifest-grade green ✓ it did not earn. The ✓ is reserved for 'manifest-verified' (matched
 // against an external manifest); 'self-consistent' wears the ○ self-check ring (the ProvenancePanel idiom for
@@ -49,19 +49,19 @@ export function verdictTick(verdict: TrustVerdict): Tick {
 // otherwise it inherits the run's GRADE — ○ for a self-consistent det-only run (no external oracle even for the
 // trailer match), ✓ when a manifest backs it. On a manifest MISMATCH that still reproduced the trailer (e.g. a
 // tampered termination_reason: matchesTrailer stays true, result_id breaks) this stays ✓ beside result_id's ✗ —
-// the honest A2 picture (the bytes reproduced; the sealed identity did not).
+// the honest picture (the bytes reproduced; the sealed identity did not).
 export function trailerTick(verdict: TrustVerdict, matchesTrailer: boolean): Tick {
   if (!matchesTrailer) return tick('mismatch')
   return verdict === 'self-consistent' ? tick('selfConsistent') : tick('verified')
 }
 
-// ── PER-PIN CEREMONY GRADING (F3 — a NAMED hash row reflects its OWN comparison, never the aggregate) ──────
+// ── PER-PIN CEREMONY GRADING (a NAMED hash row reflects its OWN comparison, never the aggregate) ──────
 // trailerTick/verdictTick key on the WHOLE verdict, so when ONLY the manifest's event_hash pin is corrupted
 // (bundle clean → matchesTrailer TRUE, verdict 'mismatch') they painted the INVERSE of the truth: event_hash ✓
 // beside result_id ✗ — while Provenance reds event_hash and greens result_id. pinTick grades a NAMED row from
 // ITS OWN two comparisons so the ceremony and Provenance agree row-for-row:
 //   • `trailerReproduced` FALSE → ✗ (THIS row's own in-bundle reproduction failed — the recomputed value did not
-//     match the sealed trailer for this field). F4: this is the row's PER-FIELD trailer comparison (trailerPins),
+//     match the sealed trailer for this field). This is the row's PER-FIELD trailer comparison (trailerPins),
 //     NOT the aggregate matchesTrailer — so corrupting only the trailer's state hash reds the state row while the
 //     event_hash row (its own reproduction clean) stays ✓, instead of over-refusing both named rows. A field with
 //     no in-bundle reproduction (result_id — the trailer stores none) passes `true` here: it cannot self-fail.
@@ -74,7 +74,7 @@ export function pinTick(pinMatch: boolean | null, trailerReproduced: boolean): T
   return pinMatch ? tick('verified') : tick('mismatch')
 }
 
-// ── result_id in the CEREMONY (F1) — a DERIVATION with an oracle ONLY under a manifest ──────────────────────
+// ── result_id in the CEREMONY — a DERIVATION with an oracle ONLY under a manifest ──────────────────────
 // result_id is DERIVED from trailer-SOURCED inputs (case_id + termination_reason) and the trailer stores no
 // result_id to check it against, so a det-only run has NO in-bundle oracle for it: a CRC-fixed termination_reason
 // changes result_id while every trailerPin stays true. Feeding it through pinTick(pinMatch, true) painted the

@@ -50,13 +50,13 @@ describe('resolveLoadPlan: an UNKNOWN id gets the honest lowest-trust posture (d
   })
 })
 
-// ── F2 — the id grammar: a TRAVERSAL id resolves to NO plan (no spoofable fetch) ──────────────────────────
+// ── The id grammar: a TRAVERSAL id resolves to NO plan (no spoofable fetch) ──────────────────────────
 // The unknown-id arm derives its base as `runs/<id>`, so an id like 'x/../f0' would normalize under fetch to
 // runs/f0 — f0's bytes served under a spoofed label (the identity display then lies). A run id must be a SINGLE
 // path segment (/^[a-z0-9][a-z0-9-]*$/); a non-conforming id resolves to null and useRun surfaces the unknown-
 // run error, never a fetch. (The catalog is in-bundle source; the descoped variant — an attacker adding a
 // catalog alias — is editing the app, out of scope.)
-describe('resolveLoadPlan: a path-traversal / non-conforming id resolves to NO plan (F2)', () => {
+describe('resolveLoadPlan: a path-traversal / non-conforming id resolves to NO plan', () => {
   test('a traversal id (x/../f0) resolves to null — never a base string a fetch could normalize to f0', () => {
     expect(resolveLoadPlan('x/../f0')).toBeNull()
   })
@@ -70,15 +70,15 @@ describe('resolveLoadPlan: a path-traversal / non-conforming id resolves to NO p
   })
 })
 
-// ── F5/F8 — prototype-chain keys never resolve to a plan (no certified entry, no fetch) ─────────────────────
+// ── Prototype-chain keys never resolve to a plan (no certified entry, no fetch) ─────────────────────
 // The vuln: RUN_CATALOG[runId] was indexed via bracket access BEFORE the grammar test, so a prototype key
 // resolved to an INHERITED member as a truthy "certified entry": resolveLoadPlan('__proto__') returned
 // Object.prototype with `.base` undefined → certified:true, base undefined → useRun fetched 'undefined/bundle.det';
-// 'constructor' returned the Object constructor the same way. The grammar test (F5) rejects '__proto__'/'toString'/
-// 'hasOwnProperty' (non-conforming); F8 adds the PROTOTYPE_DENYLIST so the two conforming prototype names —
+// 'constructor' returned the Object constructor the same way. The grammar test rejects '__proto__'/'toString'/
+// 'hasOwnProperty' (non-conforming); a second guard adds the PROTOTYPE_DENYLIST so the two conforming prototype names —
 // 'constructor' and 'prototype' — ALSO resolve to null instead of an uncertified 'runs/constructor' fetch. So the
 // contract is now unambiguous: EVERY prototype-shaped id resolves to NO plan and NO fetch.
-describe('resolveLoadPlan / catalogDetOnly: prototype-chain keys (F5/F8)', () => {
+describe('resolveLoadPlan / catalogDetOnly: prototype-chain keys', () => {
   const PROTO = ['__proto__', 'constructor', 'prototype', 'toString', 'valueOf', 'hasOwnProperty'] as const
 
   test.each(PROTO)('%j resolves to NULL — never a certified entry, never a fetch', (key) => {
@@ -87,8 +87,8 @@ describe('resolveLoadPlan / catalogDetOnly: prototype-chain keys (F5/F8)', () =>
   test.each(PROTO)('%j is det-only-grade — never a manifest-grade green', (key) => {
     expect(catalogDetOnly(key)).toBe(true) // a null plan is the lowest-trust det-only default
   })
-  test('F8 — the two GRAMMAR-CONFORMING prototype names (constructor, prototype) resolve to null, not a fetch', () => {
-    // These pass RUN_ID_RE (all lowercase), so pre-F8 they took the uncertified det-only path and useRun fetched
+  test('the two GRAMMAR-CONFORMING prototype names (constructor, prototype) resolve to null, not a fetch', () => {
+    // These pass RUN_ID_RE (all lowercase), so before the denylist they took the uncertified det-only path and useRun fetched
     // 'runs/constructor'. The denylist closes that: `resolveLoadPlan(id) === null` is the exact seam useRun
     // branches on (`if (plan === null) throw unknown run`) BEFORE any fetchDet/fetchBundle.
     expect(resolveLoadPlan('constructor')).toBeNull()

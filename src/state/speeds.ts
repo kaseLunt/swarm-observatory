@@ -22,7 +22,7 @@ export function isLadderSpeed(n: number): boolean {
   return (SPEEDS as readonly number[]).includes(n)
 }
 
-// The speed to SERIALIZE into a shared / deep link for the current transport speed (W2). A real ladder
+// The speed to SERIALIZE into a shared / deep link for the current transport speed. A real ladder
 // member rides as-is; an OFF-ladder value is a tour's witness presentation pace, never a user choice, so
 // it collapses to the resting default. This mirrors Timeline's off-ladder guard and its natural-end URL
 // sync's deliberate isTourActive skip: a shared link reproduces the resting VIEW, never a transient tour

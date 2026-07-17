@@ -4,25 +4,25 @@ import { QUERY_KIND, SPHERE, BOX, TRIANGLE, type Vec3 } from './queryScenario'
 import { validateRegistration, type LensRegistration, type PixelClass } from './lensContract'
 import { makeWitnessInputs } from './agreeSource'
 
-// ── The Query Stage — e0 kind-23 model layer (Task v06-2) ─────────────────────────────────────────────
+// ── The Query Stage — e0 kind-23 model layer ─────────────────────────────────────────────
 //
 // A PURE, load-path model layer that turns each decoded GeometryQueryResolved (core kind 23) payload into
 // a drawable primitive. The decoder already returns the payload (RunModel.geometryQueryAt); until now its
 // `argv` was 100% dark. This module lights it — nothing here touches the decoder or the frame path.
 // Semantics of record: contract/EXP-E0-kind23-geometry-excerpt.md §1 (per-kind argv/result layouts),
 // §2 (the pinned scene), §3 (the drawn observer), §4 (FRAME/TIEBREAK). Every number is proven against the
-// frozen design draw table (.superpowers/sdd/verify/v06-draw-table.json) in queryStage.oracle.test.ts.
+// frozen design draw table in queryStage.oracle.test.ts.
 //
 // ⚠ BINDING CONSTRAINT (constitution-level, decision-forms excerpt): bearings in the bundle are pinned
 // vendored-libm KAT bits. This layer NEVER recomputes a bearing via platform Math.atan2 (or any trig) — it
 // surfaces the stored result_scalars[1] bits verbatim (see queryDraw kind 2). Pure arithmetic on decoded
 // data (√d², o+t·dir, lerp, |dir|, rad→deg scale) is fine; recomputing a stored transcendental is not.
 //
-// §8: this is a LOAD-PATH layer (buildQueryDraws is the one-pass sibling of buildTrail,
-// run ONCE at model publish). Its allocations happen at publish time; the frame path (T3) reveals
+// The load budget: this is a LOAD-PATH layer (buildQueryDraws is the one-pass sibling of buildTrail,
+// run ONCE at model publish). Its allocations happen at publish time; the frame path reveals
 // precomputed buffers. Zero STEADY per-frame allocation is preserved by never calling these per frame.
 //
-// ── LAW-4 DECLARATION (the constitution's first compliant citizen; §3 LAW 4, directive IV.21) ─────────
+// ── LAW-4 DECLARATION (the constitution's first compliant citizen; §3 LAW 4) ─────────
 // A lens must declare, before implementation, its question / surface / borrowed hue / what it dims /
 // honest empty state. This is that declaration, filed in-code as the constitution requires:
 //
@@ -31,17 +31,17 @@ import { makeWitnessInputs } from './agreeSource'
 //     beats (the boundary decided it) and the LOS composition (which occluder blocked); Q5-adjacent
 //     "Can I trust this pixel?" via the honesty chip below.
 //   • SURFACE (LAW 3, drama vs. density): DRAMA on the 3D stage — the accumulating geometry (rays fade
-//     spent, contacts + solids persist). DENSITY in the instruments — the timeline lanes (T1) summarize
+//     spent, contacts + solids persist). DENSITY in the instruments — the timeline lanes summarize
 //     the same events; the Inspector gains a parsed argv row (the interpreted point / range·bearing /
 //     hit point). This module is the DATA layer feeding both; it renders nothing.
 //   • BORROWED HUE (LAW 2, palette does not grow): none introduced. Verdicts reuse the existing verdict
 //     pair (theme `verified` / `mismatch`) exactly as the pulse already colours a query's verdict; the
 //     ambient probe geometry wears the `query` category hue (theme.ts CATEGORY.query — matte steel) it
-//     already owns everywhere; tiebreak reuses the Inspector's existing tiebreak vocabulary. (If the R3
-//     swatch lands at the owner gate, the verdict pair becomes a token-VALUE swap in T3 — still no new
+//     already owns everywhere; tiebreak reuses the Inspector's existing tiebreak vocabulary. (If the
+//     swatch lands at the owner gate, the verdict pair becomes a token-VALUE swap — still no new
 //     colour here.) This model layer sets NO colour; it only names the hues the renderer borrows.
 //   • WHAT IT DIMS (LAW 1, emphasis budget): the stage keeps one probe at full voice — the current tick's
-//     ray — while spent rays decay and only contacts + solids persist (T3 reveal-clock). On selection the
+//     ray — while spent rays decay and only contacts + solids persist (the reveal clock). On selection the
 //     causal chain re-lenses: the selected probe's geometry lights, the rest dim (the shipped dimming
 //     machinery). The lens never adds a glow; it reallocates the existing budget.
 //   • HONEST EMPTY STATE: a run with no kind-23 events decodes to all-null draws → the stage draws
@@ -63,7 +63,7 @@ export type { Vec3 } from './queryScenario'
 // object id → the scenario object it names (excerpt §1: 0 none/composite, 1 sphere, 2 box, 3 triangle).
 export const SCENARIO_OBJECT: Record<number, string> = { 0: 'none/composite', 1: 'S(sphere)', 2: 'B(box)', 3: 'T(triangle)' }
 
-// The honesty chip wording (LAW-4 empty-state declaration made visible). T3 renders it wherever the stage
+// The honesty chip wording (LAW-4 empty-state declaration made visible). renders it wherever the stage
 // draws scenario bodies — the presentational-truth pattern the spine chip established, narrowed here.
 export const QUERY_STAGE_HONESTY = 'geometry is decoded-real — occluder & region bodies are scenario constants'
 
@@ -125,7 +125,7 @@ export type QueryDraw = PointDraw | RangeBearingDraw | RayDraw | SightlineDraw
 // (f2a/f3a/f4 — kind-23 count 0). This is the CONTENT half of the stage's applicability gate; queryStageApplies
 // (below) pairs it with the positionless conjunct into the ONE complete predicate the stage MOUNT, its origin
 // anchor (which lives inside the mount), the honesty chip and the Inspector rail all route through — so no site
-// under-describes the gate (T6 M3) or drifts. It is ALSO queryBounds' own d3 seed-guard (below): one definition
+// under-describes the gate or drifts. It is ALSO queryBounds' own d3 seed-guard (below): one definition
 // of "the stage has something to draw". Pure; O(draws) with an early exit.
 export const hasQueryDraws = (draws: readonly (QueryDraw | null)[]): boolean => draws.some(d => d !== null)
 
@@ -136,7 +136,7 @@ const n0 = (v: number): number => (v === 0 ? 0 : v)
 // This layer's job is to refuse false evidence. The excerpt §1 pins every per-kind layout (argv length,
 // scalar shape, the mode domain, the composite triplet), so a payload that drifts from the pinned layout
 // is not "best-effort drawable" — it is evidence this layer cannot vouch for. Refuse loud (throw), never
-// coerce into plausible geometry. Every check runs in the one load-path pass (§8: zero frame-path cost).
+// coerce into plausible geometry. Every check runs in the one load-path pass (the load budget: zero frame-path cost).
 function fail(msg: string): never { throw new Error(`queryStage: ${msg}`) }
 
 const finite = (v: number | undefined, what: string, seq: number): number => {
@@ -256,7 +256,7 @@ export interface QueryStageData {
 // ALL validation lives HERE, in the publish pass — per-row layout checks inside queryDraw, and the LOS
 // triplet contract for EVERY composite row immediately after. A malformed triplet therefore fails the
 // publish loud; it can never lie in wait for the first losComponents call at interaction time (which
-// would move throw-risk toward the frame path — the opposite of §8's shape).
+// would move throw-risk toward the frame path — the opposite of the load budget's shape).
 export function buildQueryDraws(source: QuerySource): QueryStageData {
   const draws: (QueryDraw | null)[] = new Array(source.eventCount).fill(null)
   for (let seq = 0; seq < source.eventCount; seq++) {
@@ -271,12 +271,12 @@ export function buildQueryDraws(source: QuerySource): QueryStageData {
   return { draws, losComposites }
 }
 
-// ── THE COMPLETE APPLICABILITY PREDICATE (M3 — the mount gate made whole) ────────────────────────────────
+// ── THE COMPLETE APPLICABILITY PREDICATE (the mount gate made whole) ────────────────────────────────
 // The query stage applies to a run iff it is POSITIONLESS (no entity flight to overlay — e0's shape) AND it
 // actually has kind-23 draws. The registration named `hasQueryDraws` alone as its mountGate, but that is only
 // HALF the real gate: a positioned run is never even offered the stage, and hasQueryDraws is the SECOND
-// conjunct. The registration's identity pin caught a RENAME of that half, but not this MISSING conjunct (T6
-// review M3) — so the declared gate under-described the real one. This is the ONE predicate the stage MOUNT
+// conjunct. The registration's identity pin caught a RENAME of that half, but not this MISSING conjunct — so
+// the declared gate under-described the real one. This is the ONE predicate the stage MOUNT
 // (Scene), the honesty chip (App) and the Inspector's empty-stage rail all route through, so the three sites can
 // never drift on "does the query stage apply here"; its NAME is what the registration now registers as
 // mountGate, and the identity is pinned. The `&&` short-circuit preserves the existing discipline: buildQueryDraws
@@ -334,7 +334,7 @@ function validateLosComposite(los: SightlineDraw, draws: readonly (QueryDraw | n
 }
 
 // Interaction-time lookup into the publish-time-validated composite store: zero validation, zero throw,
-// zero allocation after publish (§8 — throw-risk lives at load, never near the frame path). Returns null
+// zero allocation after publish (the load budget — throw-risk lives at load, never near the frame path). Returns null
 // for a non-LOS seq — the honest answer for a row that has no composite, not a malformation.
 export function losComponents(seq: number, stage: QueryStageData): LosComposite | null {
   return stage.losComposites.get(seq) ?? null
@@ -350,7 +350,7 @@ export interface QueryBoundsPresets {
 
 const pushPt = (arr: number[], p: Vec3): void => { arr.push(p[0], p[1], p[2]) }
 // Seed an accumulator with the scenario solids' extent (sphere AABB corners + box + triangle verts), the
-// same seed the SDD probe uses so the framing radii match the draw table byte-for-byte (mod Float32).
+// same seed the design draw-table probe uses so the framing radii match the draw table byte-for-byte (mod Float32).
 const seedSolids = (arr: number[]): void => {
   const { center: c, radius: r } = SPHERE
   arr.push(c[0] - r, c[1] - r, c[2] - r, c[0] + r, c[1] + r, c[2] + r)
@@ -393,7 +393,7 @@ export function queryBounds(draws: readonly (QueryDraw | null)[]): QueryBoundsPr
   return { full: finish(full), core: finish(core), solidsContacts: finish(contacts) }
 }
 
-// ── THE LAW-4 DECLARATION, AS DATA — e0 is lifted from prose to a typed citizen (Task v07-6) ────────────
+// ── THE LAW-4 DECLARATION, AS DATA — e0 is lifted from prose to a typed citizen ────────────
 // The query stage filed its LAW-4 declaration as the PROSE block at the top of this module (v0.6, the
 // constitution's first citizen — but predating lensContract, it was never queryable). This graduates that
 // same declaration to a typed const (lensContract.LensRegistration), closing the asymmetry with f2a: the
@@ -405,20 +405,20 @@ export function queryBounds(draws: readonly (QueryDraw | null)[]): QueryBoundsPr
 // The lensRegistry aggregates this beside F2A_REGISTRATION and validates both at load (fail-loud).
 const GEO = 'contract/EXP-E0-kind23-geometry-excerpt.md'
 const FORMS = 'contract/EXP-E0-decision-forms-excerpt.md'
-// The causal edges the selection re-lensing derives its hop distance from (H2): each event carries a
+// The causal edges the selection re-lensing derives its hop distance from: each event carries a
 // causation_id in the Spec 3a §3.6 envelope; §11.1 pins that envelope for the E0-baseline adoption.
 const CAUSATION = 'contract/spec-3b-evidence-layer.md §11.1 (event envelope causation_id — Spec 3a §3.6)'
 
 const E0_LEDGER: readonly PixelClass[] = [
   { id: 'probe-geometry', tier: 'decoded', source: `${GEO} §1 (per-kind argv layouts — points, ray/segment origins & endpoints, sightline endpoints)`,
     answer: 'every ray, segment, sightline and probe point the stage draws is decoded-real — the kind-23 argv geometry in NED meters' },
-  // ── THE STAGE's OWN VERDICT PAINT (H1 — decoded, not recomputed) ─────────────────────────────────────────
+  // ── THE STAGE's OWN VERDICT PAINT (decoded, not recomputed) ─────────────────────────────────────────
   // The 3D STAGE colours its CONTACT verdict from the DECODED result_flag bit (it inherits the run's session
   // seal); it does NOT run the in-browser recompute — that lives in the Inspector (the recomputed classes
   // below). f2a made exactly this split (its decoded eligible-tint beside the Inspector's recomputed legs).
   { id: 'contact-verdict', tier: 'decoded', source: `${GEO} §1 (result_flag per kind — INSIDE/OUTSIDE · HIT/MISS · BLOCKED/CLEAR)`,
     answer: 'on the stage, a probe\'s contact hue is its DECODED verdict bit surfaced verbatim — a point\'s INSIDE/OUTSIDE, a ray or segment\'s HIT vs MISS, a sightline\'s BLOCKED vs CLEAR — the engine\'s own result_flag, not the Inspector\'s live recompute' },
-  // ── WHAT THE STAGE DERIVES vs. WHAT IT MERELY DRAWS (M4 — tiered by HOW IT KNOWS, not lumped as "decoded") ──
+  // ── WHAT THE STAGE DERIVES vs. WHAT IT MERELY DRAWS (tiered by HOW IT KNOWS, not lumped as "decoded") ──
   // A HIT endpoint is o + t·dir: arithmetic over the DECODED hit parameter + §1 layout → derived-display (sourced
   // to decoded inputs, no decoded coordinate on record). A MISS shaft carries no hit point, so its far end is a
   // fixed renderer-authored extension → presentational (encodes no datum). Blocker attribution SELECTS the first
@@ -453,7 +453,7 @@ const E0_LEDGER: readonly PixelClass[] = [
     answer: 'a tiebreak ring marks a beat the engine flagged as decided exactly at a boundary (the decoded tiebreak_applied bit)' },
   { id: 'recompute-tally', tier: 'derived-display', source: `${FORMS} (the pinned decision forms the tally counts)`,
     answer: 'the all-events agreement footer is a display-tier count of the per-event recompute matches — a derivation over the live checks, itself no decoded datum' },
-  // H2 — the selection re-lensing is NOT presentational: the hop registers encode causation AND distance (data).
+  // the selection re-lensing is NOT presentational: the hop registers encode causation AND distance (data).
   // It is a derivation over the decoded causation edges, so it is sourced derived-display, not "encodes no data".
   { id: 'selection-relensing', tier: 'derived-display', source: `${CAUSATION} (the causal edges the hop distance derives from)`,
     answer: 'the selection re-lensing colours each probe by its causal HOP distance from the selected event — the ≤3-hop neighbourhood lit, everything beyond the horizon dimmed — a derivation over the decoded causation edges (it encodes causation and distance), never a presentational treatment' },
@@ -477,7 +477,7 @@ export const E0_REGISTRATION: LensRegistration = validateRegistration({
   },
   surfaces: { stage: 'QueryStage', instrument: 'Inspector' },
   // LAW 2 — borrowed token NAMES only (compile-time membership via BorrowedHue): the verdict contacts reuse
-  // the R3 verdict pair; the Inspector's recompute marks reuse the integrity ✓/✗ pair; selection is accent;
+  // the verdict pair; the Inspector's recompute marks reuse the integrity ✓/✗ pair; selection is accent;
   // the causal-horizon neighbourhood wears the spine violet; ambient probe geometry wears the query category
   // steel; tiebreak rings wear textDim; the source-anchor / observer markers wear textPrimary.
   borrowedHues: ['verdictAffirm', 'verdictNegate', 'verified', 'mismatch', 'accent', 'spine', 'textDim', 'textPrimary', 'category:query'],

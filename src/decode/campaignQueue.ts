@@ -36,7 +36,7 @@ export interface CampaignQueue {
 }
 
 // A job names a pinned seed by ITS IDS ONLY — {id, seed, campaignId}. The URL and the expected pins are NOT put
-// on the wire here: the WORKER resolves them from the in-bundle catalog (the H1 authority), so neither the queue
+// on the wire here: the WORKER resolves them from the in-bundle catalog (the authority for those pins), so neither the queue
 // nor a caller can point a seed at other bytes or other pins. `id` is the canonical decimal seed id.
 export function buildCampaignJobs(cat: CampaignCatalog): VerifyJob[] {
   return cat.seeds.map(s => ({ id: String(s.seed), seed: s.seed, campaignId: cat.campaignId }))
@@ -80,7 +80,7 @@ export function createCampaignQueue(opts: QueueOptions = {}): CampaignQueue {
           active--
           // A CURRENT-EPOCH, non-cancellation rejection is a genuine TRANSPORT fault the worker never got to map
           // to a summary: a dynamic-import failure, a Worker construction throw, a postMessage throw, or a crashed
-          // worker (F4). Emit a TERMINAL error summary so the seed reaches 'error' and the rollup counts it —
+          // worker. Emit a TERMINAL error summary so the seed reaches 'error' and the rollup counts it —
           // never leave a seed stuck 'running' while the queue idles. (A stray in-epoch AbortError, which should
           // not occur since every abort bumps the epoch, is treated as cancellation: no event.)
           if (!isAbortError(err)) emit({ type: 'done', summary: errorSummary(job.id, job.seed, 'TransportError', errMessage(err)) })

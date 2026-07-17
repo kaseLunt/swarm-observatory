@@ -5,7 +5,7 @@ import { trailFrameRequest, requestTrailFrame, requestEstablishFrame } from '../
 import type { Tour, TourShot } from './tourTypes'
 
 // The schedulable CORE of the driver, extracted pure so it is unit-testable in the node-env vitest
-// runner (the hook glue itself needs a DOM/store and is covered by Task 5's browser + smoke passes).
+// runner (the hook glue itself needs a DOM/store and is covered by the browser + smoke passes).
 
 describe('arrived — play-step arrival predicate (tick >= to)', () => {
   test('exact boundary is arrival (74 >= 74)', () => {
@@ -74,14 +74,14 @@ describe('isForeignWrite — phase-aware user-interrupt discriminator', () => {
   })
 })
 
-// ── Tour-start finale clear (v0.5b T3 fix wave) ────────────────────────────────────────────────────
+// ── Tour-start finale clear (v0.5b fix wave) ────────────────────────────────────────────────────
 // A tour OWNS the stage: its opening beat must never render over a live natural-end finale's dressing.
 // Both authored tours' step 0 happens to carry tick:0 (a scrub → setTick → finale:false), so this was
 // safe only BY ACCIDENT; a future tour whose first step lacks a playhead move would open over stale
 // finale dressing. start() now clears the finale unconditionally in its opening rest-transport bracket.
 // Driven through the REAL createDriver + start() (a plain non-React factory, node-safe deps) so the fix is
 // exercised on the actual code path — not a re-asserted store write.
-describe('tour start clears a live finale (T3 fix wave)', () => {
+describe('tour start clears a live finale (fix wave)', () => {
   test('finale true → start() a tour whose step 0 has NO playhead move → finale false', () => {
     const driver = createDriver(() => {}, { current: null })
     useViewStore.setState({ finale: true })
@@ -97,14 +97,14 @@ describe('tour start clears a live finale (T3 fix wave)', () => {
   })
 })
 
-// ── AUTHORED per-beat camera arrive (v0.7 T4) — driven through the REAL createDriver + start() ─────────────
+// ── AUTHORED per-beat camera arrive (v0.7) — driven through the REAL createDriver + start() ─────────────
 // The step's `arrive` descriptor rides the EXISTING trail-frame channel on intent 'tour-arrival' (no new camera
 // owner). These drive the SYNCHRONOUS fire sites (a static beat; a play beat already at its target) against the
 // real driver + store + channel, so the wiring (enterStep captures pendingArrive → the fire site passes it to
 // requestTrailFrame) is exercised on the actual code path. onArrived's async fire (a real play arrival) is the
 // SAME requestTrailFrame(pendingArrive) call and is browser/smoke-verified. Each test rests the store first
 // (module singleton) and disposes before asserting (clean up the subscription + the hold timer).
-describe('authored per-beat camera arrive (T4)', () => {
+describe('authored per-beat camera arrive', () => {
   test('a static beat with an authored arrive fires it through the trail-frame channel (shot ref + tour-arrival intent)', () => {
     useViewStore.setState({ tick: 0, playing: false, selectedEntity: null, selectedEvent: null, finale: false })
     const driver = createDriver(() => {}, { current: null })
@@ -122,7 +122,7 @@ describe('authored per-beat camera arrive (T4)', () => {
 
   test('a static beat with NO arrive makes no request of its own (opt-in) — start() supersede stands down, step 0 does not re-request', () => {
     useViewStore.setState({ tick: 0, playing: false, selectedEntity: null, selectedEvent: null, finale: false })
-    // Seed a PENDING tour-arrival shot (a prior tour's leftover). start()'s W1 supersede stands it down; then an
+    // Seed a PENDING tour-arrival shot (a prior tour's leftover). start()'s supersede stands it down; then an
     // UN-AUTHORED step 0 must NOT re-request — so the channel STAYS a stand-down (cancelled, shot null). A request
     // would flip cancelled→false and set a shot, so this isolates the per-beat opt-in from the tour-start supersede.
     requestTrailFrame({ kind: 'head', distance: 'close' })
@@ -149,13 +149,13 @@ describe('authored per-beat camera arrive (T4)', () => {
     expect(shot).toBe(arrive)
   })
 
-  // W4: the MISSING coverage — a play beat that ACTUALLY CROSSES its target (not already there), firing the arrive
-  // on the real async arrival path (onArrived), asserted on the emitted shot + a genuine stamp bump. The prior T4
+  // the MISSING coverage — a play beat that ACTUALLY CROSSES its target (not already there), firing the arrive
+  // on the real async arrival path (onArrived), asserted on the emitted shot + a genuine stamp bump. The prior
   // tests only drove the two SYNCHRONOUS fire sites (a static beat; a play already-at-target); this drives the
   // subscription-detected arrival the tour actually runs, by simulating the transport rAF advancing the playhead.
   test('a play beat that CROSSES its target fires the authored arrive on the real arrival path (onArrived) — shot + stamp', () => {
     useViewStore.setState({ tick: 0, fraction: 0, playing: false, selectedEntity: null, selectedEvent: null, finale: false })
-    // Park the channel on a NON-tour-arrival intent so start()'s W1 supersede (cancelTourArrivalFrame, scoped to
+    // Park the channel on a NON-tour-arrival intent so start()'s supersede (cancelTourArrivalFrame, scoped to
     // 'tour-arrival') is a guaranteed no-op here — this isolates the ARRIVAL bump from the tour-start supersede.
     requestEstablishFrame()
     const driver = createDriver(() => {}, { current: null })
@@ -180,14 +180,14 @@ describe('authored per-beat camera arrive (T4)', () => {
   })
 })
 
-// ── W2: step-boundary invalidation of a stale tour-arrival shot — the deferred-consume race ─────────────────
+// ── step-boundary invalidation of a stale tour-arrival shot — the deferred-consume race ─────────────────
 // A tour-arrival shot request writes ONE global channel; under a render suspension the hold timer (a plain
 // setTimeout, alive across the suspension) can advance the driver to the NEXT beat before the frame loop consumes
 // it — so a resumed frame would apply beat N-1's stale shot against beat N's live anchors and suppress beat N's
 // follow. The driver invalidates the prior beat's owner at every step boundary (cancelTourArrivalFrame, i>0). This
 // drives the race on the REAL driver + store + channel with fake timers: write a shot, advance the step WITHOUT
 // consuming, and assert a deferred consume would see the CANCEL (stand down), not the stale shot.
-describe('step-boundary camera invalidation — the deferred-consume race (W2)', () => {
+describe('step-boundary camera invalidation — the deferred-consume race', () => {
   test('write shot, advance the step without consuming ⟹ the channel holds a CANCEL, not the stale shot', () => {
     vi.useFakeTimers()
     try {
@@ -221,7 +221,7 @@ describe('step-boundary camera invalidation — the deferred-consume race (W2)',
   })
 })
 
-// ── W1: step-0 arbitration — a fresh replay supersedes a completed tour's pending final shot ────────────────
+// ── step-0 arbitration — a fresh replay supersedes a completed tour's pending final shot ────────────────
 // A NATURAL completion nulls `tour` WITHOUT cancelling the trail-frame channel (it routes engine 'done' → finish(),
 // skipping stop()'s cancelTrailFrame), so the completed tour's FINAL arrival shot survives PENDING on the channel.
 // A fresh replay then hits the restart cancel gated on `tour !== null` — now FALSE (completion nulled it) — so
@@ -229,7 +229,7 @@ describe('step-boundary camera invalidation — the deferred-consume race (W2)',
 // the replay opens on the prior close-shot with focus cleared. start()'s UNCONDITIONAL cancelTourArrivalFrame closes
 // it. Driven on the REAL driver + store + channel with fake timers: run a one-beat tour to natural completion, prove
 // the stale shot survives, then replay from idle and assert the channel holds a CANCEL, not the close-shot.
-describe('step-0 arbitration — a fresh replay supersedes a completed tour\'s pending final shot (W1)', () => {
+describe('step-0 arbitration — a fresh replay supersedes a completed tour\'s pending final shot', () => {
   test('pending final arrival → natural completion → fresh replay ⟹ the channel STANDS the stale shot down (tour-start posture, not the close-shot)', () => {
     vi.useFakeTimers()
     // Natural completion routes through finish(true) → syncUrl(true) → history.replaceState; the node-env test runner

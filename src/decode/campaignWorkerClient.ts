@@ -6,19 +6,19 @@ import type { CampaignVerifyTransport } from './campaignQueue'
 // The production CampaignVerifyTransport: hand a job to the persistent worker and resolve with its RunSummary.
 // One worker is shared across all in-flight jobs (PERSISTENT — constructed lazily on first use, never per job).
 //
-// CORRELATION (F3): responses are demultiplexed by a unique REQUEST TOKEN (a monotonic counter), NEVER by seed
+// CORRELATION: responses are demultiplexed by a unique REQUEST TOKEN (a monotonic counter), NEVER by seed
 // id. A seed id is REUSED after a restart, so a stale pre-cancel result could otherwise resolve the restarted
 // job's promise (the epoch fence upstream sees a current-epoch completion and cannot reject it). The token map
 // fixes correlation: `verify`/`cancel`/`result` all carry the token, the inflight map is keyed by it, and a
 // result bearing an unknown/stale token (a cancelled or superseded dispatch) is DROPPED — counted in a debug
 // stat — so it can never settle a live promise.
 //
-// FAULTS (F4): a Worker-construction or postMessage throw REJECTS the transport promise (the queue turns that
+// FAULTS: a Worker-construction or postMessage throw REJECTS the transport promise (the queue turns that
 // into a terminal 'error' summary — a seed never sticks 'running'). An async worker crash ('error' /
 // 'messageerror') REJECTS every outstanding request, TERMINATES the dead worker, and NULLs it so the next
 // dispatch recreates a fresh one (no promise hangs forever; a subsequent start() runs on a clean worker).
 //
-// PROTOCOL (F1): a worker→client message is FAIL-CLOSED at TWO levels before it can settle a promise.
+// PROTOCOL: a worker→client message is FAIL-CLOSED at TWO levels before it can settle a promise.
 //   • ENVELOPE level. The worker's protocol posts NOTHING but {type:'result', requestToken, summary} (see
 //     campaignWorker.post), so a message is either a correlatable result carrying a VALID token or it is skew —
 //     no benign third category exists on this channel. A valid token is a FINITE INTEGER (a monotonic counter);
@@ -27,18 +27,18 @@ import type { CampaignVerifyTransport } from './campaignQueue'
 //     `messageerror` fires only on a structured-clone FAILURE — a cloneable-but-schema-invalid payload arrives on
 //     a PLAIN 'message'), so it is routed to the crash path. With ZERO live requests nothing can strand, so a
 //     malformed envelope stays a counted drop. A VALID finite-integer token that isn't inflight is split by
-//     ISSUANCE (F2): a RETIRED token (0 < token < nextToken — issued, then cancelled/superseded) is the F3
+//     ISSUANCE: a RETIRED token (0 < token < nextToken — issued, then cancelled/superseded) is the
 //     correlation drop; a NEVER-ISSUED token (>= nextToken, <= 0, or a non-safe-integer — the worker mints tokens
 //     ONLY from the client's monotonic counter, so it could not have produced it) is as unaddressable as a
 //     malformed envelope and takes the SAME rule (crash while live, counted drop while idle). The bare "isn't
 //     inflight → drop" of the prior round silently dropped a never-issued token while the real live token stranded.
 //   • SUMMARY level (a LIVE token). A result whose summary is malformed (missing/ill-typed field, or a status
 //     outside the RunStatus enum), whose id/seed does not match that token's EXPECTED job identity, or whose wire
-//     status label CONTRADICTS its own evidence (F2 — see below) is a PROTOCOL CRASH: the SAME recovery path as an
+//     status label CONTRADICTS its own evidence (see below) is a PROTOCOL CRASH: the SAME recovery path as an
 //     async fault (reject ALL outstanding, terminate, recreate). A `summary:null` would otherwise hang the promise
 //     forever; a `summary:{}` would settle a seed with a verdict the store ignores (stuck 'running').
 //
-// SEMANTICS (F1/F2): a certification surface must never trust a LABEL over its own EVIDENCE — but it must also not
+// SEMANTICS: a certification surface must never trust a LABEL over its own EVIDENCE — but it must also not
 // mistake an operational FAILURE for a contradicted verdict. validateSummary applies a THREE-WAY rule:
 //   • VERIFICATION outcomes DERIVE — 'verified'/'mismatch', and the verify-core's OWN 'error' (certified bytes
 //     that won't fold: sha256ok TRUE ∧ ids null, which deriveRunStatus maps to 'error'), must EQUAL
@@ -93,7 +93,7 @@ interface Inflight {
 // The RunStatus enum, as a runtime membership set (the type is erased). A status outside this set is malformed.
 const RUN_STATUSES: ReadonlySet<string> = new Set<RunStatus>(['verified', 'mismatch', 'error'])
 
-// THE DIGEST-FORMAT LAW (F1/F2). Every hash field on the wire is a canonical digest — EXACTLY 64 LOWERCASE hex
+// THE DIGEST-FORMAT LAW. Every hash field on the wire is a canonical digest — EXACTLY 64 LOWERCASE hex
 // chars, the width toHex(sha256(bytes)) / toHex(blake3(...)) always mints (a 32-byte digest → 64 hex). The FORMAT
 // is part of the PROTOCOL, not a passthrough: sha256Hex is EITHER '' (the operational no-fetch marker) OR this;
 // each id hex is EITHER null (bytes did not decode) OR this. Any other string — wrong length, uppercase, non-hex —
@@ -128,7 +128,7 @@ function readEnvelope(data: unknown): Envelope {
 // FAIL-CLOSED validation of a worker→client RunSummary against the token's EXPECTED identity. Returns the typed
 // summary iff EVERY required field is present and well-typed, status is in the RunStatus enum, and id/seed match
 // the expected job. ANY deviation → null (the caller treats a null on a LIVE token as a protocol crash). This is
-// the whole point of F1: a partially-deserialisable result must never settle a promise or hang one.
+// the whole point: a partially-deserialisable result must never settle a promise or hang one.
 function validateSummary(data: unknown, expected: Expected): RunSummary | null {
   if (typeof data !== 'object' || data === null) return null
   const d = data as Record<string, unknown>
@@ -163,7 +163,7 @@ function validateSummary(data: unknown, expected: Expected): RunSummary | null {
     if (typeof e.code !== 'string' || typeof e.message !== 'string') return null
   }
   const summary = data as RunSummary
-  // F1/F2 — CROSS-FIELD COHERENCE: the two producers' laws (campaignVerify.ts), encoded as BICONDITIONALS. The field
+  // CROSS-FIELD COHERENCE: the two producers' laws (campaignVerify.ts), encoded as BICONDITIONALS. The field
   // checks above pin each field's OWN shape; these pin the RELATIONSHIPS the producers guarantee ACROSS fields. This
   // is a DISTINCT axis from the label+digest one, and invisible to it: deriveRunStatus — the derive-don't-trust
   // authority — reads the id hexes ONLY for null-ness and IGNORES the error block entirely, so a summary can satisfy
@@ -234,11 +234,11 @@ function validateSummary(data: unknown, expected: Expected): RunSummary | null {
 }
 
 // The transport factory. `makeWorker` builds the underlying worker; `base` is the ALREADY-RESOLVED absolute app
-// base (getSingleton runs resolveAppBase on the main thread — F2), forwarded verbatim to the worker at init.
+// base (getSingleton runs resolveAppBase on the main thread), forwarded verbatim to the worker at init.
 // Exported so tests inject a fake worker (and can assert the base is echoed on the init message unchanged).
 export function createWorkerTransport(makeWorker: () => WorkerLike, base: string): WorkerTransport {
   let worker: WorkerLike | null = null
-  // The monotonic request-token counter (F2/F3). Starts at 1 — so 0 (and any non-positive value) is NEVER-ISSUED —
+  // The monotonic request-token counter. Starts at 1 — so 0 (and any non-positive value) is NEVER-ISSUED —
   // and lives in THIS transport closure, NOT the worker. crash() nulls `worker` but never touches `nextToken`, so
   // tokens stay GLOBALLY monotonic across worker recreations: a token issued before a crash never collides with one
   // issued after. That is what keeps the "RETIRED iff 0 < token < nextToken" test sound across crashes — a replayed
@@ -257,7 +257,7 @@ export function createWorkerTransport(makeWorker: () => WorkerLike, base: string
     return entry
   }
 
-  // The recovery path shared by an ASYNC fault (F4: 'error' / 'messageerror') and a PROTOCOL fault (F1: a
+  // The recovery path shared by an ASYNC fault ('error' / 'messageerror') and a PROTOCOL fault (a
   // malformed/mismatched result on a live token). The worker is unusable: reject EVERY outstanding request (the
   // queue makes each a terminal 'error' summary), terminate the dead worker, and NULL it so the next dispatch
   // recreates a fresh one — no promise hangs, and a subsequent start() runs clean.
@@ -274,8 +274,8 @@ export function createWorkerTransport(makeWorker: () => WorkerLike, base: string
     for (const entry of entries) entry.reject(err)
   }
 
-  // A message that cannot settle a LIVE request — a malformed ENVELOPE (F1: no correlatable token) or a
-  // NEVER-ISSUED token (F2: the worker could not have minted it) — is UNADDRESSABLE. While ANY request is live it
+  // A message that cannot settle a LIVE request — a malformed ENVELOPE (no correlatable token) or a
+  // NEVER-ISSUED token (the worker could not have minted it) — is UNADDRESSABLE. While ANY request is live it
   // would strand that request forever (no timeout; `messageerror` fires only on a structured-clone FAILURE, and
   // this payload cloned fine), so fail-closed to the crash path. With ZERO live requests nothing can strand, so it
   // stays a counted drop. Both unaddressable kinds share this exact rule.
@@ -287,7 +287,7 @@ export function createWorkerTransport(makeWorker: () => WorkerLike, base: string
   const onMessage = (ev: { data?: unknown }): void => {
     const env = readEnvelope(ev.data)
     if (env.kind === 'malformed') {
-      // ENVELOPE-level skew (F1): a non-object message, wrong `type`, or a missing/non-integer requestToken — no
+      // ENVELOPE-level skew: a non-object message, wrong `type`, or a missing/non-integer requestToken — no
       // correlatable token at all.
       failClosedUnaddressable('malformed result envelope while requests are live (non-object message, wrong type, ' +
         'or missing/non-integer requestToken) — the worker cannot address any inflight request')
@@ -297,11 +297,11 @@ export function createWorkerTransport(makeWorker: () => WorkerLike, base: string
     if (entry === undefined) {
       // A valid-integer token that isn't inflight is one of two DISJOINT things, and ISSUANCE tells them apart:
       //   • RETIRED — 0 < token < nextToken (a safe integer) — was issued, then resolved/cancelled/superseded. This
-      //     is the F3 correlation drop: a stale result from a dispatch already settled. Counted stale drop, never a
+      //     is the correlation drop: a stale result from a dispatch already settled. Counted stale drop, never a
       //     crash — even if its summary is malformed (we don't validate a retired token; it addresses nothing live).
       //   • NEVER-ISSUED — token >= nextToken, token <= 0, or a non-safe-integer. The worker mints tokens ONLY from
       //     this client's monotonic counter, so it could not have produced this; it is as unaddressable as a
-      //     malformed envelope (F2), so it takes the SAME fail-closed rule (crash while live, counted drop idle).
+      //     malformed envelope, so it takes the SAME fail-closed rule (crash while live, counted drop idle).
       const retired = Number.isSafeInteger(env.requestToken) && env.requestToken > 0 && env.requestToken < nextToken
       if (retired) { stats.droppedStale++; return }
       failClosedUnaddressable(`never-issued token ${env.requestToken} (>= nextToken ${nextToken}, <= 0, or not a ` +
@@ -309,7 +309,7 @@ export function createWorkerTransport(makeWorker: () => WorkerLike, base: string
         `inflight request and would strand any live one`)
       return
     }
-    // LIVE token: fail-closed. A malformed, identity-mismatched, or label-contradicts-evidence (F1/F2) result here
+    // LIVE token: fail-closed. A malformed, identity-mismatched, or label-contradicts-evidence result here
     // is a worker regression/skew — crash.
     const summary = validateSummary(env.summary, entry.expected)
     if (summary === null) {
@@ -370,7 +370,7 @@ export function createWorkerTransport(makeWorker: () => WorkerLike, base: string
 
 // The lazily-constructed production singleton (one persistent worker, recreated after a crash). Kept out of
 // module scope so importing this file never runs `new Worker` / reads import.meta.env / touches `document` — only
-// the first dispatch does. The deploy base is RESOLVED to an absolute url HERE on the main thread (F2), against
+// the first dispatch does. The deploy base is RESOLVED to an absolute url HERE on the main thread, against
 // `document.baseURI`, so a relative Vite base ('' / './') — which the worker cannot interpret — is settled before
 // init and the worker only ever joins an absolute base.
 let singleton: WorkerTransport | null = null

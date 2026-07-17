@@ -10,7 +10,7 @@ import {
 import { actOf, lineFadeFactor, solidRevealSeqs, observerPoint, missRayEndpoint, ghostVisible, ACT_III_START } from './queryScene'
 import { HORIZON_HOPS, HORIZON_OPTS, causalNeighborhood } from './chain'
 
-// ── The Query Stage (v0.6 T3) — e0 kind-23 geometric replay ────────────────────────────────────────────
+// ── The Query Stage (v0.6) — e0 kind-23 geometric replay ────────────────────────────────────────────
 // The release's heart, and the LENS CONSTITUTION's first LAW-4 citizen (the declaration is filed in
 // queryStage.ts). REPLACES the presentational spine as e0's stage: the probes now WRITE THE WORLD as the
 // run plays — each resolved query renders its ACTUAL geometry (points in/out of regions, range/bearing
@@ -29,7 +29,7 @@ import { HORIZON_HOPS, HORIZON_OPTS, causalNeighborhood } from './chain'
 // Grows forward with the playhead, TRUNCATES on a scrub back (a pure function of tick, both directions) —
 // so the write-as-you-play / scrub-back contract holds BY CONSTRUCTION (the shipped e0 reveal mechanism).
 //
-// SELECTION RE-LENSING (consult-legibility-miniwave §§1–2 — THE AGGREGATION HORIZON): selection is a lens held
+// SELECTION RE-LENSING (THE AGGREGATION HORIZON): selection is a lens held
 // OVER the rest state, not a replacement for it. With an event selected the revealed geometry lenses by causal
 // HOP DISTANCE (causalHops, HORIZON_HOPS = 3, the constant chain.ts exports to BOTH this stage and the timeline
 // overlay): the selected probe glows accent-HDR (the frame's SOLE line bloom); its ≤3-hop causal neighborhood
@@ -57,7 +57,7 @@ import { HORIZON_HOPS, HORIZON_OPTS, causalNeighborhood } from './chain'
 // Under a ghost the revealed prefix obeys the horizon law above (ambient × yield), so violet IGNITES hop by
 // hop only as the playhead closes within HORIZON_HOPS of the ghost — earned-approach choreography at zero cost.
 //
-// §8 / PERF — the whole stage rebuilds on a STORE SUBSCRIPTION at tick / selection BOUNDARIES only (NO
+// The load budget / PERF — the whole stage rebuilds on a STORE SUBSCRIPTION at tick / selection BOUNDARIES only (NO
 // useFrame; the integer tick advances at witness rate, never mid-tick), and the rebuild is engineered to be
 // ALLOCATION-FREE in steady state and O(changed), not O(revealed), so it holds at f4 scale (e0's 75 events
 // would mask an O(revealed) rebuild; a campaign run will not):
@@ -78,19 +78,19 @@ import { HORIZON_HOPS, HORIZON_OPTS, causalNeighborhood } from './chain'
 // DEVIATION from the plan's "fade via the trail-SHADER pattern": the fade is stepped at EVENT rate (the same
 // head-relative math, computed in the build) rather than a per-frame uHead uniform — on a positionless run
 // nothing MOVES within a tick (one event per tick), so a per-frame uniform would smooth a sub-tick gap that
-// never renders. Event-rate is the stricter §8 posture (zero frame-path work) and visually identical at
+// never renders. Event-rate is the stricter load-budget posture (zero frame-path work) and visually identical at
 // witness pace. Materials are fog:false — the stage sits hundreds of units out (core-theatre framing), well
 // beyond the scene's 30→400 fog, so fog would erase it; the raw-shader trail opts out the same way.
 
 // NED (north/east/down) → three.js [x=north, y=up=−down, z=east] = [n,−d,e]. The flip lays the near-planar slab
 // (d ≈ 0) into the ground (XZ) plane so it reads against the grid, up is up.
 //
-// BASIS BOUNDARY (ARCH-4): this is basis B, and it is DELIBERATELY NOT the app-wide flight basis A
+// BASIS BOUNDARY: this is basis B, and it is DELIBERATELY NOT the app-wide flight basis A
 // (placement.nedToThree = [e,−d,n]). That is correct HERE and only here: the query stage (e0) is POSITIONLESS —
 // it overlays no decoded flight, no trail, no interactive drone — so nothing drawn on this stage is in basis A
 // to conflict with. Its basis is fully SELF-CONTAINED: this t3, the matrix builders below (makeTranslation
 // [p[0],−p[2],p[1]]), AND the camera framing (queryScene's observer/finale conversion, the same [c[0],−c[2],c[1]])
-// all agree, so what is drawn is what is framed. f2a's ARCH-4 defect was the opposite — mixing a basis-A flight
+// all agree, so what is drawn is what is framed. f2a's basis defect was the opposite — mixing a basis-A flight
 // with a basis-B apparatus on ONE stage; f2a is now unified on basis A (sensingStageView imports nedToThree),
 // and this basis-B stage must stay unmirrored. Pure index math — no allocation beyond the returned tuple.
 const t3 = (v: Vec3): [number, number, number] => [v[0], -v[2], v[1]]
@@ -143,7 +143,7 @@ const NEGATE_HDR = new THREE.Color(PALETTE.verdictNegate).multiplyScalar(CONTACT
 // Exported: the bloom regression pins the RENDERER'S selected colour (not a test-side reconstruction) —
 // the selection pop must CLEAR the shared threshold while dimmed contacts sit below it. Both sides bound.
 export const SELECTED = new THREE.Color(PALETTE.accent).multiplyScalar(SELECTED_HDR)
-// EMPHASIS DECAY (consult §2) — the `spine`-violet multipliers for hops 1/2/3, SYMMETRIC (distance-only,
+// EMPHASIS DECAY — the `spine`-violet multipliers for hops 1/2/3, SYMMETRIC (distance-only,
 // direction-blind: the shipped anc ×0.6 / desc ×1.0 asymmetry is RETIRED — direction is already answered by
 // the Inspector's ← cause / effect → and by the ribbon's split arcs, so encoding it in the hue's chroma too
 // was two hierarchies in one channel, the mud LAW 2 forbids). Three perceptibly distinct registers (ratio
@@ -183,7 +183,7 @@ export const GHOST_OPACITY = 0.35
 // (1 sphere · 2 box · 3 triangle). The JSX mirrors these EXACTLY (single source of truth). SHELL_LIFT is the
 // one-step lift a selected LOS COMPONENT paints on the ONE solid it interrogated (a screenshot-gated cue):
 // its distinguishing content vs its two siblings (same corridor, different occluder). Uniform-only, restored
-// on deselect — §8-clean, zero tokens.
+// on deselect — load-budget-clean, zero tokens.
 const SHELL_OPACITY = [0.22, 0.3, 0.2] as const
 const SHELL_LIFT = 0.35
 // Set a solid's shell alpha: lifted when it is the interrogated object, else its base. Uniform-only write.
@@ -207,7 +207,7 @@ export function ambientLineColor(out: THREE.Color, clear: boolean, tint: number,
 }
 
 // The LINE voice under a SELECTION (CONSTRAINT: hue = identity, chroma = hierarchy — a LINE grammar only, never
-// a contact), consult §§1.2 / 2: the subject (hop 0) wears accent SELECTED — the frame's SOLE line bloom,
+// a contact): the subject (hop 0) wears accent SELECTED — the frame's SOLE line bloom,
 // fade-exempt; the ≤ HORIZON_HOPS neighbourhood wears the `spine` violet in the HOP_DECAY registers
 // (ROLE_BY_HOP), also fade-exempt; everything BEYOND the horizon re-enters the ambient law × LINE_AMBIENT_YIELD
 // (so it fades — a spent beyond-horizon line is black, invisible under AdditiveBlending, rather than a
@@ -225,7 +225,7 @@ export function selectedLineColor(out: THREE.Color, l: LineItem, ev: number, hop
   return ambientLineColor(out, l.clear, l.tint, fade, LINE_AMBIENT_YIELD)
 }
 
-// SELECTED LOS COMPOSITE → its GEOMETRICALLY-DISTINCT component corridors (v0.7 T3, closure round). A
+// SELECTED LOS COMPOSITE → its GEOMETRICALLY-DISTINCT component corridors (v0.7). A
 // composite's three component RAY_OCCLUDER rows are its nearest-3 ancestors, but their ambient lines are
 // SUPPRESSED (playback de-dup), so the composite's own accent sightline — painted SELECTED by the main line
 // pass — is the sole owner of the o→subject segment. This overlay draws the components back as NEIGHBOURHOOD
@@ -449,7 +449,7 @@ export function indexOfSeq(seqs: Int32Array, seq: number): number {
   return -1
 }
 
-// PURE paint-range reducer for the SELECTED line pass (v0.7 T3 fix W2). Under a standing selection the
+// PURE paint-range reducer for the SELECTED line pass (v0.7). Under a standing selection the
 // instance buffer already holds colours valid for `prevReveal` over indices [0, prevExtent). Only
 // BEYOND-horizon lines are reveal-dependent (ambient × yield × fade, or fade-0 black); the subject + the
 // ≤HORIZON_HOPS neighbourhood are fade-EXEMPT (reveal-independent role colours). A line's ambient fade is
@@ -480,7 +480,7 @@ export function QueryStage({ model, data }: { model: RunModel; data: QueryStageD
   const ghostLineRef = useRef<THREE.InstancedMesh>(null)     // NOT-YET ghost: the selected probe's line, capacity 1
   const ghostContactRef = useRef<THREE.InstancedMesh>(null)  // NOT-YET ghost: the selected probe's contact, capacity 1
   const selCompLineRef = useRef<THREE.InstancedMesh>(null)   // un-suppression: a selected LOS component's OWN written corridor, capacity 1
-  const hopCompLineRef = useRef<THREE.InstancedMesh>(null)   // W1: a selected COMPOSITE's ≤3 component corridors in hop registers, capacity HORIZON_HOPS
+  const hopCompLineRef = useRef<THREE.InstancedMesh>(null)   // a selected COMPOSITE's ≤3 component corridors in hop registers, capacity HORIZON_HOPS
   const sphereRef = useRef<THREE.Mesh>(null)
   const boxRef = useRef<THREE.Mesh>(null)
   const triangleRef = useRef<THREE.Mesh>(null)
@@ -519,7 +519,7 @@ export function QueryStage({ model, data }: { model: RunModel; data: QueryStageD
     conSelColored: 0,                            // extent of contacts painted for `conSelEv`
     lineMode: 'window' as number | 'window',    // 'window' = unselected fade-window packing; number = role prefix for that ev
     lineSelColored: 0,                           // extent of the role-coloured line prefix
-    lineReveal: 0,                               // reveal the selected line buffer was last painted for (W2 paint-range)
+    lineReveal: 0,                               // reveal the selected line buffer was last painted for (the paint-range reducer)
     compYieldIdx: -1,                            // seg instance currently zero-scaled for the composite-yield (-1 = none)
     liftObj: 0,                                  // scenario object whose shell is currently opacity-lifted (0 = none)
   })
@@ -588,7 +588,7 @@ export function QueryStage({ model, data }: { model: RunModel; data: QueryStageD
       // covers both the fading window and the append in one bounded range, and stays correct across a scrub in
       // EITHER direction. Still O(changed), never O(revealed).
       if (selecting) {
-        // W2 — the paint range is the PURE reducer over (prevReveal, newReveal, prevExtent). On a SELECTION
+        // The paint range is the PURE reducer over (prevReveal, newReveal, prevExtent). On a SELECTION
         // EDGE (st.lineMode !== ev) the hop map is new so every role colour changes → repaint the whole prefix
         // (from 0). On a plain TICK/SCRUB under the SAME selection the reducer anchors `from` on the UNION of
         // the pre- and post-jump fade windows (min(prev,new) − LINE_FADE_TICKS), so a multi-tick FORWARD jump
@@ -640,7 +640,7 @@ export function QueryStage({ model, data }: { model: RunModel; data: QueryStageD
           scLine.count = 1
         } else scLine.count = 0
       }
-      // ── W1: SELECTED LOS COMPOSITE — draw only its GEOMETRICALLY-DISTINCT component corridors as
+      // ── SELECTED LOS COMPOSITE — draw only its GEOMETRICALLY-DISTINCT component corridors as
       // NEIGHBOURHOOD (ownership by distinctness). The composite's own sightline is the accent subject (the
       // line pass above painted it SELECTED); its three component rows are its nearest-3 ancestors with their
       // ambient lines suppressed. Only the components whose corridor DIFFERS from the subject segment draw
@@ -673,7 +673,7 @@ export function QueryStage({ model, data }: { model: RunModel; data: QueryStageD
 
       // TESTED-SOLID CUE (screenshot-gated): a selected component lifts the ONE solid it interrogated (its
       // `object`) one opacity step — the distinguishing content vs its siblings (same corridor, different
-      // occluder). Uniform-only, restored on deselect / re-selection. §8-clean, zero tokens.
+      // occluder). Uniform-only, restored on deselect / re-selection. load-budget-clean, zero tokens.
       const evDraw = evComp ? draws[ev!] : null
       const liftObj = evDraw && evDraw.kind === 3 ? evDraw.object : 0
       if (st.liftObj !== liftObj) {
@@ -793,7 +793,7 @@ export function QueryStage({ model, data }: { model: RunModel; data: QueryStageD
         <meshBasicMaterial transparent depthWrite={false} toneMapped={false} fog={false} blending={THREE.AdditiveBlending} />
       </instancedMesh>
 
-      {/* W1: SELECTED-COMPOSITE component corridors — a composite's ≤HORIZON_HOPS component probes, drawn back
+      {/* SELECTED-COMPOSITE component corridors — a composite's ≤HORIZON_HOPS component probes, drawn back
           as its NEIGHBOURHOOD in the hop-decay `spine` registers (instanceColor = ROLE_BY_HOP, set by the
           build) over the SAME suppressed componentLines geometry the accent component voice uses. Same additive
           line material as the ambient/selected lines; capacity HORIZON_HOPS (a composite has exactly three

@@ -12,7 +12,7 @@ test('grammar', () => {
   expect(mapKey('Escape', 'Escape', false)).toEqual({ type: 'deselect' })
   expect(mapKey('Slash', '?', false)).toEqual({ type: 'help' })
   expect(mapKey('KeyF', 'f', false)).toEqual({ type: 'focus' })
-  expect(mapKey('KeyO', 'o', false)).toEqual({ type: 'pov' }) // Observer's Eye POV (T4b)
+  expect(mapKey('KeyO', 'o', false)).toEqual({ type: 'pov' }) // Observer's Eye POV
 })
 test('editable targets swallow everything', () => {
   expect(mapKey('Space', ' ', true)).toBeNull()

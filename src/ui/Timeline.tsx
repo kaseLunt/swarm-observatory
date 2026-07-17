@@ -57,8 +57,8 @@ const MARK_W = 1.5
 const HEAT_BINS = 200
 const HEAT_ALPHA = 0.68
 // Kind → display name for hover identity, mirroring the Inspector's fallback-to-number contract
-// (EVENT_KIND_NAMES covers every registry kind — incl. F1's motion substrate 0x0120/0x0121 named in
-// v0.7 T5; a kind outside the registry still falls through to its numeric id).
+// (EVENT_KIND_NAMES covers every registry kind — incl. the motion substrate 0x0120/0x0121 named in
+// v0.7; a kind outside the registry still falls through to its numeric id).
 const kindName = (kind: number): string => EVENT_KIND_NAMES[kind] ?? String(kind)
 
 // Below this many pixels of pointer travel a press is a CLICK (selects the nearest event); at or above
@@ -184,9 +184,9 @@ export function Timeline({ model }: { model: RunModel }) {
         return
       }
       if (s.playing) {
-        // Capture seam (rung 2 + round 3): both halves are the IDENTITY whenever capture is not engaged
+        // Capture seam: both halves are the IDENTITY whenever capture is not engaged
         // (the default, and always in the live app) — frameDeltaMs returns `now - last` unchanged and
-        // captureSpeed returns s.speed unchanged, byte-identical to the wall-clock path (§8). During a
+        // captureSpeed returns s.speed unchanged, byte-identical to the wall-clock path (within the load budget). During a
         // ?capture= session frameDeltaMs returns the fixed per-frame delta (the recorded playhead
         // sequence is stable and reproducible on any machine) and captureSpeed pins the rate multiplier
         // to 1: the fps alone encodes capture pacing, so a ?speed= deep link or a mid-capture speed
@@ -200,14 +200,14 @@ export function Timeline({ model }: { model: RunModel }) {
         // speed — and for a mid-tour play step that ends on maxTick, finish() never runs here at all),
         // so syncing now would poison the URL with speed=<witness>. The tour's own exit path
         // (finish → forced syncUrl AFTER restoring the ladder speed) covers the real resting sync.
-        // NATURAL-END FINALE (v0.5b T3, ruling 5): the naive path's destination. At the same edge as the
+        // NATURAL-END FINALE (a design ruling): the naive path's destination. At the same edge as the
         // resting-URL sync — a.done on a manual, non-tour play — raise the ephemeral finale flag in the SAME
-        // transport batch (the standing §8 exception; a one-shot store write, never per frame). It drives BOTH
+        // transport batch (the standing load-budget exception; a one-shot store write, never per frame). It drives BOTH
         // the frame-loop consumers (camera close-up, head paint, lit journey) via a Scene subscription AND the
         // React consumers (the entity head repaint, the DOM marker) — a module channel alone could not
         // re-render a React consumer. (e0's QueryStage, which replaced ChainSpine here, needs no finale flag:
         // at the resting tick its own tick subscription already holds the full stage.) The set is IDEMPOTENT:
-        // a play-at-rest re-fire (r1 — advancePlayhead no-ops
+        // a play-at-rest re-fire (advancePlayhead no-ops
         // at the clamp, a.done && s.playing true again) simply re-sets it, so play-at-rest KEEPS the finale.
         if (a.done && s.playing && !isTourActive()) { syncUrl(true); useViewStore.setState({ finale: true }) }
       }
@@ -306,7 +306,7 @@ export function Timeline({ model }: { model: RunModel }) {
   const tickAt = (clientX: number, rect: DOMRect) =>
     tickAtX(clientX, rect.left, rect.width, model.tickCount)
 
-  // Discoverability (Task v04-7): a plain CLICK selects the nearest event and lights its causal chain
+  // Discoverability: a plain CLICK selects the nearest event and lights its causal chain
   // (the primary way to explore the chain without knowing the shift modifier); a DRAG scrubs the
   // playhead live; shift-click still selects (kept for muscle memory). The down→move→up split is what
   // separates the two so a click never scrubs and a drag never selects.
@@ -325,8 +325,8 @@ export function Timeline({ model }: { model: RunModel }) {
 
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
-    // HOVER IDENTITY (DOM event-rate, NEVER the frame path; §8 holds): resolve what sits under the cursor
-    // from x + y→lane math and write it to the canvas's native title — the run-switcher's R5 tooltip
+    // HOVER IDENTITY (DOM event-rate, NEVER the frame path; the load budget holds): resolve what sits under the cursor
+    // from x + y→lane math and write it to the canvas's native title — the run-switcher's tooltip
     // mechanism made dynamic. Resolution is LANE-SCOPED and mode-aware: a ticks-mode lane names its
     // nearest event by rounded tick (causal arc appended only when the event is in the lit chain — arcs
     // reserved for selection); a heat-mode lane resolves the PAINTED BIN from the RAW x-fraction
@@ -476,7 +476,7 @@ function TickReadout({ maxTick, dtUs }: { maxTick: number; dtUs: number | undefi
   // Sampled subscription: re-renders at most 8×/s while playing (never on the 60Hz frame path),
   // immediately on pause/scrub edges. Closes the readout-every-frame item.
   const tick = usePlayheadSample(8)
-  // SIM-CLOCK (T5c): a run whose manifest pins a real dt (f2a/f3a/f4, 125000µs) shows genuine sim time
+  // SIM-CLOCK: a run whose manifest pins a real dt (f2a/f3a/f4, 125000µs) shows genuine sim time
   // as mm:ss.s current / total — the tick survives in the title. The det-only / assumed tier (e0/f0/f1)
   // NEVER reaches this branch (hasRealSimClock is false for them), so it keeps the exact "tick X / Y"
   // readout — no false real-clock claim on a KAT-tier run, and the smoke suite's readout text is intact.

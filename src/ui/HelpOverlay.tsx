@@ -9,7 +9,7 @@ type Row = { keys: string; act: string }
 const GRAMMAR: Row[] = [
   { keys: 'Space / K', act: 'play-pause' },
   // "step ∓1 tick" made the reader decode minus-plus notation to learn which arrow goes which way
-  // (v0.5d bench R7b) — each arrow now states its own direction, plainly.
+  // (v0.5d) — each arrow now states its own direction, plainly.
   { keys: '← / →', act: '← −1 · → +1 tick' },
   { keys: 'J / L', act: 'speed slower / faster' },
   { keys: '1 – 4', act: 'set speed (0.25× · 1× · 4× · 8×)' },

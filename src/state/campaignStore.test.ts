@@ -99,7 +99,7 @@ describe('useCampaignStore: per-seed phase map + rollup', () => {
   })
 })
 
-describe('record: derive-don\'t-trust — never greens on contradictory evidence (F2)', () => {
+describe('record: derive-don\'t-trust — never greens on contradictory evidence', () => {
   beforeEach(() => useCampaignStore.getState().reset())
 
   test('a "verified" summary whose sha256ok is false is downgraded to mismatch, not greened', () => {
@@ -138,7 +138,7 @@ describe('record: derive-don\'t-trust — never greens on contradictory evidence
     expect(s.rollup.error).toBe(1)
   })
 
-  test('a block-bearing would-be-green "verified" (decoded, all flags pass) is still forced to error, never greened (F2)', () => {
+  test('a block-bearing would-be-green "verified" (decoded, all flags pass) is still forced to error, never greened', () => {
     // The evidence ALONE (sha256ok true, non-null ids, all flags) derives 'verified' — deriveRunStatus is blind to the
     // error block. This is the ONLY case where the block still forces 'error': derivation would OTHERWISE green, so the
     // incoherent block is the sole problem. Mirrors the worker-client boundary; the second layer must not rely on the first.
@@ -149,10 +149,10 @@ describe('record: derive-don\'t-trust — never greens on contradictory evidence
     expect(s.phase['42']).toBe('error')          // would-be-green + incoherent block → error
     expect(s.rollup.verified).toBe(0)            // never over-counted a green
     expect(s.rollup.error).toBe(1)
-    expect(s.summaries['42']!.status).toBe('verified') // stored verbatim so W5 can still show the underlying evidence
+    expect(s.summaries['42']!.status).toBe('verified') // stored verbatim so the Wall can still show the underlying evidence
   })
 
-  test('a "verified" relabelling a fold-threw MISMATCH (nonempty digest, ¬sha256ok, ids null, block) records MISMATCH, not error (F2)', () => {
+  test('a "verified" relabelling a fold-threw MISMATCH (nonempty digest, ¬sha256ok, ids null, block) records MISMATCH, not error', () => {
     // PREMISE-FIRST: the OLD order (force 'error' on any block-bearing 'verified' BEFORE deriving) recorded this as
     // 'error' — an integrity failure concealed in the operational bucket. DERIVE FIRST: ¬decoded ∧ ¬sha256ok → 'mismatch',
     // and a derived non-green outranks the label, so it is recorded as MISMATCH (rollup.mismatched, never rollup.error).
@@ -172,7 +172,7 @@ describe('record: derive-don\'t-trust — never greens on contradictory evidence
     expect(s.summaries['42']!.status).toBe('verified') // stored verbatim
   })
 
-  test('a "verified" relabelling an OPERATIONAL failure (EMPTY digest) records ERROR, never mismatch (F2 digest axis)', () => {
+  test('a "verified" relabelling an OPERATIONAL failure (EMPTY digest) records ERROR, never mismatch (digest axis)', () => {
     // The digest axis outranks derivation in the mirror exactly as it does at the boundary: an empty sha256Hex means
     // no bytes were ever fetched and hashed — derivation is digest-blind and would read the null-ids/¬sha256ok shape
     // as an integrity 'mismatch', but there was no integrity check to fail. A relabelled errorSummary is an
@@ -193,7 +193,7 @@ describe('record: derive-don\'t-trust — never greens on contradictory evidence
     expect(s.rollup.verified).toBe(0)            // and certainly no green
   })
 
-  test('a "mismatch" relabelling an OPERATIONAL failure (EMPTY digest) records ERROR — the digest axis outranks EVERY label (F2)', () => {
+  test('a "mismatch" relabelling an OPERATIONAL failure (EMPTY digest) records ERROR — the digest axis outranks EVERY label', () => {
     // The digest guard sits ABOVE the non-'verified' early return: an errorSummary relabelled 'mismatch' would
     // otherwise return at the label branch and count as an INTEGRITY failure — but an empty digest proves no bytes
     // were fetched or hashed, so no integrity comparison existed to fail, regardless of the label's claim.
@@ -212,7 +212,7 @@ describe('record: derive-don\'t-trust — never greens on contradictory evidence
     expect(s.rollup.mismatched).toBe(0)          // never a false integrity verdict
   })
 
-  test('a "verified" relabelling the fold-threw ERROR arm (sha256ok true, ids null, block) records ERROR — the legitimately-derived error is preserved (F2)', () => {
+  test('a "verified" relabelling the fold-threw ERROR arm (sha256ok true, ids null, block) records ERROR — the legitimately-derived error is preserved', () => {
     // The other derive-first arm: ¬decoded ∧ sha256ok → 'error' (certified bytes that will not fold). Derivation, not the
     // block, is what records it — a legitimately-derived 'error' is preserved, distinct from the would-be-green case above.
     const st = useCampaignStore.getState()
@@ -230,7 +230,7 @@ describe('record: derive-don\'t-trust — never greens on contradictory evidence
   })
 })
 
-describe('cancelPending: an in-view cancel preserves observed evidence (W5 F2)', () => {
+describe('cancelPending: an in-view cancel preserves observed evidence', () => {
   beforeEach(() => useCampaignStore.getState().reset())
 
   test('terminal verdicts (verified/mismatch/error) SURVIVE; only in-flight seeds revert to attested-pending', () => {

@@ -17,7 +17,7 @@ export interface RunEntry {
   ticks: number; kinds: Record<string, number>; dtUs?: number; supersedesPlanId?: string
 }
 
-// Single-fetch seam for runs/index.json (debt #15). App's run switcher and useRun's entry lookup both
+// Single-fetch seam for runs/index.json. App's run switcher and useRun's entry lookup both
 // need the index; each used to fetch it independently, so a cold load hit the network TWICE for one
 // static file. This memoizes the parsed result: the first caller starts the fetch and concurrent/later
 // callers share the same in-flight (then resolved) promise — exactly ONE request. A FAILURE is NOT
@@ -45,18 +45,18 @@ export function loadRunIndex(): Promise<RunEntry[]> {
 export type RunPhase = 'idle' | 'fetching' | 'decoding' | 'verifying' | 'ready'
 // matchesTrailer is threaded alongside the hex so the ceremony's event_hash tick binds to the in-bundle
 // self-consistency verdict (foldAndVerify over the recomputable fields) — a trailer-inconsistent bundle
-// ticks ✗ on that row, not a false ✓. `verdict` is the TRUST verdict (A2 — the seal fold), a DISCRIMINATED
+// ticks ✗ on that row, not a false ✓. `verdict` is the TRUST verdict (the seal fold), a DISCRIMINATED
 // value, not a boolean: 'manifest-verified' folds every manifest pin for a full-manifest run; 'self-consistent'
 // for a det-only run (no external oracle — the attested voice, never a green ✓); 'mismatch' when a pin
 // disagrees. The surfaces that could mint a green "verified" — the thesis card, the Hangar seal, the ceremony's
 // result_id tick + step — bind to `verdict`, never matchesTrailer alone, so a manifest-mismatching run can
 // never seal green while Provenance shows its row red, and a det-only run never earns the manifest-grade green.
-//   `pins` (F3) is the per-manifest-pin comparison list — THE SAME comparableManifestPins ProvenancePanel
+//   `pins` is the per-manifest-pin comparison list — THE SAME comparableManifestPins ProvenancePanel
 // renders row-by-row — threaded so the ceremony's NAMED hash rows (event_hash, result_id) grade from THEIR OWN
 // pin, not the aggregate verdict: when ONLY the manifest's event_hash is corrupted (bundle clean, verdict
 // 'mismatch') the event_hash row must red while result_id stays ✓ — the true per-pin picture Provenance shows,
 // not the inverse the aggregate grading painted. null on a det-only run (no manifest to compare a pin against).
-//   `trailerPins` (F4) is the per-field trailer comparison so the ceremony's event_hash row grades from its OWN
+//   `trailerPins` is the per-field trailer comparison so the ceremony's event_hash row grades from its OWN
 // in-bundle reproduction, not the aggregate matchesTrailer: a trailer whose stored STATE hash is corrupt reds the
 // state comparison (matchesTrailer false) without falsely ✗-ing the event_hash row, whose own bytes reproduced fine.
 export interface CeremonyHashes { eventHash: string; resultId: string; matchesTrailer: boolean; verdict: TrustVerdict; pins: ManifestPinComparison[] | null; trailerPins: TrailerPins }
@@ -68,7 +68,7 @@ interface RunState {
   progress: number
   phase: RunPhase
   hashes: CeremonyHashes | null
-  // Identity of the run whose bytes are CURRENTLY published (W1 — the seal-race fix). Set to `runId`
+  // Identity of the run whose bytes are CURRENTLY published (the seal-race fix). Set to `runId`
   // ONLY in the final ready-state update that publishes model+hashes, and nulled on every reset. This is
   // the identity CARRIED WITH THE DATA: during a run switch the store runId flips synchronously while this
   // (and model/hashes) still name the PRIOR run for one commit, so a seal must gate on loadedRunId===runId
@@ -193,16 +193,16 @@ export function useRun(runId: string) {
       const model = new RunModel(run, manifest)
       enforceSelectionInvariant(model)
       // loadedRunId is published HERE, atomically with model+hashes — the identity that lets App's seal
-      // effect know these exact hashes belong to THIS runId (W1), never the run we just switched from.
+      // effect know these exact hashes belong to THIS runId, never the run we just switched from.
       setState({ model, gate, error: null, progress: 1, phase: 'ready', hashes, settling: false, loadedRunId: runId })
     }
 
     ;(async () => {
       try {
-        // H1 — the load plan comes from the TRUSTED CATALOG (in-app, pinned), never from unsigned
+        // The load plan comes from the TRUSTED CATALOG (in-app, pinned), never from unsigned
         // runs/index.json: a certified id's base is fixed here, so a tampered index entry cannot point this
         // run at another run's bytes, and a manifest-required run cannot be silently downgraded to det-only.
-        // F2 — a NON-conforming id (path traversal, a slash) resolves to NO plan: throw the unknown-run error
+        // A NON-conforming id (path traversal, a slash) resolves to NO plan: throw the unknown-run error
         // (the existing error-screen path) rather than issue a fetch against a spoofable normalized path.
         const plan = resolveLoadPlan(runId)
         if (plan === null) throw new Error(`unknown run '${runId}'`)

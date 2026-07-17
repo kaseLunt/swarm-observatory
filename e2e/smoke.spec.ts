@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-// The profile-conflation tripwire, imported from THE single source (closure item 2) — the same binding
+// The profile-conflation tripwire, imported from THE single source — the same binding
 // hangar.test.ts and publication.test.ts scan with, so the e2e pattern can never drift from the unit
 // pattern. The leaf module has zero imports on purpose: this project is tsconfig.node.json (nodenext,
 // hence the explicit .ts extension via allowImportingTsExtensions), and a zero-import file typechecks
@@ -22,10 +22,10 @@ test('E0 det-only run decodes, verifies trailer, shows claims-absent provenance'
   await expect(page.locator('.provenance')).toContainText('(det-only)')
   await expect(page.locator('.counts')).toContainText('75 events · 75 ticks')
   await expect(page.locator('.readout')).toHaveText('tick 0 / 75')
-  // Honesty (I2 false-green fix; F1 voice): a det-only run carries NO manifest claims, so NO claim row may
+  // Honesty (the false-green fix): a det-only run carries NO manifest claims, so NO claim row may
   // paint a false green. Discriminating selector = the case_id row: it is a trailer-SOURCED value (read from
   // the trailer, never recomputed against anything), so it wears the ATTESTED voice (•, 'attested'), never
-  // 'verified' — and never the ○ self-check ring the trailer-reproduced hash rows earn (F1: a value with no
+  // 'verified' — and never the ○ self-check ring the trailer-reproduced hash rows earn (a value with no
   // oracle must not wear a check glyph).
   const caseIdRow = page.locator('.provenance tr', { hasText: 'case_id' })
   await expect(caseIdRow).toHaveClass(/attested/)
@@ -47,7 +47,7 @@ test('stale deep-link event does not white-screen (C1)', async ({ page }) => {
   await expect(page.locator('.screen.error')).toHaveCount(0)
 })
 
-test('run switch clears a carried selection and leaks no stale ev into the new URL (I3)', async ({ page }) => {
+test('run switch clears a carried selection and leaks no stale ev into the new URL', async ({ page }) => {
   await page.goto('/?run=e0')
   await expect(page.locator('.readout')).toHaveText('tick 0 / 75', { timeout: 15000 })
   // Shift-click mid-timeline selects the nearest event (sets ev) and writes it to the URL. A bare
@@ -125,7 +125,7 @@ test('guided tour auto-advances to step 2 after the step-1 hold elapses, then Es
   await page.getByRole('button', { name: '▶ tour' }).click()
   await expect(page.locator('.tour-caption')).toContainText('A real run bundle')
   // The advance into the 'exact replay' caption is gated by the FIRST caption's holdMs (tours.ts e0-hero,
-  // now 7300ms after the §5 reading-window resize — was 5500). The auto-retrying assertion polls until the
+  // now 7300ms after the reading-window resize — was 5500). The auto-retrying assertion polls until the
   // scheduler's holdElapsed dispatch fires and advances the state machine — proving auto-advance, not just
   // the initial caption paint — without a hard `waitForTimeout`. Timeout 12000 (was 8000) sits comfortably
   // above the 7300ms hold + tour-start latency so the resize does not race the poll on a slow runner.
@@ -134,11 +134,11 @@ test('guided tour auto-advances to step 2 after the step-1 hold elapses, then Es
   await expect(page.locator('.tour-overlay')).toHaveCount(0)
 })
 
-// ── Task v04-7: cold open, discoverability, witnessable playback ─────────────────────────────────────
+// ── cold open, discoverability, witnessable playback ─────────────────────────────────────
 
-// ── Task v0.6 T6: ZERO-CLICK THESIS on the cold open ──────────────────────────────────────────────────
-// CONSCIOUS REWRITE (disclosed in the T6 report): the v0.4-7 cold-open test asserted the first-visit tour
-// NUDGE treatment on a bare `/`. T6 (P2) replaces that first-visit cold-open experience with the ZERO-CLICK
+// ── ZERO-CLICK THESIS on the cold open ──────────────────────────────────────────────────
+// CONSCIOUS REWRITE: the earlier cold-open test asserted the first-visit tour
+// NUDGE treatment on a bare `/`. This change replaces that first-visit cold-open experience with the ZERO-CLICK
 // THESIS: a bare cold open opens the thesis card AND auto-plays the first tour beat. The nudge PRECEDENT is
 // preserved verbatim — it still governs the DEEP-LINK first-visit path (see the ?run=e0 tour tests above,
 // which still see the launcher) — and the auto-play retires that same NUDGE_KEY, so a returning visit is calm.
@@ -146,10 +146,10 @@ test('guided tour auto-advances to step 2 after the step-1 hold elapses, then Es
 test('cold open: the zero-click thesis card + auto-played first tour beat; an interrupt keeps the card; a returning visit is calm', async ({ page }) => {
   // HERO SWITCH (dev/v0.6): a bare `/` now boots f1 (the cold-open star — a moving vehicle) not e0. f1 is a
   // golden DET-ONLY run, so its honesty voice is the SELF-CHECK (○), NOT the manifest-grade ✓ (two-voice truth,
-  // F5/F6: self-check ≠ verified) — its trailer reproduces its own sealed hashes, but no external manifest backs it.
+  // self-check ≠ verified) — its trailer reproduces its own sealed hashes, but no external manifest backs it.
   await page.goto('/')
   await expect(page.locator('.provenance')).toContainText('(det-only)', { timeout: 15000 })
-  // ZERO-CLICK THESIS (P2): the card shows the run's REAL verdict headline. f1 is det-only → the self-check ring
+  // ZERO-CLICK THESIS: the card shows the run's REAL verdict headline. f1 is det-only → the self-check ring
   // ○ (.thesis-verdict.self), and it NEVER wears the manifest-grade green (.verified) it did not earn.
   const card = page.locator('.thesis-card')
   await expect(card).toBeVisible()
@@ -161,7 +161,7 @@ test('cold open: the zero-click thesis card + auto-played first tour beat; an in
   await expect(page.locator('.tour-caption')).toContainText('A single drone with real recorded motion')
   // Interruptible by ANY transport input (the existing notifyUserInput grammar): Escape stops the tour at
   // tick 0 (a deselect — clears f1 step 0's '1:0' selection, no playhead move), the tour overlay clears,
-  // and the share card PERSISTS. CONSCIOUS RECONCILIATION (T5, critic R6): this interrupt lands during BEAT 0
+  // and the share card PERSISTS. CONSCIOUS RECONCILIATION: this interrupt lands during BEAT 0
   // — before the auto-tour reaches its first playback beat — so the collapse trigger (tourPastFirstBeat) never
   // fired and it is the FULL card that survives the interrupt (what this test has always proven: the share
   // weapon outlives an interrupt). The new collapse contract — beat 1 collapses the card to a header chip — is
@@ -197,7 +197,7 @@ const CLIPBOARD_SHIM = `(() => {
   })
 })()`
 
-test('the thesis card copy-link builds the current shareable view URL — with NO verification state (T6/P2, NEVER-list)', async ({ page }) => {
+test('the thesis card copy-link builds the current shareable view URL — with NO verification state (NEVER-list)', async ({ page }) => {
   await page.goto('/')
   const card = page.locator('.thesis-card')
   await expect(card).toBeVisible({ timeout: 15000 })
@@ -222,14 +222,14 @@ test('the thesis card copy-link builds the current shareable view URL — with N
   }
 })
 
-// ── T5 / critic R6: the cold-open card COLLAPSES to a header verdict chip once the auto-tour leaves beat 0 ──
-// The card used to persist over the WHOLE tour (critic R6). Now the full card holds through beat 0 (its cold-
+// ── the cold-open card COLLAPSES to a header verdict chip once the auto-tour leaves beat 0 ──
+// The card used to persist over the WHOLE tour. Now the full card holds through beat 0 (its cold-
 // open share moment) and collapses to a header chip once the first playback beat begins — the chip is the SAME
 // verdict voice, × still dismisses. The full card is a once-per-browser first-visit surface: after collapse it
 // never returns except via cleared storage, and a reload from the collapsed state is calm — no card, no chip
 // (pinned by the dedicated reload test below). This preserves what the beat-0 interrupt test above proves while
 // pinning the new collapse contract.
-test('cold open: the full card collapses to a header verdict chip when the auto-tour reaches its first playback beat (R6)', async ({ page }) => {
+test('cold open: the full card collapses to a header verdict chip when the auto-tour reaches its first playback beat', async ({ page }) => {
   await page.goto('/')
   const card = page.locator('.thesis-card')
   await expect(card).toBeVisible({ timeout: 15000 })                     // beat 0 — the full share card is up
@@ -249,7 +249,7 @@ test('cold open: the full card collapses to a header verdict chip when the auto-
   await expect(page.locator('.thesis-card')).toHaveCount(0)
 })
 
-// ── T5: after collapse, a RELOAD is CALM — the full card is once-per-browser (first visit) ──────
+// ── after collapse, a RELOAD is CALM — the full card is once-per-browser (first visit) ──────
 // The sibling collapse test proves the chip is a one-way SESSION latch (an interrupt never re-expands it). This
 // pins the deeper PERSISTENCE invariant the docs used to misstate: the first cold open's auto-play retires
 // NUDGE_KEY (startTour → dismissNudge), so a reload seeds nudgeSeen=true and the zero-click arming rejects — and
@@ -257,7 +257,7 @@ test('cold open: the full card collapses to a header verdict chip when the auto-
 // a reload from the COLLAPSED state is a returning visit: NO full card AND NO chip, the calm posture (the plain
 // ▶ tour launcher, no first-visit pulse). Only cleared storage would bring the full card back. Mirrors the
 // cold-open test's returning-visit block; the difference is the pre-reload state — collapsed, never dismissed.
-test('cold open: after the card collapses, a reload is calm — no card, no chip, the returning-visit posture (R6)', async ({ page }) => {
+test('cold open: after the card collapses, a reload is calm — no card, no chip, the returning-visit posture', async ({ page }) => {
   await page.goto('/')
   const card = page.locator('.thesis-card')
   await expect(card).toBeVisible({ timeout: 15000 })                     // beat 0 — the full share card is up
@@ -282,11 +282,11 @@ test('cold open: after the card collapses, a reload is calm — no card, no chip
   await expect(tourBtn).not.toHaveClass(/tour-nudge-cta/)
 })
 
-// ── T5 / #20: the copy-link has a PERMANENT home in the app chrome (the header), not just the cold-open card ──
+// ── the copy-link has a PERMANENT home in the app chrome (the header), not just the cold-open card ──
 // A deep link (?run=e0) is never a cold open, so no thesis card ever mounts — yet the share weapon must still be
 // reachable. The header copy-link proves it: present with no card in sight, and it builds the same shareable
 // view URL with NO verification state (the NEVER-list), exactly as the card's copy did.
-test('the permanent header copy-link builds the shareable view URL with no card present (#20, NEVER-list)', async ({ page }) => {
+test('the permanent header copy-link builds the shareable view URL with no card present (NEVER-list)', async ({ page }) => {
   await page.goto('/?run=e0')
   await expect(page.locator('.readout')).toHaveText('tick 0 / 75', { timeout: 15000 }) // e0 tickCount = 75
   await expect(page.locator('.thesis-card')).toHaveCount(0)             // a deep link is not a cold open — no card
@@ -301,12 +301,12 @@ test('the permanent header copy-link builds the shareable view URL with no card 
   }
 })
 
-// W1 — STALE-GREEN ON RUN SWITCH. The cold-open thesis card is a cold-open artifact: it reads the OPENING
+// STALE-GREEN ON RUN SWITCH. The cold-open thesis card is a cold-open artifact: it reads the OPENING
 // run's verdict and speaks the zero-click thesis. A run switch makes that narrative stale, and for the
 // one-commit identity window it would otherwise paint the PRIOR run's ✓ under the NEW run's name (the
 // seal-race twin). So the card must CLOSE on any run switch. (The verdict-withhold guard on the prop is the
 // second belt, unit-pinned in thesis.test.ts / hangar.test.ts; this proves the card-close behavior end-to-end.)
-test('a run switch closes the cold-open thesis card (no prior run’s ✓ under a new run’s name — W1)', async ({ page }) => {
+test('a run switch closes the cold-open thesis card (no prior run’s ✓ under a new run’s name)', async ({ page }) => {
   await page.goto('/')
   const card = page.locator('.thesis-card')
   await expect(card).toBeVisible({ timeout: 15000 })
@@ -321,13 +321,13 @@ test('a run switch closes the cold-open thesis card (no prior run’s ✓ under 
   await expect(page.locator('.screen.error')).toHaveCount(0)
 })
 
-// W4 — the deep-link tour-NUDGE treatment (restored). The T6 rewrite dropped the only test pinning the
+// The deep-link tour-NUDGE treatment (restored). The zero-click rewrite dropped the only test pinning the
 // first-visit nudge TREATMENT (the pulse CTA on the ▶ tour button + the quiet dismiss ×). That precedent is
 // NOT gone — it still governs the DEEP-LINK first-visit path, because a deep link (?run=…) is never a cold
 // open, so the zero-click thesis is skipped BY DESIGN and the nudge is the discoverability voice there. This
 // fresh-context deep link (Playwright isolates storage per test = a first visit) re-pins that treatment AND
 // the design invariant that the deep-link path shows NO zero-click card / auto-tour.
-test('a first-visit deep link shows the tour-nudge treatment (pulse CTA + dismiss ×) and NO zero-click open (W4)', async ({ page }) => {
+test('a first-visit deep link shows the tour-nudge treatment (pulse CTA + dismiss ×) and NO zero-click open', async ({ page }) => {
   await page.goto('/?run=e0')
   await expect(page.locator('.provenance')).toContainText('trailer self-consistent ○', { timeout: 15000 })
   // A deep link is not a cold open: neither the thesis card nor the auto-tour ever fires here.
@@ -364,12 +364,12 @@ test('a tour play step plays VISIBLY — the playhead sweeps through intermediat
   // ticks at a watchable pace, and the tour re-normalizes THIS step to ~WITNESS_SECONDS of wall time via its
   // witnessSpeed pacing — either way the readout passes THROUGH intermediate ticks. This test pins that
   // visible sweep: catching any mid-flight tick proves playback is witnessable, not an instant jump.
-  // Timeout 12000 (was 8000): the 'exact replay' caption is gated by step 0's holdMs, now 7300ms (§5 resize).
+  // Timeout 12000 (was 8000): the 'exact replay' caption is gated by step 0's holdMs, now 7300ms (the reading-window resize).
   await expect(page.locator('.tour-caption')).toContainText('exact replay', { timeout: 12000 })
   await expect(page.locator('.readout')).toHaveText(/^tick (?:[1-9]|1[0-9]) \/ 75$/, { timeout: 6000 })
 })
 
-// ── Task v0.5b-3: natural-end finale ─────────────────────────────────────────────────────────────────
+// ── natural-end finale ─────────────────────────────────────────────────────────────────
 
 test('playing to the natural end lights the finale; a scrub clears it (first end-of-play assertion)', async ({ page }) => {
   await page.goto('/?run=f1')
@@ -391,7 +391,7 @@ test('playing to the natural end lights the finale; a scrub clears it (first end
   await expect(viewport).toHaveAttribute('data-finale', 'false') // scrub cleared it
 })
 
-// ── Task v04-3: error-screen escape hatch ────────────────────────────────────────────────────────────
+// ── error-screen escape hatch ────────────────────────────────────────────────────────────
 
 test('unknown run: honest error retained + escape hatch to the default run', async ({ page }) => {
   // Adjudicated posture: an unknown ?run= deep link gets an HONEST decode-failed screen with the full
@@ -410,14 +410,14 @@ test('unknown run: honest error retained + escape hatch to the default run', asy
   await expect(page).toHaveURL(/run=f1/)
 })
 
-// ── Task v0.5c T1: raycast fix — click reaches the 3D subject at ANY corridor position ────────────────
+// ── raycast fix — click reaches the 3D subject at ANY corridor position ────────────────
 // The pick/hover hit InstancedMesh's boundingSphere froze at the drone's first-picked position: three.js
 // computes it ONCE (only when null) and never after setMatrixAt, so every ray early-returned once the
 // subject travelled away and clicks selected nothing (diag symptom A). These are the suite's FIRST
 // 3D-cone-click tests. The subject is sub-pixel-small at the establish distance, so we click its EXACT
 // projected screen centre computed from the app's OWN three.js camera — captured in-browser via the
-// standard __THREE_DEVTOOLS__ 'observe' hook (same technique as the diagnosis probes,
-// .superpowers/sdd/verify/probeA.mjs). The browser source is passed as STRINGS on purpose: the e2e
+// standard __THREE_DEVTOOLS__ 'observe' hook (same technique as the diagnosis probes). The browser
+// source is passed as STRINGS on purpose: the e2e
 // tsconfig (tsconfig.node.json) excludes the DOM lib, so an inline evaluate arrow touching window/three
 // would not typecheck — strings keep the browser code opaque to tsc while results stay typed on Node.
 type HeadProj = { x: number; y: number; onScreen: boolean; world: [number, number, number] }
@@ -470,7 +470,7 @@ const PROJECT_HEAD = `(() => {
 })()`
 
 // Read the live camera POSITION (the app's camera lives off the React fiber tree, so the DOM can't witness it —
-// same devtools-hook capture as PROJECT_HEAD). Used to PROVE the scrub-from-finale re-fit (v0.5c ruling 3): at a
+// same devtools-hook capture as PROJECT_HEAD). Used to PROVE the scrub-from-finale re-fit (a design ruling): at a
 // finale rest the camera sits on the composed close-up (~25u off the head); leaving the finale by a scrub must
 // ease it to the WIDE establishing frame (whole-trajectory fit, hundreds of u away) — a large, unambiguous move,
 // NOT the v0.5b void where the camera stayed parked at the empty sky (delta ~0).
@@ -492,18 +492,18 @@ const CAMERA_POS = `(() => {
 // de-fang the seat — no error, the move just never raycasts — and these tests would still PASS against a
 // regressed fix (the stale sphere was never actually seeded, so nothing exercised it). The removal-proof is
 // the only reliable re-verification: revert the fix (drop the `hit.boundingSphere = null`) and confirm these
-// T1 click tests FAIL; if they stay green with the fix removed, the seat has been eroded and must be re-armed.
+// 3D-click tests FAIL; if they stay green with the fix removed, the seat has been eroded and must be re-armed.
 async function seatEarlySphere(page: Page): Promise<void> {
-  // SCENE-LIVE GATE (v0.5d T3, conscious timing fix — cited R1 follow-up). The readout turns
+  // SCENE-LIVE GATE (a conscious timing fix). The readout turns
   // interactive BEFORE the r3f Canvas finishes its first (SwiftShader-slow) mount, and BOTH of this
   // helper's callers act within that window under the test runner: (1) the seeding pointer-moves here
   // raycast NOTHING until the hit mesh exists — the exact seat erosion the caveat above warns about —
   // and (2) a ▶ click in that window fires the play-rising-edge establish request BEFORE Entities
   // mounts, where the channel's deliberate mount-seed consumes it without acting (camera stays on the
-  // load vantage). The pre-R1 canvas was wide enough to mask (2) geometrically; the R1 reserved-column
+  // load vantage). The earlier canvas was wide enough to mask (2) geometrically; the reserved-column
   // canvas is not. Waiting for the CAPTURE_SCENE latch (the first rendered cone frame) restores the
   // scenario the tests describe: a user acting on a visibly-live stage. The swallowed-establish
-  // mount window itself is flagged in the T3 report for endgame adjudication (app behavior, not test).
+  // mount window itself is flagged for endgame adjudication (app behavior, not test).
   await page.waitForFunction('!!window.__scene', undefined, { timeout: 15000 }) // string: e2e tsconfig has no DOM lib
   const box = (await page.locator('#viewport canvas').boundingBox())!
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
@@ -516,8 +516,8 @@ async function seatEarlySphere(page: Page): Promise<void> {
 // (CAMERA_POS, the same devtools-hook capture the assertions read) every ~100ms and return the instant two
 // consecutive samples coincide (< EPS apart) — i.e. the ease has converged. The ease is asymptotic, so once the
 // per-100ms delta drops below EPS the residual distance to the final frame is also sub-EPS — far inside the click
-// tolerance (T1) and the >10u move threshold (T2). Generous timeout; throws (a real regression, never silent
-// flake) if the camera never stabilises. ONE helper, three call sites: T1 finale, T2 pre-scrub rest, T2 post-
+// tolerance and the >10u move threshold. Generous timeout; throws (a real regression, never silent
+// flake) if the camera never stabilises. ONE helper, three call sites: the finale, the pre-scrub rest, the post-
 // scrub establish. Requires window.__camera latched (CAPTURE_SCENE init script + a played-to-finale frame).
 async function waitForCameraStable(page: Page): Promise<void> {
   const EPS = 0.05
@@ -534,7 +534,7 @@ async function waitForCameraStable(page: Page): Promise<void> {
   throw new Error('camera never stabilised within the settle timeout')
 }
 
-// Wait for the finale close-up to be GENUINELY REACHED (v0.5d hotfix — CI run 28992396802). The finale close-up
+// Wait for the finale close-up to be GENUINELY REACHED (CI run 28992396802). The finale close-up
 // is a DETERMINISTIC ~241u from the composed load vantage [6,4.5,9] (finaleFraming composes head+FINALE_DISTANCE
 // around the far natural-end head; useTour.ts names the ~241u strand). For the tour-from-finale test's >100u
 // anti-regression to MEAN anything, `before` must be that resting close-up — not a waypoint on the way there.
@@ -567,14 +567,14 @@ async function waitForFinaleCloseUp(page: Page): Promise<void> {
   throw new Error('finale close-up never reached (camera never settled >200u from the load vantage within the timeout)')
 }
 
-// Wait for the tour-start RESET to actually LAND (v0.5d hotfix round 2 — CI run 28993785155). The reset is an
+// Wait for the tour-start RESET to actually LAND (CI run 28993785155). The reset is an
 // INSTANT camera cut, but it is executed inside Scene's useFrame, and on a slow SwiftShader runner the tour
 // click triggers a long SYNCHRONOUS React/r3f reflow (step-0 caption + tour overlay + inspector re-render)
 // that STALLS the render loop for hundreds of ms — to seconds — BEFORE the next frame runs the cut. During
 // that stall the camera is FROZEN on the finale close-up, so a plain waitForCameraStable (two consecutive
 // still samples) is satisfied by the STALL and samples the PRE-reset close-up. That is exactly how CI run
 // 28993785155 failed: it read the camera 25.0u off `before` (the finale ease's residual creep) instead of
-// ~241u on the vantage, and the >100u assertion failed with Δ=25.0u — the same false-early symptom round 1's
+// ~241u on the vantage, and the >100u assertion failed with Δ=25.0u — the same false-early symptom the earlier
 // before-gate (waitForFinaleCloseUp, CI run 28992396802) cured for the OTHER sample, now reproduced on the
 // AFTER sample. "Camera not moving" is an UNSOUND proxy for "the reset finished": it is equally true while
 // the render loop is stalled and the cut has not yet run. (Traced under a throttled repro: the reset DOES
@@ -618,7 +618,7 @@ async function waitForTourResetOffCloseUp(page: Page, closeUp: [number, number, 
   throw new Error('tour-start reset never landed (camera never settled >150u off the finale close-up within the timeout)')
 }
 
-// Wait for a camera move to LAND on an expected vantage (v0.6 T4 rider). The house pattern (waitForFinaleCloseUp
+// Wait for a camera move to LAND on an expected vantage (v0.6). The house pattern (waitForFinaleCloseUp
 // / waitForTourResetOffCloseUp): gate on a DEMONSTRATED state — the camera both SETTLED (two consecutive samples
 // <EPS/100ms apart) AND arrived NEAR the target vantage — never on mere stillness (a render stall is also still).
 // Used to prove the e0 query-stage tour-start reset frames the stage (stageBounds/STAGE_FRAME_OPTS): the tour
@@ -644,7 +644,7 @@ async function waitForCameraNear(page: Page, target: [number, number, number]): 
   throw new Error(`e0 tour-start never framed the stage (last Δ=${lastDist.toFixed(1)}u; cur=${lastCur!.map(n => n.toFixed(0)).join(',')}; target=${target.map(n => n.toFixed(0)).join(',')})`)
 }
 
-// Wait for a camera move to DEMONSTRABLY FIRE off a known origin (v0.6 T4 fix-wave). Same false-early-stable
+// Wait for a camera move to DEMONSTRABLY FIRE off a known origin (v0.6). Same false-early-stable
 // trap the tour-from-finale saga closed (waitForFinaleCloseUp / waitForTourResetOffCloseUp, two hotfix rounds):
 // a plain waitForCameraStable after a keypress is ALSO satisfied by a render STALL BEFORE the ease begins, so
 // it samples the pre-move vantage and the following move assertion reads Δ≈0. Gate on a DEMONSTRATED state —
@@ -669,7 +669,7 @@ async function waitForCameraMovedFrom(page: Page, from: [number, number, number]
   throw new Error(`camera move never fired (settled >${minDist}u off the origin was never observed; last Δ=${lastDist.toFixed(1)}u)`)
 }
 
-test('3D click at the natural-end finale selects the celebrated head and KEEPS the finale (T1 raycast fix)', async ({ page }) => {
+test('3D click at the natural-end finale selects the celebrated head and KEEPS the finale (raycast fix)', async ({ page }) => {
   await page.addInitScript(CAPTURE_SCENE)
   const errors: string[] = []
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()) })
@@ -699,18 +699,18 @@ test('3D click at the natural-end finale selects the celebrated head and KEEPS t
   expect(errors, `no console errors: ${errors.join(' | ')}`).toEqual([])
 })
 
-test('3D click far down-corridor (paused mid-play) selects the subject after it has travelled far (T1 raycast fix)', async ({ page }) => {
+test('3D click far down-corridor (paused mid-play) selects the subject after it has travelled far (raycast fix)', async ({ page }) => {
   await page.addInitScript(CAPTURE_SCENE)
   await page.goto('/?run=f1')
   await expect(page.locator('.readout')).toHaveText('tick 0 / 64', { timeout: 15000 })
   const viewport = page.locator('#viewport')
 
   // DEVIATIONS from the plan's "pause mid-corridor via scrub" — both forced by camera reality, verified with
-  // a projection probe (.superpowers/sdd/verify/probe-midrun.mjs):
+  // a projection probe:
   //   1. A scrub moves ONLY the playhead, never the camera, so a scrubbed head projects wherever the mount
   //      establish frame happens to point. We PLAY then pause instead (still a mid-play pause).
   //   2. During UNSELECTED play the camera does NOT follow (follow is selected-play only; unselected
-  //      mid-run presence is the known composition gap ruling 5 addresses in T3). The camera holds the
+  //      mid-run presence is the known composition gap the design ruling addresses). The camera holds the
   //      establish frame, and the f1 subject's +X bulge carries it OFF the right edge through the true
   //      middle (ticks ~10-44 off-screen), curving back on-screen for the LATE corridor (ticks ~45-63).
   //      So the reachable far-corridor click is late-corridor — the drone is ~195u past the frozen tick-0
@@ -733,12 +733,12 @@ test('3D click far down-corridor (paused mid-play) selects the subject after it 
   await expect(page).toHaveURL(/sel=1(?:%3A|:)0/)
 })
 
-// ── Task v0.5c T2: scrub-from-finale context re-fit (ruling 3 amendment) ─────────────────────────────
+// ── scrub-from-finale context re-fit (a design-ruling amendment) ─────────────────────────────
 // The v0.5b spec line "clearing the finale never re-frames" stranded the f1 scrubber at the empty sky where the
-// celebrated head had been (dressing cleared correctly, camera parked on the close-up → a black void). Ruling 3
+// celebrated head had been (dressing cleared correctly, camera parked on the close-up → a black void). The design ruling
 // reverses it NARROWLY: leaving a finale by a playhead MOVE hands back the wide establishing frame. This proves
 // the camera MOVES (off the ~25u close-up to the whole-trajectory fit) — the direct anti-void assertion.
-test('scrub-from-finale eases the camera to the establishing frame — the camera provably MOVES (no void, v0.5c ruling 3)', async ({ page }) => {
+test('scrub-from-finale eases the camera to the establishing frame — the camera provably MOVES (no void)', async ({ page }) => {
   await page.addInitScript(CAPTURE_SCENE)
   const errors: string[] = []
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()) })
@@ -755,7 +755,7 @@ test('scrub-from-finale eases the camera to the establishing frame — the camer
   const beforePos = (await page.evaluate(CAMERA_POS)) as [number, number, number] | null
   expect(beforePos, 'camera captured at the finale rest').not.toBeNull()
 
-  // Scrub the playhead back (a drag past the click threshold): clears the finale AND — ruling 3 — hands back
+  // Scrub the playhead back (a drag past the click threshold): clears the finale AND — per the design ruling — hands back
   // the establishing frame. The gate is store-batch causality: the scrub's setTick writes {tick, finale:false}
   // atomically, so the tick MOVED on the same run → the re-fit fires (an establish request).
   const box = (await page.locator('.timeline canvas').boundingBox())!
@@ -778,14 +778,14 @@ test('scrub-from-finale eases the camera to the establishing frame — the camer
   expect(errors, `no console errors: ${errors.join(' | ')}`).toEqual([])
 })
 
-// ── Task v0.5d T2: tour-start camera reset (ruling 6) ────────────────────────────────────────────────
+// ── tour-start camera reset (a design ruling) ────────────────────────────────────────────────
 // A guided tour's step-0 caption is authored against the CameraRig LOAD vantage, but the tour can be launched
 // from ANY prior camera state. Entered from a natural-end finale, the camera was parked on the finale close-up
 // (~230u down f1's corridor) and step 0 played over an empty horizon with the head stranded ~241u away — ~8s of
-// the ~20s guided pitch broken (the critic's RULING). useTour.start() now cuts the camera to the composed load
+// the ~20s guided pitch broken (a design ruling). useTour.start() now cuts the camera to the composed load
 // vantage first. This proves the from-finale entry — the money case — via the app's OWN camera: it moves a large
 // distance OFF the close-up and lands on the composed default [6,4.5,9] where step 0 was authored to open.
-test('tour-from-finale resets the camera to the composed load vantage (step 0 opens on the correct stage, v0.5d ruling 6)', async ({ page }) => {
+test('tour-from-finale resets the camera to the composed load vantage (step 0 opens on the correct stage)', async ({ page }) => {
   await page.addInitScript(CAPTURE_SCENE)
   const errors: string[] = []
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()) })
@@ -803,8 +803,8 @@ test('tour-from-finale resets the camera to the composed load vantage (step 0 op
   expect(before, 'camera captured at the finale rest').not.toBeNull()
 
   // Start the f1 tour (exact name — kept from when a second first-visit nudge button existed; the nudge
-  // is now a treatment of this same button (v0.5d R5c) so exact matching is simply harmless precision).
-  // Ruling 6: start() cuts the camera to the load vantage so step 0's caption opens on the correct stage.
+  // is now a treatment of this same button (a later design change) so exact matching is simply harmless precision).
+  // A design ruling: start() cuts the camera to the load vantage so step 0's caption opens on the correct stage.
   await page.getByRole('button', { name: '▶ tour', exact: true }).click()
   await expect(page.locator('.tour-caption')).toBeVisible({ timeout: 8000 })
   // NOT plain waitForCameraStable: the cut is instant but runs in a useFrame the slow-runner render loop can
@@ -825,7 +825,7 @@ test('tour-from-finale resets the camera to the composed load vantage (step 0 op
   expect(errors, `no console errors: ${errors.join(' | ')}`).toEqual([])
 })
 
-// ── Task v0.6 T4 rider: the e0 QUERY-STAGE tour-start reset frames the stage ──────────────────────────────
+// ── the e0 QUERY-STAGE tour-start reset frames the stage ──────────────────────────────
 // The e0 tour-start reset frames the query stage via stageBounds/STAGE_FRAME_OPTS (the core-theatre vantage),
 // but no e2e proved the POSITIONLESS path — the existing tour-reset test above is f1/positioned only. On e0 the
 // stage frame IS the CameraRig load frame, so a bare "tour lands on the stage" assertion is trivially true even
@@ -834,7 +834,7 @@ test('tour-from-finale resets the camera to the composed load vantage (step 0 op
 // to the drawn observer's POV, which (unlike an orbit-drag) leaves no OrbitControls damping residual to fight
 // the reset — so it doubles as browser proof that the POV preset moves the camera. Then gate on a DEMONSTRATED
 // state (settled AND back on the captured vantage — the house pattern, never mere stillness).
-test('the e0 POV preset moves the camera and the query tour reframes the stage (T4b + T4 rider)', async ({ page }) => {
+test('the e0 POV preset moves the camera and the query tour reframes the stage', async ({ page }) => {
   await page.addInitScript(CAPTURE_SCENE)
   const errors: string[] = []
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()) })
@@ -846,7 +846,7 @@ test('the e0 POV preset moves the camera and the query tour reframes the stage (
   const vantage = (await page.evaluate(CAMERA_POS)) as [number, number, number] | null
   expect(vantage, 'camera latched at the e0 stage vantage').not.toBeNull()
 
-  // OBSERVER'S EYE (T4b): press O to ease the camera to the drawn observer's POV (O ≈ n=−601, far off the
+  // OBSERVER'S EYE: press O to ease the camera to the drawn observer's POV (O ≈ n=−601, far off the
   // core-theatre vantage). Click the viewport first so the window keydown owner isn't swallowed by a focused
   // control, then press the key. The move is large + programmatic — no orbit-damping residual to fight the reset.
   await page.locator('#viewport canvas').click({ position: { x: 5, y: 5 } })
@@ -871,9 +871,9 @@ test('the e0 POV preset moves the camera and the query tour reframes the stage (
   expect(errors, `no console errors: ${errors.join(' | ')}`).toEqual([])
 })
 
-// ── Task v0.6 T5b: THE HANGAR + earned verdict voice ──────────────────────────────────────────────
+// ── THE HANGAR + earned verdict voice ──────────────────────────────────────────────
 // The run-library front door renders a card per published run. Verdict badges are SESSION-EARNED AND
-// two-voice (F6): a card wears the attested • until its run is opened this session; a VISITED FULL-MANIFEST
+// two-voice: a card wears the attested • until its run is opened this session; a VISITED FULL-MANIFEST
 // run then earns the manifest-grade ✓, while a VISITED DET-ONLY run earns the SELF-CHECK • ("self-verified
 // this session · no external oracle") — never the ✓ it did not earn.
 test('the Hangar renders all six cards; a visited full-manifest run earns ✓, a visited det-only run earns the self-check •, an unvisited run stays attested •', async ({ page }) => {
@@ -886,24 +886,24 @@ test('the Hangar renders all six cards; a visited full-manifest run earns ✓, a
   await page.getByRole('button', { name: 'hangar', exact: true }).click()
   await expect(page.locator('.hangar-panel')).toBeVisible()
   await expect(page.locator('.hangar-card')).toHaveCount(6)
-  // The disclaimer chip is the surface's thesis (D4): the index is a map, not the authority.
+  // The disclaimer chip is the surface's thesis: the index is a map, not the authority.
   await expect(page.locator('.hangar-disclaimer')).toContainText('a tampered index can misdirect, never forge')
   // e0 (DET-ONLY) was opened this session → its card earned the SELF-CHECK voice (attested •, "self-verified this
-  // session · no external oracle"), NEVER the manifest-grade ✓ (F6: det-only surfaces carry no ✓). f0 is unvisited
+  // session · no external oracle"), NEVER the manifest-grade ✓ (det-only surfaces carry no ✓). f0 is unvisited
   // → attested • ("certified · on record"). The label distinguishes a sealed det-only card from an unvisited one.
   await expect(page.locator('.hangar-card[data-run="e0"] .hangar-verdict.attested')).toContainText('self-verified this session')
   await expect(page.locator('.hangar-card[data-run="e0"] .hangar-verdict.verified')).toHaveCount(0) // NEGATIVE: det-only NEVER the ✓
   await expect(page.locator('.hangar-card[data-run="f0"] .hangar-verdict.attested')).toBeVisible()
   await expect(page.locator('.hangar-card[data-run="f0"] .hangar-verdict.verified')).toHaveCount(0)
-  // BINDING PROHIBITION (D4 Ruling 2 / W2): no OTHER-campaign wordmark touches the published f3a card —
+  // BINDING PROHIBITION (a design ruling): no OTHER-campaign wordmark touches the published f3a card —
   // not /robust/, and not the softer "statistical-acceptance / acceptance campaign" the old scan missed.
-  // Scanned with the SHARED tripwire (single-sourced, closure item 2), never a local literal copy.
+  // Scanned with the SHARED tripwire (single-sourced), never a local literal copy.
   await expect(page.locator('.hangar-card[data-run="f3a"]')).not.toContainText(PROFILE_CONFLATION_RE)
   // f3a shows real sim duration (12.0s); the det-only e0 card keeps the assumed voice.
   await expect(page.locator('.hangar-card[data-run="f3a"] .hangar-clock')).toContainText('0:12.0')
   await expect(page.locator('.hangar-card[data-run="e0"] .hangar-clock.assumed')).toContainText('assumed')
   // Viewport (not fullPage): a fixed modal overlay composites incorrectly under a fullPage capture.
-  await page.screenshot({ path: '.superpowers/sdd/task-v06-5b-hangar.png' })
+  await page.screenshot({ path: 'e2e/screenshots/task-v06-5b-hangar.png' })
 
   // Open f0 from its card → the Hangar closes, f0's ceremony runs and seals. Reopen → f0 now wears ✓
   // (the attested→sealed cross-surface transition — the design's cheapest delight).
@@ -913,7 +913,7 @@ test('the Hangar renders all six cards; a visited full-manifest run earns ✓, a
   await expect(page.locator('.hangar-panel')).toBeVisible()
   await expect(page.locator('.hangar-card[data-run="f0"] .hangar-verdict.verified')).toBeVisible()
   await page.waitForTimeout(300) // let the open animation settle so the capture is the fully-painted modal
-  await page.screenshot({ path: '.superpowers/sdd/task-v06-5b-hangar-sealed.png' })
+  await page.screenshot({ path: 'e2e/screenshots/task-v06-5b-hangar-sealed.png' })
 
   // Esc closes the modal front door (App's keydown owner modal-captures while it is open).
   await page.keyboard.press('Escape')
@@ -921,7 +921,7 @@ test('the Hangar renders all six cards; a visited full-manifest run earns ✓, a
   expect(errors, `no console errors: ${errors.join(' | ')}`).toEqual([])
 })
 
-// ── Task v0.6 T5c: the SIM-CLOCK reads real time on published runs, assumed elsewhere ──────────────
+// ── the SIM-CLOCK reads real time on published runs, assumed elsewhere ──────────────
 test('the readout shows real dt_us sim time on f3a and keeps the assumed tick readout on e0', async ({ page }) => {
   // f3a pins dt_us = 125000 → 96 ticks × 125000µs = 12.0s. At tick 0 the clock reads 0:00.0 / 0:12.0.
   await page.goto('/?run=f3a')
@@ -929,14 +929,14 @@ test('the readout shows real dt_us sim time on f3a and keeps the assumed tick re
   await expect(page.locator('.readout')).toHaveText('0:00.0 / 0:12.0')
   // The provenance panel shows the real dt (not "(assumed)") for a full-manifest run.
   await expect(page.locator('.provenance')).toContainText('125000µs')
-  await page.screenshot({ path: '.superpowers/sdd/task-v06-5b-simclock-real.png', fullPage: true })
+  await page.screenshot({ path: 'e2e/screenshots/task-v06-5b-simclock-real.png', fullPage: true })
 
   // e0 is det-only (KAT tier): the readout keeps the neutral tick voice — no false real-clock claim.
   await page.goto('/?run=e0')
   await expect(page.locator('.readout')).toHaveText('tick 0 / 75', { timeout: 15000 })
 })
 
-// ── Task v0.6 MUST-FIX (critic ruling 3): the query stage / honesty chip / origin anchor gate on kind-23 content ──
+// ── the query stage / honesty chip / origin anchor gate on kind-23 content ──
 // buildQueryDraws never returns null (a run with no geometry queries yields an all-null seq-indexed array), so
 // the old `positionless`-ALONE gate mounted the stage — its origin-anchor octahedron + scenario solids — AND
 // painted the "occluder & region bodies are scenario constants" honesty chip on f4, a positionless run whose
@@ -944,7 +944,7 @@ test('the readout shows real dt_us sim time on f3a and keeps the assumed tick re
 // hasQueryDraws. This pins the fix end-to-end: f4 wears NO honesty chip and speaks the honest empty-stage rail
 // voice; e0 (a real query stage) still wears the chip — so a regression that drops the chip everywhere (or
 // restores it everywhere) is caught by the contrast, not just its absence on one run.
-test('f4 (positionless, no kind-23) wears NO honesty chip and speaks the honest empty-stage voice; e0 keeps the chip (ruling 3)', async ({ page }) => {
+test('f4 (positionless, no kind-23) wears NO honesty chip and speaks the honest empty-stage voice; e0 keeps the chip', async ({ page }) => {
   const errors: string[] = []
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()) })
 
@@ -967,7 +967,7 @@ test('f4 (positionless, no kind-23) wears NO honesty chip and speaks the honest 
   expect(errors, `no console errors: ${errors.join(' | ')}`).toEqual([])
 })
 
-// ── v0.8 W5: THE CERTIFICATION WALL — front-door entry, the zero-green rest state, and verify-all ──────────
+// ── v0.8: THE CERTIFICATION WALL — front-door entry, the zero-green rest state, and verify-all ──────────
 // The Wall opens by declaring what it has NOT verified: a dim field of attested dots, ZERO integrity green,
 // exact-integer census. The acceptance gate is a rest-state with no .verified dot. Then verify-all recomputes
 // every seed's bytes in a real worker and the dots flip in TRUE completion order at real timing.
@@ -977,7 +977,7 @@ test('the Wall: front-door entry, a ZERO-GREEN rest state, then verify-all green
   await page.goto('/?run=e0')
   await expect(page.locator('.readout')).toHaveText('tick 0 / 75', { timeout: 15000 })
 
-  // FRONT DOOR: the Wall is reachable from the Hangar's campaign entry (the campaign expansion, D4 6.4).
+  // FRONT DOOR: the Wall is reachable from the Hangar's campaign entry (the campaign expansion).
   await page.getByRole('button', { name: 'hangar', exact: true }).click()
   await expect(page.locator('.hangar-panel')).toBeVisible()
   const campaign = page.locator('.hangar-campaign-card[data-campaign="robust-f3a"]')
@@ -996,7 +996,7 @@ test('the Wall: front-door entry, a ZERO-GREEN rest state, then verify-all green
   await expect(page.locator('.wall-verdict.attested')).toContainText('ROBUST')
   await expect(page.locator('.wall-gauge')).toHaveCount(2)
   await page.waitForTimeout(300) // let the modal settle for a clean capture
-  await page.screenshot({ path: '.superpowers/sdd/w5-wall-rest.png' })
+  await page.screenshot({ path: 'e2e/screenshots/w5-wall-rest.png' })
 
   // VERIFY-ALL — the hero moment. Real worker, real bytes, real timing.
   await page.getByRole('button', { name: /verify all 50/ }).click()
@@ -1007,7 +1007,7 @@ test('the Wall: front-door entry, a ZERO-GREEN rest state, then verify-all green
     await page.waitForFunction(
       '(function(){var v=document.querySelectorAll(".wall-dot.verified").length; return v>=3 && v<50})()',
       undefined, { timeout: 15000 })
-    await page.screenshot({ path: '.superpowers/sdd/w5-wall-midverify.png' })
+    await page.screenshot({ path: 'e2e/screenshots/w5-wall-midverify.png' })
   } catch { /* verification outran the mid-frame window — the completed assertion below is the real gate */ }
 
   // COMPLETION: every seed recomputed-and-matched THIS session → 50 green receipts, census counts to 50.
@@ -1015,12 +1015,82 @@ test('the Wall: front-door entry, a ZERO-GREEN rest state, then verify-all green
   await expect(page.locator('.wall-dot.verified')).toHaveCount(50)
   await expect(page.locator('.wall-dot.mismatch')).toHaveCount(0)
   await page.waitForTimeout(200)
-  await page.screenshot({ path: '.superpowers/sdd/w5-wall-complete.png' })
+  await page.screenshot({ path: 'e2e/screenshots/w5-wall-complete.png' })
 
   // Esc closes the Wall (App's keydown owner modal-captures it, like the Hangar).
   await page.keyboard.press('Escape')
   await expect(page.locator('.wall-panel')).toHaveCount(0)
   expect(errors, `no console errors: ${errors.join(' | ')}`).toEqual([])
+})
+
+// ── v0.8.1: THE CERTIFICATION WALL HEADER FRONT DOOR — one header entry, the SAME open action ──────────────
+// The Wall (and, inside it, the "test the seal" tamper demo) is the app's hero beat but sat 3-4 interactions
+// deep behind the Hangar. A persistent header entry opens it DIRECTLY. It routes through the SAME openWall
+// action the Hangar's campaign card uses (App wires both front doors to one callback — the synchronous store
+// seed + keyed remount), so the header path lands the IDENTICAL rest state the Hangar path does (the front-door
+// test above pins that same state via the Hangar): 50 seed dots, zero integrity green, the 0-of-50 census, the
+// attested ROBUST verdict, the two gauges. And it is present regardless of which run is loaded — proven here on
+// f0 (a full-manifest RUN, not the campaign), where no Hangar was ever opened.
+test('the Certification Wall header entry opens the Wall directly (same zero-green rest state as the Hangar path), on any run', async ({ page }) => {
+  const errors: string[] = []
+  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()) })
+  await page.goto('/?run=f0')
+  await expect(page.locator('.readout')).toHaveText('tick 0 / 2', { timeout: 15000 })
+
+  // The header entry is present WITHOUT any Hangar open — the persistent front door, not a surface buried behind it.
+  const entry = page.getByRole('button', { name: 'certification wall', exact: true })
+  await expect(entry).toBeVisible()
+  await expect(page.locator('.hangar-panel')).toHaveCount(0)
+  await entry.click()
+
+  // The Wall opens DIRECTLY, in the SAME zero-green rest state the Hangar-path front-door test above pins — the
+  // one open action backs both entries, so the two land byte-for-byte the same surface.
+  await expect(page.locator('.wall-panel')).toBeVisible()
+  await expect(page.locator('.wall-dot')).toHaveCount(50)
+  await expect(page.locator('.wall-dot.verified')).toHaveCount(0) // NEGATIVE: not one green before interaction
+  await expect(page.locator('.wall-census')).toContainText('0 of 50 recomputed and matched here · 50 on record · 0 contradicted')
+  await expect(page.locator('.wall-verdict.attested')).toContainText('ROBUST')
+  await expect(page.locator('.wall-gauge')).toHaveCount(2)
+  // The tamper demo lives INSIDE the Wall — discoverability of the Wall is discoverability of both; no duplicate entry.
+  await expect(page.getByRole('button', { name: /flip one byte/ })).toBeVisible()
+
+  // Esc closes it through the same modal-capture path the Hangar-opened Wall uses.
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.wall-panel')).toHaveCount(0)
+  expect(errors, `no console errors: ${errors.join(' | ')}`).toEqual([])
+})
+
+// ── The always-on Wall entry must not overflow a tour-bearing header at ≤1080px ─────────────────────────────
+// The header is flex-wrap:nowrap; the new always-on certification-wall control could push a tour-bearing header
+// (▶ tour + the first-visit nudge ×) past the viewport at the ≤1080px narrow band (where the panel-toggles also
+// appear). The entry CONDENSES to "wall" at ≤1080px (a CSS label-swap), so the header stays within the viewport.
+// The overflow check would FALSE-GREEN if it ran before the widest chrome existed — nav / Hangar / copy-link hang
+// off the async runs/index.json load — so every header control is asserted PRESENT before measuring, and the
+// button's accessible name is role-asserted "wall" at 1080px. The 1081px boundary then proves the full label
+// releases with no overflow either.
+test('the header does not overflow at 1080px (all controls present, the Wall entry condenses to "wall"); the 1081px boundary restores the full label', async ({ page }) => {
+  await page.setViewportSize({ width: 1080, height: 720 })
+  await page.goto('/?run=f2a')
+  await expect(page.locator('.provenance')).toContainText('trailer consistent ✓', { timeout: 15000 })
+  // THE WIDEST CHROME MUST EXIST BEFORE MEASURING (guards the false-green: these hang off the async index load):
+  await expect(page.locator('header nav button')).toHaveCount(6)                          // all six run entries
+  await expect(page.getByRole('button', { name: 'hangar', exact: true })).toBeVisible()   // Hangar front door
+  await expect(page.locator('.header-copy')).toBeVisible()                                // copy-link
+  await expect(page.getByRole('button', { name: '▶ tour', exact: true })).toBeVisible()   // tour launcher (f2a has a tour)
+  await expect(page.getByRole('button', { name: 'dismiss tour nudge' })).toBeVisible()    // the first-visit nudge ×
+  // At ≤1080px the entry CONDENSES: its accessible name is exactly "wall" (the full label span is display:none).
+  await expect(page.getByRole('button', { name: 'wall', exact: true })).toBeVisible()
+  await expect(page.locator('.wall-open-full')).toBeHidden()
+  // THE GATE (string form: the e2e tsconfig has no DOM lib): no horizontal overflow — every header control fits.
+  const noOverflow1080 = await page.evaluate('document.documentElement.scrollWidth <= window.innerWidth')
+  expect(noOverflow1080, 'no horizontal overflow at 1080px with a tour-bearing run').toBe(true)
+
+  // BOUNDARY (1081px): the media query releases — the FULL "certification wall" label shows (panel-toggles hide
+  // above 1080px, so the header still fits). Proves the condense is scoped to the narrow band, not a permanent hide.
+  await page.setViewportSize({ width: 1081, height: 720 })
+  await expect(page.getByRole('button', { name: 'certification wall', exact: true })).toBeVisible()
+  const noOverflow1081 = await page.evaluate('document.documentElement.scrollWidth <= window.innerWidth')
+  expect(noOverflow1081, 'no horizontal overflow at 1081px either (full label restored)').toBe(true)
 })
 
 // The Wall re-earns from zero: reopening after a completed verify shows a fresh ZERO-GREEN rest state (a ✓
@@ -1043,7 +1113,7 @@ test('the Wall re-earns: reopening after a full verify is back to zero green (re
   await expect(page.locator('.wall-census')).toContainText('0 of 50 recomputed and matched here')
 })
 
-// ── v0.8 W6: THE TAMPER MOMENT — the ✗ path made demonstrable ──────────────────────────────────────────────
+// ── v0.8: THE TAMPER MOMENT — the ✗ path made demonstrable ──────────────────────────────────────────────
 // Every shipped bundle verifies green, so the REFUSAL machinery was invisible. The Wall's tamper demo fetches ONE
 // certified bundle (seed 42), verifies its pristine bytes, flips ONE byte of a recorded MEASUREMENT in a browser-
 // memory clone, and re-verifies — painting the pristine chain (✓ external pins beside ○ trailer-self rings) beside
@@ -1092,7 +1162,7 @@ test('the Wall tamper demo: flip one byte → the side-by-side refusal (event_ha
   // BROWSER EVIDENCE — the side-by-side refusal.
   await page.locator('.tamper-result').scrollIntoViewIfNeeded()
   await page.waitForTimeout(300)
-  await page.screenshot({ path: '.superpowers/sdd/w6-tamper.png' })
+  await page.screenshot({ path: 'e2e/screenshots/w6-tamper.png' })
 
   await page.keyboard.press('Escape')
   await expect(page.locator('.wall-panel')).toHaveCount(0)

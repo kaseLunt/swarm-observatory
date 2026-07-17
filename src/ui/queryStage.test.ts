@@ -9,8 +9,8 @@ import { chipAgreesWithLedger } from './lensContract'
 import { PALETTE, CATEGORY } from './theme'
 
 // Pure model-layer tests for the e0 query stage (kind 23). House style: hand-constructed payloads,
-// values cross-checked against known scene geometry AND the frozen draw table
-// (.superpowers/sdd/verify/v06-draw-table.json). This file proves the per-kind argv layouts, the hit-point
+// values cross-checked against known scene geometry AND the frozen draw table.
+// This file proves the per-kind argv layouts, the hit-point
 // arithmetic, and the LOS composition in isolation; queryStage.oracle.test.ts proves the same helpers
 // against the REAL decoded bundle. Semantics of record: contract/EXP-E0-kind23-geometry-excerpt.md §1.
 //
@@ -288,7 +288,7 @@ describe('scenario solids + honesty (excerpt §2) — module constants, not bund
     expect(SCENARIO_OBJECT[2]).toMatch(/box/i)
     expect(SCENARIO_OBJECT[3]).toMatch(/triangle/i)
     expect(QUERY_KIND).toEqual({ POINT_IN_REGION: 1, RANGE_BEARING: 2, RAY_OCCLUDER: 3, LOS: 4 })
-    expect(QUERY_STAGE_HONESTY.length).toBeGreaterThan(0) // the chip wording exists (rendered by T3)
+    expect(QUERY_STAGE_HONESTY.length).toBeGreaterThan(0) // the chip wording exists (rendered by the query stage)
   })
 })
 
@@ -459,7 +459,7 @@ const _exhaustive = (d: QueryDraw): number => {
 }
 void _exhaustive
 
-// ── E0_REGISTRATION — the query stage lifted from prose to a typed citizen (Task v07-6) ─────────────────
+// ── E0_REGISTRATION — the query stage lifted from prose to a typed citizen ─────────────────
 // The mirror of sensingStage.test.ts's F2A_REGISTRATION block: the asymmetry is closed — e0's LAW-4
 // declaration is now queryable data, validated at import, and its ledger's tiers match the recompute surface
 // (showMath.ts): the verdicts/range are recomputed, the bearing is pinned-bits, the bodies/origin are
@@ -467,7 +467,7 @@ void _exhaustive
 describe('E0_REGISTRATION — the query stage as a conforming citizen of the provenance ledger', () => {
   test('it validated at publish (import did not throw) and carries the enumerated ledger', () => {
     expect(E0_REGISTRATION.id).toBe('e0-query')
-    // Bind the gate to queryStageApplies' FUNCTION identity (T6 M3 — the COMPLETE predicate, not the content
+    // Bind the gate to queryStageApplies' FUNCTION identity (the COMPLETE predicate, not the content
     // half `hasQueryDraws` it used to under-name): a rename OR a dropped conjunct that skipped this registration
     // fails here — the mount/chip/rail share this one model-layer fact and cannot drift.
     expect(E0_REGISTRATION.mountGate).toBe(queryStageApplies.name)
@@ -579,8 +579,8 @@ describe('E0_REGISTRATION ledger truth (H1/M4) — decoded contact-verdict vs de
   })
 })
 
-// ── E0 LEDGER TRUTH (H2) — the selection re-lensing is DATA (causation + distance), not presentational ──────
-describe('E0_REGISTRATION ledger truth (H2) — selection re-lensing is sourced derived-display, not presentational', () => {
+// ── E0 LEDGER TRUTH — the selection re-lensing is DATA (causation + distance), not presentational ──────
+describe('E0_REGISTRATION ledger truth — selection re-lensing is sourced derived-display, not presentational', () => {
   const byId = new Map(E0_REGISTRATION.provenance.map(p => [p.id, p]))
 
   test('the re-lensing is a SOURCED derived-display class — the hop registers encode causation + distance', () => {

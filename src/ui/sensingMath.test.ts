@@ -81,18 +81,18 @@ describe('THE VOICE SPLIT — in_range/los_clear/eligible recompute; in_fov is t
     const g = new Map(sensingGates(poseless).map(x => [x.id, x]))
     expect(g.get('in_range')!.agree).toBeNull()
     expect(g.get('los_clear')!.agree).toBeNull()
-    // W2: the eligible conjunction now goes LIVE on in_range + los_clear, so with no pose it too declines
+    // The eligible conjunction now goes LIVE on in_range + los_clear, so with no pose it too declines
     // (agree null) — it never falls back to a decoded-only echo dressed as a live ✓.
     expect(g.get('eligible')!.agree).toBeNull()
   })
 })
 
-// W2 — the eligible conjunction is a LIVE re-derivation, not an echo of the engine's own recorded component
+// The eligible conjunction is a LIVE re-derivation, not an echo of the engine's own recorded component
 // bits. It ANDs the LIVE-recomputed in_range and los_clear (from the decoded pose) with the DECODED in_fov
 // claim, then checks that composite against the engine's eligible bit. The load-bearing distinction: an
 // engine that lies about a geometry leg AND flips eligible to stay internally consistent is BLIND to a
 // decoded-only echo (its own bits agree with themselves) but CAUGHT by the live legs.
-describe('W2 — eligible is a LIVE conjunction (in_range + los_clear live, in_fov the decoded claim)', () => {
+describe('eligible is a LIVE conjunction (in_range + los_clear live, in_fov the decoded claim)', () => {
   // A fully-admitted, poseful verdict: all three legs true, eligible true, and the live legs agree.
   const admitted = stage.draws.find(
     (x): x is SensingDraw => x !== null && x.g !== null && x.inRange && x.inFov && x.losClear && x.eligible,
@@ -147,7 +147,7 @@ test('the recompute closure (sensingMath.ts + sensingScenario.ts) recomputes NO 
   expect(code).not.toMatch(/\b(?:atan2|atan|asin|acos|sin|cos|tan)\b/)
 })
 
-// ── Runtime-closure extraction via the TS AST (F5 — the backtick dynamic-import evasion, closed) ──────────
+// ── Runtime-closure extraction via the TS AST (the backtick dynamic-import evasion, closed) ──────────
 // Mirrors showMath.test.ts. The old regex extractor keyed dynamic-import specifiers on `import\(\s*['"]…['"]\)`
 // and so MISSED a template/computed specifier (import(`./camera`)) — which typechecks and survives into emitted
 // JS unseen. Parsing with the TS compiler (ts.createSourceFile — `typescript` is the tsc-gate devDependency)
@@ -171,7 +171,7 @@ function moduleEdges(name: string, src: string): ModuleEdges {
         const clause = n.importClause
         if (!clause) e.valueImports.push(s)                     // side-effect import '…' (runtime)
         else if (clause.isTypeOnly) e.typeOnlyImports.push(s)   // import type … from — declaration-level, FULLY erased
-        // Otherwise a RUNTIME edge (F3). verbatimModuleSyntax erases ONLY the declaration-level `import type`
+        // Otherwise a RUNTIME edge. verbatimModuleSyntax erases ONLY the declaration-level `import type`
         // above. An import clause with INLINE type-only specifiers but no value binding (`import { type A } from
         // './x'`) still EMITS the bare side-effect `import {} from './x'` — the module is evaluated — so it is a
         // value edge here, NOT erased. (Classifying it type-only would let a declaration-level `import type …
@@ -193,11 +193,11 @@ function moduleEdges(name: string, src: string): ModuleEdges {
 }
 const readEdges = (path: string): ModuleEdges => moduleEdges(path, readFileSync(path, 'utf8'))
 
-test('SCAN-COVERAGE PIN: sensingMath VALUE-imports exactly ./sensingScenario; NO dynamic import survives (F5)', () => {
+test('SCAN-COVERAGE PIN: sensingMath VALUE-imports exactly ./sensingScenario; NO dynamic import survives', () => {
   const e = readEdges('src/ui/sensingMath.ts')
   // (1) The only RUNTIME value edge is the zero-import scenario module — the trig scan's closure claim, checked.
   expect([...new Set(e.valueImports)].sort()).toEqual(['./sensingScenario'])
-  // (2) Type-only edges are erased (verbatimModuleSyntax); ./agreeSource rides here (W3 — AgreementResult /
+  // (2) Type-only edges are erased (verbatimModuleSyntax); ./agreeSource rides here (AgreementResult /
   //     AgreeCapability / InputToken are types), as do the sensingStage types. A NEW type-only source re-adjudicates.
   for (const s of e.typeOnlyImports) expect(['./sensingScenario', './sensingStage', './agreeSource']).toContain(s)
   // (3) No value re-export widens the closure like an import would (`export type … from` is erased, allowed).
@@ -224,7 +224,7 @@ test('SCAN-COVERAGE PIN: sensingMath VALUE-imports exactly ./sensingScenario; NO
   expect(probe.typeOnlyImports).toEqual(['./y'])
   expect(probe.valueReExports).toEqual(['./w'])
 
-  // PREMISE-DEFEAT (F3) — the INLINE type-only edge. Under verbatimModuleSyntax `import { type A } from './x'`
+  // PREMISE-DEFEAT — the INLINE type-only edge. Under verbatimModuleSyntax `import { type A } from './x'`
   // (inline `type` specifier, NO value binding) emits the bare side-effect `import {} from './x'` — a RUNTIME
   // edge. The new walk classifies it a value import; the OLD all-inline-type branch wrongly erased it (which
   // would let `import type … from './sensingStage'` be rewritten to this form to keep this pin green while

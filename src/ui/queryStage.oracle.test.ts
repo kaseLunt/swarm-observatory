@@ -7,9 +7,9 @@ import { buildQueryDraws, losComponents, queryBounds, type RayDraw, type RangeBe
 
 // Oracle cross-check: the model layer, run over the REAL decoded e0 bundle, must reproduce the frozen
 // design draw table. Expected values below are transcribed from the machine copy
-// `.superpowers/sdd/verify/v06-draw-table.json` (produced by the SDD probe v06-draw-inventory.test.ts,
-// itself anchored to contract/EXP-E0-kind23-geometry-excerpt.md, blob d7b98d5c…). That JSON is gitignored
-// SDD scratch, so its load-bearing numbers are pinned here as literals — this test is self-contained and
+// of the frozen draw table (produced by a design draw-inventory probe,
+// itself anchored to contract/EXP-E0-kind23-geometry-excerpt.md, blob d7b98d5c…). That copy is a gitignored,
+// untracked artifact, so its load-bearing numbers are pinned here as literals — this test is self-contained and
 // decodes the tracked fixture the same way decodeBundle.test.ts does. If the excerpt is ever re-cut, the
 // probe regenerates the table and these constants are re-pinned.
 

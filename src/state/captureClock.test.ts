@@ -14,7 +14,7 @@ import { SPEEDS } from './speeds'
 // finale ring scale, predictive lead) rides Scene's real renderer deltas until the rung-3 visual delta
 // seam (docs/capture.md § Rung 3). The pure derivation (captureFrameDtMs) is the heart; the module
 // channel (engage/frameDeltaMs) is the opt-in seam the live draw loop reads — byte-identical to the
-// wall-clock path when disengaged (§8).
+// wall-clock path when disengaged.
 
 // Every test disengages so the module singleton never leaks capture mode into a later test (or, if a
 // test file ever runs in the same process as a live-path test, into that).
@@ -90,10 +90,10 @@ describe('captureFrameDtMs: fixed per-frame wall-delta (ms) fed to advancePlayhe
 })
 
 // ── The module channel: the opt-in seam the live draw loop reads ───────────────────────────────────
-describe('capture channel: engaged only during capture, byte-identical live path when off (§8)', () => {
+describe('capture channel: engaged only during capture, byte-identical live path when off', () => {
   test('disengaged by default: isCapturing false and frameDeltaMs is the identity on the wall delta', () => {
     expect(isCapturing()).toBe(false)
-    // The §8 guarantee, executable: the live draw loop passes frameDeltaMs(now-last); when not capturing
+    // The load-budget guarantee, executable: the live draw loop passes frameDeltaMs(now-last); when not capturing
     // that MUST equal now-last exactly, for any value the wall clock produces (incl. odd/jittery deltas).
     for (const wall of [16.7, 0, 33.3333, 250, 1000 / 60, -0]) expect(frameDeltaMs(wall)).toBe(wall)
   })
@@ -251,7 +251,7 @@ describe('engageCapture refuses degenerate DOWNSTREAM playback (in-band fps, pat
 // authoritative BY CONSTRUCTION, and mid-session speed writes are display-only (deterministic survival;
 // the capture-ending-interrupt alternative was rejected — see the function's doc and docs/capture.md).
 describe('captureSpeed: capture pacing is speed-independent (the fps alone encodes rate)', () => {
-  test('disengaged: the identity on the store speed — ladder and off-ladder alike (§8)', () => {
+  test('disengaged: the identity on the store speed — ladder and off-ladder alike', () => {
     for (const sp of [...SPEEDS, 0.7111, 1.3333]) expect(captureSpeed(sp)).toBe(sp)
   })
   test('engaged: returns 1 regardless of the store speed', () => {
@@ -343,7 +343,7 @@ describe('captureClockOf: authoritative clock facts from the loaded model alone'
 // ── DETERMINISM PROOF: the rung’s deliverable, scoped to the playhead TIMELINE ─────────────────────
 // Simulate the draw loop's playhead advancement over N frames and serialize the exact (tick, fraction)
 // at every frame. This sequence is the timeline the renderer draws FROM, and the capture clock's claim
-// ends here (narrowed in review, round 2): static/hold frames are pure functions of playhead + verified
+// ends here (narrowed in review): static/hold frames are pure functions of playhead + verified
 // model and are therefore stable everywhere; visual EASING (camera focus/trail/follow, finale ring
 // scale, predictive lead) runs on Scene's real renderer deltas until rung 3 routes a capture-aware
 // visual delta — that boundary (and the WebGL/encoder one) is documented in docs/capture.md. A capture
@@ -356,7 +356,7 @@ describe('captureClockOf: authoritative clock facts from the loaded model alone'
 // engage/disengage mismanage the singleton, or if a per-frame wall value ever bleeds into the delta.
 
 // One full capture session through the REAL seam — both halves, exactly as Timeline drives them:
-// frameDeltaMs(wall) for the delta and captureSpeed(storeSpeed) for the rate (round 3: pinned to 1 while
+// frameDeltaMs(wall) for the delta and captureSpeed(storeSpeed) for the rate (pinned to 1 while
 // engaged, so the passed store speed is inert during capture). `wallOf(i)` supplies that frame's
 // wall-clock delta — the value the draw loop would compute as `now - last` — which frameDeltaMs must
 // wholly ignore while engaged. Asserts clean module state on entry and the restored disengaged identity
@@ -432,7 +432,7 @@ describe('determinism: same input → same playhead timeline (the rung’s deliv
 
   test('determinism holds on the real-clock tier with a non-1× store speed passed (inert during capture)', () => {
     // Two fresh f2a-shaped sessions, different jitter streams, and BOTH with the store at the 4× ladder
-    // notch — which captureSpeed neutralizes while engaged (round 3), so the sequences are identical to
+    // notch — which captureSpeed neutralizes while engaged, so the sequences are identical to
     // each other AND to a 1× session: the store speed is provably inert inside a full session lifecycle.
     const runA = captureSession({ tickCount: 96, dtUs: 125000 }, 30, 96, jitterStream(7), 4)
     const runB = captureSession({ tickCount: 96, dtUs: 125000 }, 30, 96, jitterStream(11), 4)

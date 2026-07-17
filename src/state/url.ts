@@ -10,7 +10,7 @@ export function encodeLink(s: LinkState): string {
   return p.toString()
 }
 
-// The copy-link share weapon (v0.6 T6, P2): build the FULL shareable URL for the current view from the
+// The copy-link share weapon (v0.6): build the FULL shareable URL for the current view from the
 // encoded query grammar. encodeLink always emits at least `run=…`, so the '?' is never dangling. The
 // LinkState carries ONLY run/tick/sel/ev/speed — verification state NEVER rides the URL (the NEVER-list),
 // so a shared link reproduces the VIEW, never a trust claim (the recipient's own browser re-verifies).

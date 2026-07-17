@@ -9,7 +9,7 @@ import { RunModel } from '../model/runModel'
 const load = (n: string) => { const b = readFileSync(`contract/fixtures/${n}`); return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) }
 const e0 = new RunModel(decodeBundle(load('e0_seed42.det')), null)
 
-// THE AGGREGATION HORIZON (consult-legibility-miniwave §1). e0 is one degenerate linear hash chain of 75
+// THE AGGREGATION HORIZON (a design ruling). e0 is one degenerate linear hash chain of 75
 // (parent = seq−1, tick == seq), so a hop is a seq distance: selecting a mid-chain event lights exactly the
 // { seq−3 .. seq+3 } neighborhood — its own evidence — and nothing beyond. These pins replace the pre-horizon
 // full-chain expectations (74 arcs / 75 members), which the horizon deliberately retires.
@@ -39,14 +39,14 @@ describe('causalHops (E0: linear chain of 75) — the ≤ maxHop neighborhood', 
   })
 })
 
-// ── W3: BOUNDED TRAVERSAL — the neighborhood cost, never the whole chain ──────────────────────────────
+// ── BOUNDED TRAVERSAL — the neighborhood cost, never the whole chain ──────────────────────────────
 // causalHops was rewritten to parent-walk exactly maxHop steps and BFS children only while hop < maxHop
 // (the old body materialised model.causalChain — the FULL transitive closure — then filtered). Two pins:
 // (1) identical OUTPUT to the old derivation across ALL 75 e0 selections (a pure refactor of the result);
 // (2) a branching tree proves a beyond-horizon subtree is NEVER ENUMERATED (childrenOf / parentOf are not
 // called on nodes past the horizon), so the cost is decoupled from total chain size.
-describe('causalHops — bounded traversal (W3)', () => {
-  // The pre-W3 derivation, kept verbatim as the reference oracle: full causalChain, then the maxHop filter.
+describe('causalHops — bounded traversal', () => {
+  // The earlier derivation, kept verbatim as the reference oracle: full causalChain, then the maxHop filter.
   const oldCausalHops = (model: RunModel, seq: number, maxHop: number): Map<number, number> => {
     const { ancestors, descendants } = model.causalChain(seq)
     const hop = new Map<number, number>([[seq, 0]])
@@ -145,7 +145,7 @@ describe('activeChain — the selection gate', () => {
   })
 })
 
-// ══ v0.8 W2 — THE CausalNeighborhood API (the honesty-tier ruling) ═══════════════════════════════════════════
+// ══ v0.8 — THE CausalNeighborhood API (the honesty-tier ruling) ═══════════════════════════════════════════
 // ONE bounded traversal, a COUNT-TRUE summary, a PINNED truncation order, and the two-surface disagreement class
 // dead by construction. These pins guard the four properties the wave rests on.
 
@@ -204,7 +204,7 @@ describe('causalNeighborhood — pinned truncation order (smallest seq survives,
     expect(nb.members.size).toBe(5)                                // self + 4 retained
     expect(nb.summary.total).toBe(nb.members.size + nb.summary.truncated!.dropped) // 5 + 6 === 11 (self + 10)
     expect(nb.summary.total).toBe(11)
-    // F3 (superseded pin): a BREADTH cut is NOT a depth claim. This call is unprobed (probeHorizon defaults off)
+    // (superseded pin): a BREADTH cut is NOT a depth claim. This call is unprobed (probeHorizon defaults off)
     // and the star's children are leaves — the chain ENDS at hop 1 — so descendantsBeyond is false. The old pin
     // asserted `true` ("a cut always means more below"), conflating the per-hop drop with a horizon overrun; the
     // dropped members are disclosed by summary.truncated, never by a false beyond-horizon flag.
@@ -212,13 +212,13 @@ describe('causalNeighborhood — pinned truncation order (smallest seq survives,
   })
 })
 
-// F2 — COMBINED PER-HOP CAP. The ancestor and the descendants at the SAME distance share ONE maxPerHop budget, so
+// COMBINED PER-HOP CAP. The ancestor and the descendants at the SAME distance share ONE maxPerHop budget, so
 // the cap bounds byHop[d] (the RETAINED members at that hop), not each side independently. Before the fix the
 // ancestor was inserted unconditionally and the descendants then took another full maxPerHop, so one parent + four
 // children under maxPerHop 4 rendered byHop[1] = 5 (the public cap violated) with truncated = null (the drop
 // misstated). The pinned smallest-seq rule PROMISES the parent (smallest seq by the decode law) + the three
 // smallest children; the combined cap delivers exactly that, with the fifth member a COUNTED drop.
-describe('causalNeighborhood — combined per-hop cap (ancestor + descendants share maxPerHop) [F2]', () => {
+describe('causalNeighborhood — combined per-hop cap (ancestor + descendants share maxPerHop)', () => {
   // subject 10: parent 5 (an ancestor at hop 1) and four children 20..23 (descendants at hop 1); all else leaves.
   const model = (): RunModel => ({
     childrenOf(seq: number): readonly number[] { return seq === 10 ? [20, 21, 22, 23] : [] },
@@ -240,13 +240,13 @@ describe('causalNeighborhood — combined per-hop cap (ancestor + descendants sh
   })
 })
 
-// F1 — BOUNDED SELECTION at high fan-out. The per-hop cap must bound the WORK, not just the result: a node with N
+// BOUNDED SELECTION at high fan-out. The per-hop cap must bound the WORK, not just the result: a node with N
 // children retains O(maxPerHop) scratch (an ascending survivor buffer) and NEVER sorts the whole overflow. The
 // probe feeds children as a COUNTING iterable with no .length / index / .sort, in DESCENDING order — so the test
 // proves (a) the traversal consumes the fan-out as a pure stream (it cannot materialise or sort the input), (b) the
 // smallest-seq maxPerHop survive regardless of feed order, count-true, and (c) an identical repeat call is memoised
 // (single traversal per selection), the property the three unprobed HORIZON_OPTS surfaces rely on.
-describe('causalNeighborhood — bounded selection + memo at high fan-out [F1]', () => {
+describe('causalNeighborhood — bounded selection + memo at high fan-out', () => {
   const FAN = 10_000
   const SUBJECT = 500
   // children 1000..(1000+FAN-1), all > SUBJECT (forward-only), fed DESCENDING — worst case for a naive "first-k".
@@ -305,9 +305,9 @@ describe('two-surface agreement — links members === horizon members (disagreem
   })
 })
 
-// MIGRATION GUARD (v0.8 W2) — the render plane must NOT reach for the unbounded RunModel.causalChain; it uses
+// MIGRATION GUARD (v0.8) — the render plane must NOT reach for the unbounded RunModel.causalChain; it uses
 // causalNeighborhood. A cheap source-string assertion: no render-plane file may contain the call `.causalChain(`.
-// (The W3 oracle in THIS test file and runModel.test.ts keep the full chain — export-tier, not the render plane.)
+// (The reference oracle in THIS test file and runModel.test.ts keep the full chain — export-tier, not the render plane.)
 describe('render-plane migration guard — no causalChain in the pixel path', () => {
   const RENDER_PLANE = [
     'src/ui/chain.ts', 'src/ui/chainLinks.tsx', 'src/ui/Inspector.tsx',

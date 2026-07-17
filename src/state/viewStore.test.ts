@@ -58,14 +58,14 @@ test('a forced write cancels a pending trailing flush (exactly two writes, not t
   vi.unstubAllGlobals(); vi.useRealTimers()
 })
 
-// FINALE flag grammar (v0.5b T3). The finale is ephemeral display state — true only at a NATURAL play-to-end
+// FINALE flag grammar. The finale is ephemeral display state — true only at a NATURAL play-to-end
 // rest (the Timeline transport batch writes it; simulated here by a raw setState({finale:true}), which is
 // EXACTLY the natural-end edge's write). It is cleared by any playhead MOVE and by a run-switch; it survives a
-// selection / speed tap / pause. This is the full clearing / non-clearing grammar matrix, plus the r1
+// selection / speed tap / pause. This is the full clearing / non-clearing grammar matrix, plus the
 // play-at-rest re-fire (Space at rest clears then the natural-end edge re-sets → net kept) and the run-switch
 // clear (a finale must never bleed into the next run). The natural-end edge itself and the module-flag
 // non-clearers (orbit drag, help overlay — neither calls a store action) are browser-verified.
-describe('finale flag grammar (T3)', () => {
+describe('finale flag grammar', () => {
   // The natural-end edge's write, verbatim (Timeline sets finale inside its transport batch).
   const naturalEnd = () => useViewStore.setState({ finale: true })
 
@@ -159,13 +159,13 @@ describe('finale flag grammar (T3)', () => {
   })
 })
 
-// SESSION-SEAL (T5b, D4 checkmark economy; W1 + closure item 1). recordSeal records a run whose ceremony
+// SESSION-SEAL (the checkmark economy). recordSeal records a run whose ceremony
 // sealed green this session — the run id AND the resultId its ✓ vouches for; breakSeal flags a seal a
 // later mismatched re-load contradicted (the Hangar then voices that card in the alarm ✗ register). The
 // pure state machine is unit-tested in hangar.test.ts (recordSeal/breakSeal); here we pin the store
 // wiring: it starts empty (no persisted/build-time ✓), accumulates, replaces on different verified
 // bytes, breaks on contradiction, and no-ops (reference-stable) on repeats.
-describe('session-seal (T5b)', () => {
+describe('session-seal', () => {
   test('sealedRuns starts empty — no run is verified before a ceremony runs this session', () => {
     useViewStore.setState({ sealedRuns: [] })
     expect(useViewStore.getState().sealedRuns).toEqual([])

@@ -2,7 +2,7 @@ import { expect, test } from 'vitest'
 import { probeStorage, shouldArmZeroClick } from './coldOpen'
 
 // A minimal in-memory Storage stand-in (the node-env runner has no localStorage). `throwing` models a
-// denied/private-mode store where every access throws — the W3 case.
+// denied/private-mode store where every access throws — the denied-store case.
 function memStore(): Storage & { size(): number } {
   const map = new Map<string, string>()
   return {
@@ -24,11 +24,11 @@ const throwingStore = (): Storage => ({
   key() { throw new Error('storage denied') },
 })
 
-// ── W3: storage-availability probe (read+write, no persisted key) ─────────────────────────────────────
+// ── storage-availability probe (read+write, no persisted key) ─────────────────────────────────────
 test('probeStorage is TRUE for a working store', () => {
   expect(probeStorage(memStore())).toBe(true)
 })
-test('probeStorage is FALSE when the store THROWS (private mode / disabled) — the W3 case', () => {
+test('probeStorage is FALSE when the store THROWS (private mode / disabled)', () => {
   expect(probeStorage(throwingStore())).toBe(false)
 })
 test('probeStorage is FALSE when there is no store at all (undefined)', () => {
@@ -62,11 +62,11 @@ test('probeStorage is FALSE (not a crash) when the localStorage GETTER itself th
   }
 })
 
-// ── W3 + the arming decision: shouldArmZeroClick pins every branch ─────────────────────────────────────
+// ── the arming decision: shouldArmZeroClick pins every branch ─────────────────────────────────────
 test('arms on a first-visit cold open with a tour, unseen marker, and an available store', () => {
   expect(shouldArmZeroClick('first-visit', true, true, false, true)).toBe(true)
 })
-test('W3: a first-visit cold open with a DENIED store is SUPPRESSED (never auto-play every visit)', () => {
+test('a first-visit cold open with a DENIED store is SUPPRESSED (never auto-play every visit)', () => {
   // The bug: a throwing store reads as nudgeSeen=false, so without this guard EVERY bare load would arm.
   expect(shouldArmZeroClick('first-visit', true, true, false, false)).toBe(false)
 })

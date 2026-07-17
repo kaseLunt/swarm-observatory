@@ -8,7 +8,7 @@ import {
 } from '../decode/campaignVerify'
 import type { MarkKey } from './voices'
 
-// ── THE TAMPER MOMENT — the ✗ path, made demonstrable (v0.8 W6) ─────────────────────────────────────────
+// ── THE TAMPER MOMENT — the ✗ path, made demonstrable (v0.8) ─────────────────────────────────────────
 // Every shipped bundle verifies GREEN, so a visitor never SEES the refusal machinery work — the most
 // retellable ten seconds for a skeptic ("flip one byte, watch it fail") was undemonstrable. This is the pure,
 // React-free, worker-free core of a Wall demo that makes it demonstrable HONESTLY: it verifies one certified
@@ -16,7 +16,7 @@ import type { MarkKey } from './voices'
 // CLONE, and re-verifies the SAME bytes-minus-that-flip (→ a real 'mismatch', honestly earned by real
 // recomputation over really-tampered bytes). It renders the two per-pin chains side by side.
 //
-// ── THE BYTE WE FLIP, AND WHY IT IS A VALID CONTENT EDIT (the F1 lens, filed in-code) ──────────────────────
+// ── THE BYTE WE FLIP, AND WHY IT IS A VALID CONTENT EDIT (the guiding lens, filed in-code) ──────────────────────
 //   • The flip must land inside a KNOWN FIXED-WIDTH INNER DATA FIELD — a value the ENGINE RECORDED — so the
 //     tampered clone is a fully-VALID bundle that decodes end-to-end (decodeBundle), differing from the
 //     certified bytes only in one recorded measurement. That is the point we want to show: a VALID content edit
@@ -35,7 +35,7 @@ import type { MarkKey } from './voices'
 //     own tampered-content-then-repair-CRC idiom (sealFold.test.ts): flip a recorded value, rewrite the frame CRC
 //     so the bytes decode, watch the recomputed identity diverge. The verify CORE is unchanged — it refuses.
 //
-// ── THE TWO GATES THAT KEEP THE STORY HONEST (F2 — premise-first, fail-closed) ─────────────────────────────
+// ── THE TWO GATES THAT KEEP THE STORY HONEST (premise-first, fail-closed) ─────────────────────────────
 //   • SOURCE GATE: verify the FETCHED bytes FIRST and REFUSE to run unless they are 'verified'. The tamper is an
 //     involution (flip, then flip = identity), so an already-tampered or stale-but-parsable input would let the
 //     second flip RESTORE certified content — "as published" would mismatch while "one byte flipped" verified,
@@ -53,10 +53,10 @@ import type { MarkKey } from './voices'
 // A typed refusal — the demo FAILS LOUD rather than rendering a wrong-byte flip or an inverted overclaim. The
 // view distinguishes these (an honest refusal) from a fetch/IO failure (a load problem) by `instanceof`.
 export type TamperDemoErrorCode =
-  | 'source-not-verified'  // the fetched bytes did not verify — the demo needs certified input (F2 source gate)
-  | 'no-safe-field'        // no fixed-width recorded scalar field resolved to flip (F1 fail-loud)
-  | 'not-structural'       // the CRC-repaired clone did not fully decode — the byte was not pure content (F1)
-  | 'cascade-anomaly'      // the tamper did not produce the intended event_hash → result_id refusal (F2 fail-closed)
+  | 'source-not-verified'  // the fetched bytes did not verify — the demo needs certified input (the source gate)
+  | 'no-safe-field'        // no fixed-width recorded scalar field resolved to flip (fail-loud)
+  | 'not-structural'       // the CRC-repaired clone did not fully decode — the byte was not pure content
+  | 'cascade-anomaly'      // the tamper did not produce the intended event_hash → result_id refusal (fail-closed)
 export class TamperDemoError extends Error {
   readonly code: TamperDemoErrorCode
   constructor(code: TamperDemoErrorCode, message: string) {
@@ -66,7 +66,7 @@ export class TamperDemoError extends Error {
   }
 }
 
-// The seed the demo verifies. 42 is the campaign's first pinned seed and the one the W5 verify-all wiring already
+// The seed the demo verifies. 42 is the campaign's first pinned seed and the one the verify-all wiring already
 // names in its tests; its vendored bytes are byte-identical to the catalog sha256 pin (publication.test.ts gate).
 export const DEMO_SEED_ID = '42'
 
@@ -163,7 +163,7 @@ function assertStructurallyDecodes(clone: Uint8Array): void {
 //   • catalog-pin   — the certified per-seed identity (case_id / result_id) pinned in the in-bundle catalog.
 export type OracleKind = 'byte-identity' | 'trailer-self' | 'catalog-pin'
 
-// A row's MARK is the (oracle × result) verdict, NOT a flat ✓/✗ (the F3 lens): a match against an EXTERNAL pin
+// A row's MARK is the (oracle × result) verdict, NOT a flat ✓/✗ (the voices grammar): a match against an EXTERNAL pin
 // (catalog-pin / byte-identity) earns the manifest-grade ✓ receipt; a match against the bundle's OWN sealed
 // trailer (trailer-self) earns the ○ self-consistent RING — it reproduced a value nothing external backs, so it
 // must never wear the ✓ the voices grammar reserves for external agreement. A disagreement is the ✗ mismatch; a
@@ -178,7 +178,7 @@ export interface DemoPinRow {
   readonly key: string
   readonly label: string
   readonly oracle: OracleKind
-  readonly mark: MarkKey // one of: verified | selfConsistent | mismatch | unverifiable (F3)
+  readonly mark: MarkKey // one of: verified | selfConsistent | mismatch | unverifiable
 }
 
 // One verified side: the REAL campaign status (the same verdict verify-all mints per seed) + the per-pin chain.
@@ -244,7 +244,7 @@ export const INTENDED_CASCADE: Readonly<Record<string, MarkKey>> = {
 
 // The tampered side must show EXACTLY the intended cascade (INTENDED_CASCADE) — mismatch overall, every pin in its
 // earned voice, the row set exactly these keys (no missing pin, no unexpected extra row). Anything else (a flip that
-// did not fully land, a bundle that verified anyway, a broader corruption) is a typed anomaly, never a demo (F2).
+// did not fully land, a bundle that verified anyway, a broader corruption) is a typed anomaly, never a demo.
 export function assertIntendedCascade(side: DemoSide): void {
   const anomaly = (detail: string): never => {
     throw new TamperDemoError('cascade-anomaly', `the tamper did not produce the intended cascade (${detail})`)
@@ -264,7 +264,7 @@ export function assertIntendedCascade(side: DemoSide): void {
 // cryptographic, not structural) BEFORE analyzing it, verify the tampered clone, and require the intended cascade.
 // PURE — never touches the campaign store (the isolation rail).
 export function runTamperDemo(pristine: Uint8Array, expected: CampaignExpected): TamperDemoResult {
-  // F2 SOURCE GATE — the tamper is involutive, so it must only ever run on CERTIFIED bytes. Verify FIRST; refuse
+  // SOURCE GATE — the tamper is involutive, so it must only ever run on CERTIFIED bytes. Verify FIRST; refuse
   // otherwise, so the flip always produces tampered content (never restores a stale/pre-tampered input).
   const pristineSide = analyzeSide(pristine, expected)
   if (pristineSide.status !== 'verified')
@@ -272,12 +272,12 @@ export function runTamperDemo(pristine: Uint8Array, expected: CampaignExpected):
 
   const t = tamperEventStream(pristine)
 
-  // F1 STRUCTURAL PRECONDITION — assert the CRC-repaired clone still passes decodeBundle BEFORE asserting the
+  // STRUCTURAL PRECONDITION — assert the CRC-repaired clone still passes decodeBundle BEFORE asserting the
   // identity mismatch, so the refusal is provably CRYPTOGRAPHIC (a recomputed identity diverged), not structural.
   assertStructurallyDecodes(t.bytes)
 
   const tamperedSide = analyzeSide(t.bytes, expected)
-  assertIntendedCascade(tamperedSide) // F2 FAIL-CLOSED — only the intended cascade renders
+  assertIntendedCascade(tamperedSide) // FAIL-CLOSED — only the intended cascade renders
 
   return {
     pristine: pristineSide,

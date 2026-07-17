@@ -9,15 +9,15 @@ export const PALETTE = {
   textDim: '#8899aa',
   textFaint: '#5a6b7a',
   accent: '#56b6ff',        // selection / primary UI accent
-  timeCursor: '#ffd166',    // playhead — its own token, NOT the decision-category hue (rev-2 graded decision to copper, so now distinct in value too)
+  timeCursor: '#ffd166',    // playhead — its own token, NOT the decision-category hue (graded decision to copper, so now distinct in value too)
   verified: '#4ade80',
   mismatch: '#f87171',
   pending: '#64748b',
-  // rev-3 R3 swatch (owner-approved 2026-07-09): un-borrow two double-spent hues. The query-verdict pulse
+  // Owner-approved swatch update (2026-07-09): un-borrow two double-spent hues. The query-verdict pulse
   // pair gets its OWN hues off the integrity green/red (so a routine query=false no longer flashes the
   // tamper red), and the causal-chain highlight gets its own causality violet off the amber time-cursor
-  // (so time owns gold alone — the playhead cuts cleanly through the chain). Placement + ΔE/CVD receipts:
-  // .superpowers/sdd/swatch-v06-rev3.html (Set 1). No reserved hue and no CATEGORY hue moved (LAW 2).
+  // (so time owns gold alone — the playhead cuts cleanly through the chain). Placement + ΔE/CVD receipts
+  // were captured in the design swatch. No reserved hue and no CATEGORY hue moved (LAW 2).
   verdictAffirm: '#3af2ff',  // query-verdict TRUE — HDR pulse / stage-contact affirm, own hue off `verified`
   verdictNegate: '#c2410c',  // query-verdict FALSE — lightness-graded ember, own hue off `mismatch`
   spine: '#b366f5',          // causal-chain highlight (spine role tones + timeline chain overlay) — off `timeCursor`
@@ -30,7 +30,7 @@ export const PALETTE = {
 // Event-category semantics (spec-3a §2.3). Hue is NEVER the only channel — glyph is the
 // redundant, color-blind-safe encoding carried everywhere a category appears.
 export const CATEGORY = {
-  // rev-2 chroma-graded hierarchy: hue does identity, chroma does hierarchy; the reserved tokens
+  // Chroma-graded hierarchy: hue does identity, chroma does hierarchy; the reserved tokens
   // (accent #56b6ff, time-cursor #ffd166, mismatch #f87171) keep the brightest register for meaning,
   // so no category shares a reserved hex any longer (accent is now selection-owned).
   query:    { hue: '#82a8d2', glyph: '◆', label: 'query/observation' },   // E0 kind-23 — matte steel: ambient category recedes so selection pops

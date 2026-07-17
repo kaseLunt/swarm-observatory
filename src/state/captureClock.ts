@@ -12,11 +12,11 @@ import { hasRealSimClock } from '../ui/hangar'
 // deterministically) and adds exactly one seam to the live loop's transport line — two halves,
 // frameDeltaMs (the delta) and captureSpeed (the rate multiplier, pinned to 1 while engaged so the fps
 // alone encodes capture pacing) — each of which is the IDENTITY whenever capture is not engaged, so the
-// live path is byte-identical (§8). Capture is opt-in via the ?capture= entry point (parseCaptureFps),
+// live path is byte-identical. Capture is opt-in via the ?capture= entry point (parseCaptureFps),
 // which a shared/normal load never carries (encodeLink never emits it — capture is not a view fact,
 // like verification state it never rides a URL).
 //
-// SCOPE — narrowed in review (round 2; the broader wording was an overclaim): this module owns the
+// SCOPE — narrowed in review (the broader wording was an overclaim): this module owns the
 // playhead TIMELINE — the (tick, fraction) at every captured frame — and THAT is what is bit-stable
 // across machines (proven in captureClock.test.ts). Visual EASING is not clocked here: Scene.tsx's
 // useFrame consumers (focus/trail/follow camera easing, finale ring scale, predictive lead) run on REAL
@@ -45,7 +45,7 @@ export const DEFAULT_CAPTURE_FPS = 30
 // to values a capture could actually mean — an unconstrained finite-positive check admits pathological
 // numbers whose DERIVED delta breaks playback (?capture=5e-324 → dtMs=Infinity → the first frame clamps
 // to end; ?capture=1e308 → a near-zero delta stall). Bounds chosen from real capture rates:
-//   • floor 1 fps — anything slower is not a motion capture (GIF/video and the §1a hero spec live in
+//   • floor 1 fps — anything slower is not a motion capture (GIF/video and the hero-capture spec live in
 //     24–60), and it caps the assumed-tier delta at ≤ 1000ms/frame;
 //   • ceiling 240 fps — the highest common HFR display/capture rate, flooring the assumed-tier delta at
 //     ~4.17ms/frame. Together they keep the derivation orders of magnitude away from overflow/underflow.
@@ -56,7 +56,7 @@ export const MAX_CAPTURE_FPS = 240
 
 // The frame budget an armed capture must complete within, validated at the 1× baseline: one hour of
 // footage at the band ceiling (3600 s · MAX_CAPTURE_FPS = 864 000 frames). Why an hour: every artifact
-// this pipeline exists for is seconds-to-minutes (the §1a hero ≈6 s, tour clips ≈60 s, a full real-clock
+// this pipeline exists for is seconds-to-minutes (the hero capture ≈6 s, tour clips ≈60 s, a full real-clock
 // run 12 s) — a clock that cannot finish inside an hour of ceiling-rate frames is a stall, not a capture.
 // The bound is deliberately loose: it accepts every published run shape by ~3 orders of magnitude while
 // rejecting the pathological sub-epsilon increments (~4e-305 ticks/frame) by ~300.
@@ -91,13 +91,13 @@ let session: { dtMs: number } | null = null
 
 /** Engage capture: from now on frameDeltaMs returns the fixed delta for `clock` at `fps`, ignoring the
  *  wall clock. Called by the capture entry point once the model (hence tickCount) is ready.
- *  DOWNSTREAM-VALIDATED (round 2): a finite positive dtMs is not enough — an in-band fps with extreme
+ * DOWNSTREAM-VALIDATED: a finite positive dtMs is not enough — an in-band fps with extreme
  *  MANIFEST clock facts (captureClockOf trusts manifest.dtUs, and a malformed/future manifest reaches
  *  this) can still derive a delta whose PLAYBACK degenerates: {tickCount:1, dtUs:1e308} yields dtMs
  *  3.3e-301 (finite, positive) but a ~4e-305 ticks/frame stall; {tickCount:2e7, dtUs:1e-308} yields dtMs
  *  1.7e308 whose tick increment overflows and snaps `done` on frame 1. So validate what advancePlayhead
  *  will actually DO with the delta — the per-frame tick increment, mirrored from its exact rate term at
- *  the 1× capture baseline. The baseline is AUTHORITATIVE, not approximate (round 3): captureSpeed pins
+ * the 1× capture baseline. The baseline is AUTHORITATIVE, not approximate: captureSpeed pins
  *  the effective transport speed to 1 for the whole session, so the validated increment IS the played
  *  increment — a ?speed=8 deep link or a mid-capture speed write cannot scale the delta past this
  *  guard. Refuse unless the increment is
@@ -141,18 +141,18 @@ export function isCapturing(): boolean {
 /**
  * The DELTA half of the capture seam on the live draw loop: `advancePlayhead(...,
  * frameDeltaMs(now - last), captureSpeed(s.speed), ...)`. Returns the wall delta UNCHANGED when not
- * capturing (the byte-identical live path, §8); returns the fixed per-frame capture delta when engaged.
+ * capturing (the byte-identical live path); returns the fixed per-frame capture delta when engaged.
  */
 export function frameDeltaMs(wallDeltaMs: number): number {
   return session === null ? wallDeltaMs : session.dtMs
 }
 
 /**
- * The SPEED half of the capture seam (round 3). The fixed clock OWNS capture pacing: the fps already
+ * The SPEED half of the capture seam. The fixed clock OWNS capture pacing: the fps already
  * encodes the capture rate, so letting the store speed multiply the capture delta would double-spend
  * rate control — a ?run=f0&speed=8&capture=1 deep link would arm past the downstream guard (validated
  * at 1×) and then snap the 2-tick run done on the first captured frame at 8×. Returns the store speed
- * UNCHANGED when not capturing (§8 identity); returns 1 while engaged, making captured playback
+ * UNCHANGED when not capturing (the identity); returns 1 while engaged, making captured playback
  * speed-INDEPENDENT by construction.
  *
  * Mid-session speed writes (a user keystroke, a tour's internal witnessSpeed) therefore update the

@@ -2,17 +2,17 @@ import { describe, expect, test } from 'vitest'
 import { TOURS } from './tours'
 import type { TourShot, TourStep } from './tourTypes'
 
-// ── e0 tour byte-identity pin (v0.8 W7) ──────────────────────────────────────────────────────────────────
-// W7 authored THREE camera arrives (beats 2/4/5) and touched NOTHING else: the §5 reading windows (every
+// ── e0 tour byte-identity pin (v0.8) ──────────────────────────────────────────────────────────────────
+// This wave authored THREE camera arrives (beats 2/4/5) and touched NOTHING else: the reading windows (every
 // caption + holdMs) and the un-authored beats (0/1/3) must survive verbatim — the f2a authored-arrive
-// precedent ("captions/holds UNCHANGED, so the §5 windows survive"). This pins that contract: the exact
+// precedent ("captions/holds UNCHANGED, so the reading windows survive"). This pins that contract: the exact
 // caption strings, the exact holdMs, the play/select/tick actions, and that ONLY beats 2/4/5 carry an arrive.
 // A single-char caption edit or a moved hold fails here; so does an arrive added to a protected beat.
 
 const e0 = TOURS.e0!
 
 // The reading windows, verbatim. If a caption is re-worded the string OR its paired holdMs must change here in
-// lockstep — this is the wall against a silent edit to the protected §5 windows.
+// lockstep — this is the wall against a silent edit to the protected reading windows.
 const CAPTIONS: readonly [string, number, TourShot | undefined][] = [
   ['A real run bundle — 75 geometry queries, replayed as the geometry they resolved. Its event and state hashes recomputed and matched its own seal, on load.', 7700, undefined],
   ['Playback is exact replay — every tick is the authoritative recorded state, never simulation. Act I writes the world: points land inside or outside the sphere and box, and rays reach out and STOP where they strike a solid.', 11100, undefined],
@@ -30,7 +30,7 @@ describe('e0 tour — the authored arrives ride on top of byte-untouched caption
     expect(e0.steps).toHaveLength(6)
   })
 
-  test('every caption + holdMs is verbatim (the §5 reading windows survive W7 unchanged)', () => {
+  test('every caption + holdMs is verbatim (the reading windows survive unchanged)', () => {
     e0.steps.forEach((step, i) => {
       const [caption, holdMs] = CAPTIONS[i]!
       expect(step.caption).toBe(caption)
@@ -46,23 +46,86 @@ describe('e0 tour — the authored arrives ride on top of byte-untouched caption
     expect(e0.steps[0]!.arrive).toBeUndefined()
     expect(e0.steps[1]!.arrive).toBeUndefined()
     expect(e0.steps[3]!.arrive).toBeUndefined()
-    // The three authored beats carry exactly the W7 shots.
+    // The three authored beats carry exactly the authored shots.
     expect(e0.steps[2]!.arrive).toEqual({ kind: 'corridor' })
     expect(e0.steps[4]!.arrive).toEqual({ kind: 'crane' })
     expect(e0.steps[5]!.arrive).toEqual({ kind: 'stage' })
   })
 
-  test('the playhead + selection actions of every beat are unchanged', () => {
-    expect(e0.steps[0]).toMatchObject({ tick: 0, select: { entity: null, event: null } })
-    expect(e0.steps[1]).toMatchObject({ play: { to: 20, speed: 4 } })
-    expect(e0.steps[2]).toMatchObject({ play: { to: 43, speed: 4 } })
-    expect(e0.steps[3]).toMatchObject({ select: { event: 39 } })
-    expect(e0.steps[4]).toMatchObject({ play: { to: 74, speed: 8 } })
-    expect(e0.steps[5]).toMatchObject({ tick: 74, select: { event: 74 } })
+  // The COMPLETE per-step pin — toStrictEqual, NOT toMatchObject (subset). Any EXTRA or MISSING field fails: a
+  // stray tick on a play beat, or an entity added beside an event-only select, no longer slips through. Composed
+  // from the actions + the CAPTIONS fixture so each caption string lives in exactly one place.
+  const E0_ACTIONS = [
+    { tick: 0, select: { entity: null, event: null } },
+    { play: { to: 20, speed: 4 } },
+    { play: { to: 43, speed: 4 } },
+    { select: { event: 39 } },
+    { play: { to: 74, speed: 8 } },
+    { tick: 74, select: { event: 74 } },
+  ]
+  const EXPECTED_E0_STEPS = CAPTIONS.map(([caption, holdMs, arrive], i) => ({ ...E0_ACTIONS[i]!, caption, holdMs, ...(arrive ? { arrive } : {}) }))
+  test('every step is EXACTLY pinned — action, caption, holdMs, arrive; NO extra or missing field (toStrictEqual)', () => {
+    expect(e0.steps).toStrictEqual(EXPECTED_E0_STEPS)
   })
 })
 
-// ── caption pacing — the house ship gate, as a class-retiring invariant (v0.8 W7) ────────────────────────────
+// ── f2a tour byte-identity pin (v0.8.1) ──────────────────────────────────────────────────────────────────
+// An f2a caption byte-pin was assumed to exist but did not — only e0's did (the pacing invariant checks the
+// RATE, not the bytes; the browser test matches fragments). This closes the gap in the e0 pin's exact idiom:
+// every caption string, every holdMs, every playhead/selection action, and every authored arrive pinned as an
+// exact tuple. A single-char caption edit, a moved hold, a changed action, or a drifted arrive fails HERE — so
+// silent drift is now impossible for BOTH shipped tours.
+const f2a = TOURS.f2a!
+const F2A_CAPTIONS: readonly [string, number, TourShot | undefined][] = [
+  ['A single drone in real recorded flight, watched by a fixed sensor at the origin. Its field-of-view cone, range ring and the occluder sphere are scenario constants; the flight itself is decoded-real.', 9900, undefined],
+  ['In range, and line of sight is clear — but the drone is still OUTSIDE the field-of-view cone, so the sensor does not admit it. In range and LOS clear are recomputed live; in FOV is the claim voice — a pinned angle, no bearing in the bundle to recompute.', 12700, { kind: 'conjunction' }],
+  ['Watch it cross INTO the cone at the exact 3-4-5 edge — tick 55, a boundary the engine flags as a tie. The trail flips green and the sensor makes its first detection.', 8600, { kind: 'conjunction' }],
+  ['Then the occluder cuts the line of sight: in range and in view, but blocked — so eligibility drops back to ember for a stretch.', 7000, { kind: 'conjunction', occluder: true }],
+  ['The sightline clears and the drone is admitted again — right up to the exact max-range edge at tick 82, another boundary tie.', 6800, { kind: 'head', distance: 'medium' }],
+  ['Ninety-six sensing verdicts. In range, LOS clear and eligibility are recomputed live in your browser and match the engine byte for byte; in FOV is shown honestly in the claim voice. Every view is a shareable URL.', 11400, { kind: 'stage' }],
+]
+
+describe('f2a tour — exact caption / hold / action / arrive byte-pin (parity with the e0 pin)', () => {
+  test('six beats, identity unchanged', () => {
+    expect(f2a.id).toBe('f2a-sensing')
+    expect(f2a.runId).toBe('f2a')
+    expect(f2a.title).toBe('What the sensor admits') // F2A_TOUR_TITLE — the owner's one-line swap point, pinned
+    expect(f2a.steps).toHaveLength(6)
+  })
+  test('every caption + holdMs is verbatim (the reading windows are byte-frozen)', () => {
+    f2a.steps.forEach((step, i) => {
+      const [caption, holdMs] = F2A_CAPTIONS[i]!
+      expect(step.caption).toBe(caption)
+      expect(step.holdMs).toBe(holdMs)
+    })
+  })
+  test('every authored arrive is pinned exactly (beat 0 un-authored; beats 1–5 carry their exact shot)', () => {
+    f2a.steps.forEach((step, i) => {
+      expect(step.arrive).toEqual(F2A_CAPTIONS[i]![2])
+    })
+    expect(f2a.steps[0]!.arrive).toBeUndefined()
+    expect(f2a.steps[3]!.arrive).toEqual({ kind: 'conjunction', occluder: true }) // the occluder flag is load-bearing
+    expect(f2a.steps[4]!.arrive).toEqual({ kind: 'head', distance: 'medium' })
+    expect(f2a.steps[5]!.arrive).toEqual({ kind: 'stage' })
+  })
+  // The COMPLETE per-step pin — toStrictEqual, NOT toMatchObject (subset). Any EXTRA or MISSING field fails: an
+  // entity added beside step 1's event-only select, or a stray tick on a play beat, no longer slips through.
+  // Composed from the actions + F2A_CAPTIONS so each caption string lives in exactly one place.
+  const F2A_ACTIONS = [
+    { tick: 0, select: { entity: '1:0', event: null } },
+    { tick: 48, select: { event: 99 } },
+    { play: { to: 56, speed: 3 } },
+    { play: { to: 67, speed: 4 } },
+    { play: { to: 82, speed: 4 } },
+    { tick: 95, select: { event: 211 } },
+  ]
+  const EXPECTED_F2A_STEPS = F2A_CAPTIONS.map(([caption, holdMs, arrive], i) => ({ ...F2A_ACTIONS[i]!, caption, holdMs, ...(arrive ? { arrive } : {}) }))
+  test('every step is EXACTLY pinned — action, caption, holdMs, arrive; NO extra or missing field (toStrictEqual)', () => {
+    expect(f2a.steps).toStrictEqual(EXPECTED_F2A_STEPS)
+  })
+})
+
+// ── caption pacing — the house ship gate, as a class-retiring invariant (v0.8) ────────────────────────────
 // The rule CAPS reading DEMAND at 20 characters/second — equivalently, it grants at least 50 ms of dwell per
 // character: caption.length / (holdMs/1000) ≤ 20. And the hold must be a finite, POSITIVE dwell in the first
 // place: TourStep requires BOTH caption and holdMs (tourTypes.ts), so a captioned step with a missing / negative /

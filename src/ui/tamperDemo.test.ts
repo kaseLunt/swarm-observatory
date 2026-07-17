@@ -13,7 +13,7 @@ import { useCampaignStore } from '../state/campaignStore'
 import type { RunSummary, RunStatus } from '../decode/campaignVerify'
 import type { MarkKey } from './voices'
 
-// ── W6: THE TAMPER MOMENT — the ✗ path, pure-tested over REAL seed-42 bytes ───────────────────────────────
+// ── THE TAMPER MOMENT — the ✗ path, pure-tested over REAL seed-42 bytes ───────────────────────────────
 // The demo verifies one certified bundle, flips ONE byte of a RECORDED MEASUREMENT in a clone, and re-verifies.
 // These tests pin: pristine → verified (external ✓ pins beside trailer-self ○ rings); the flipped copy → mismatch
 // with the EXACT per-pin cascade (event_hash ✗ → result_id ✗, everything untouched still in its earned voice);
@@ -26,7 +26,7 @@ const readSeed42 = (): Uint8Array => new Uint8Array(readFileSync('public/campaig
 const expected = { caseId: SEED42.caseId, resultId: SEED42.resultId, sha256: SEED42.sha256 }
 const rowOf = (rows: readonly DemoPinRow[], key: string): DemoPinRow => rows.find(r => r.key === key)!
 
-describe('the byte-flip mechanics: one recorded-measurement byte, the frame CRC repaired (F1)', () => {
+describe('the byte-flip mechanics: one recorded-measurement byte, the frame CRC repaired', () => {
   test('the flip lands inside the first DetectionMade event’s meas measurement — a fixed-width recorded scalar', () => {
     const bytes = readSeed42()
     const target = locateRecordedScalar(bytes)
@@ -54,7 +54,7 @@ describe('the byte-flip mechanics: one recorded-measurement byte, the frame CRC 
     expect(diff.every(i => i === t.flippedOffset || (i >= t.crcOffset && i < t.crcOffset + 4))).toBe(true)
   })
 
-  test('F1 — the CRC-repaired clone STILL passes decodeBundle (a VALID content edit → the refusal is CRYPTOGRAPHIC)', () => {
+  test('the CRC-repaired clone STILL passes decodeBundle (a VALID content edit → the refusal is CRYPTOGRAPHIC)', () => {
     // The whole point: the tampered clone is a fully-decodable bundle differing only in one recorded measurement,
     // so the mismatch below can ONLY be the recomputed identity, never a structural/format rejection.
     const t = tamperEventStream(readSeed42())
@@ -73,7 +73,7 @@ describe('the byte-flip mechanics: one recorded-measurement byte, the frame CRC 
     expect(() => decodeBundle(clone.slice().buffer)).not.toThrow()
   })
 
-  test('F1 ONE-SOURCE — detectionMeasSpan (owned by the decoder) agrees with decodeDetection’s layout, not a hand constant', () => {
+  test('ONE-SOURCE — detectionMeasSpan (owned by the decoder) agrees with decodeDetection’s layout, not a hand constant', () => {
     // The tamper target's offset is no longer a `8 + 8 + 4` twin living beside the locator: the decoder module owns
     // the span, derived from the SAME reader walk as decodeDetection. Prove the two agree on the layout end-to-end.
     const bytes = readSeed42()
@@ -91,7 +91,7 @@ describe('the byte-flip mechanics: one recorded-measurement byte, the frame CRC 
     expect(target.flipOffset).toBe(target.payloadStart + target.payloadLen - env.payload.byteLength + span.offset)
   })
 
-  test('F1 SEMANTIC PROOF — the mutated DetectionMade decodes with meas[0] CHANGED, subject/sensor/shape/snr UNCHANGED', () => {
+  test('SEMANTIC PROOF — the mutated DetectionMade decodes with meas[0] CHANGED, subject/sensor/shape/snr UNCHANGED', () => {
     // The surgical-edit claim proven at the DECODED level (not from self-reported metadata): re-decode the tampered
     // event and compare field-by-field against the pristine one. Same frame geometry in both (only one content byte
     // + the CRC changed), so we slice the SAME frame span from each.
@@ -118,7 +118,7 @@ describe('the demo verify pair: pristine → the ✓/○ chain; the flip → the
     expect(demo.pristine.status).toBe('verified')
   })
 
-  test('F3 — pristine: trailer-self rows wear the ○ self-consistent ring; external pins wear the ✓', () => {
+  test('pristine: trailer-self rows wear the ○ self-consistent ring; external pins wear the ✓', () => {
     const demo = runTamperDemo(readSeed42(), expected)
     const mark = (k: string): string => rowOf(demo.pristine.rows, k).mark
     // Externally-pinned matches earn the manifest-grade ✓ (catalog-pin / byte-identity).
@@ -167,7 +167,7 @@ describe('the demo verify pair: pristine → the ✓/○ chain; the flip → the
   })
 })
 
-describe('the source gate + fail-closed (F2 — premise-first, never an inverted overclaim)', () => {
+describe('the source gate + fail-closed (premise-first, never an inverted overclaim)', () => {
   test('SOURCE GATE — runTamperDemo REFUSES non-certified input (already-tampered bytes) with a typed error', () => {
     // A valid but NON-certified clone (one recorded byte changed, CRC repaired) decodes structurally…
     const alreadyTampered = tamperEventStream(readSeed42()).bytes
@@ -194,7 +194,7 @@ describe('the source gate + fail-closed (F2 — premise-first, never an inverted
   })
 })
 
-describe('the cascade gate is the COMPLETE mark-set — a partial refusal or a broader anomaly is refused (F2)', () => {
+describe('the cascade gate is the COMPLETE mark-set — a partial refusal or a broader anomaly is refused', () => {
   // A tampered DemoSide wearing EXACTLY the intended cascade (INTENDED_CASCADE, status mismatch). Each negative test
   // perturbs ONE thing and expects a typed cascade-anomaly. Oracles mirror analyzeSide; the gate grades on
   // (status, row-set, per-pin mark), so this is the same mark-set the real tampered side must produce.

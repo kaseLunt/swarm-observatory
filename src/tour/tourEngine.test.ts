@@ -27,8 +27,8 @@ describe('tour state machine', () => {
     const step: TourStep = { tick: 5, select: { entity: '1:0' }, focus: true, play: { to: 20, speed: 4 }, caption: 'x', holdMs: 0 }
     expect(stepActions(step).map(a => a.kind)).toEqual(['scrub', 'select', 'focus', 'play'])
   })
-  test('holdFor never compresses a hold — dwell is not motion (v0.5d bench R4, design ruling)', () => {
-    // R4: reduced motion converts FLIGHT to cuts (startPlay snaps; eases collapse to factor 1), but a
+  test('holdFor never compresses a hold — dwell is not motion (a design ruling)', () => {
+    // The ruling: reduced motion converts FLIGHT to cuts (startPlay snaps; eases collapse to factor 1), but a
     // hold is CAPTION-READING time — authored 3500-6000ms for reading. The old rm cap (min(holdMs,
     // 1200)) gave rm users LESS reading time than everyone else. Ruled: rm hold = max(authored, old
     // behavior) ≡ the authored hold exactly, so dwell no longer depends on rm at all — holdFor takes

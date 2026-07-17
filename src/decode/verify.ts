@@ -4,7 +4,7 @@ import { FrameTag, iterateFrames } from './frames'
 import { decodeTrailer, type Trailer } from './payloads'
 import type { RunManifest } from './manifest'
 
-// F2 — the PER-FIELD trailer comparisons matchesTrailer aggregates, surfaced so a consumer can grade a SINGLE
+// The PER-FIELD trailer comparisons matchesTrailer aggregates, surfaced so a consumer can grade a SINGLE
 // field from its OWN in-bundle reproduction instead of the aggregate: a det-only bundle whose stored event_hash
 // is corrupt reds the event_hash ROW (not a blanket, field-less refusal), and the ceremony's event_hash row
 // stays ✓ when only the state hash's trailer-stored value is off. These are exactly the four fields foldAndVerify
@@ -49,7 +49,7 @@ export function foldAndVerify(bytes: Uint8Array): VerifyResult {
   // Scope: self-consistency of what is independently recomputable in-bundle: event/state
   // hashes + counts. termination_reason and case_id are trailer-sourced inputs to result_id
   // and are NOT verified here -- the manifest's pinned result_id is the authority that
-  // catches their tamper (compared at the UI badge layer). F2: keep the four comparisons as
+  // catches their tamper (compared at the UI badge layer). Keep the four comparisons as
   // NAMED per-field booleans (trailerPins) and aggregate them into matchesTrailer, so a single
   // failing field is findable at the UI without re-deriving the comparison a second way.
   const trailerPins = {

@@ -1,8 +1,8 @@
-// ── THE AGREESOURCE WITNESS UNION — the anti-echo carry folded into the TYPE (v0.8 W3, audit A1) ─────────
+// ── THE AGREESOURCE WITNESS UNION — the anti-echo carry folded into the TYPE (v0.8) ─────────
 // The lens registry's `recomputed` tier lets a lens claim, in PROSE, that a recomputation agrees with the
 // engine. Nothing at the type level separates a LIVE re-derivation (decoded inputs → recompute → compare
 // against the engine bit) from an ECHO (the engine's bit compared against ITSELF, laundered through a
-// sentence). v0.7 fixed one echo instance behaviourally (T2-W2: the eligible conjunction now ANDs LIVE legs);
+// sentence). v0.7 fixed one echo instance behaviourally (the eligible conjunction now ANDs LIVE legs);
 // this wave makes the CLASS unrepresentable. A recomputed class must WITNESS how it agrees — and the witness
 // is a closed two-arm union where the BASIS IS THE TAG, with the comparand's token type EXCLUDED from the
 // input tokens so comparing-with-yourself cannot COMPILE.
@@ -31,8 +31,8 @@ export type InputToken =
   | 'query:component-segments'// the decoded LOS component-ray geometry
   | 'query:range-endpoints'   // the decoded o, g the range scalar re-derives from
 
-// FormToken — the pinned decision form a `live-inputs` arm recomputes under (operand order normative,
-// doctrine §1.6). A form NAMES an existing executor leg; it is not an interpreter instruction.
+// FormToken — the pinned decision form a `live-inputs` arm recomputes under (operand order normative
+// doctrine). A form NAMES an existing executor leg; it is not an interpreter instruction.
 export type FormToken =
   | 'form:in-range' | 'form:los-clear' | 'form:eligible-conjunction'
   | 'form:point-in-region' | 'form:ray-occluder' | 'form:los-composition' | 'form:range-scalar'
@@ -45,14 +45,14 @@ export type ComparandToken =
   | 'engine:region-verdict' | 'engine:occluder-verdict' | 'engine:los-verdict' | 'engine:range-scalar'
 
 // DecodedToken — the in-bundle self-consistency comparand for the HONEST DOWNGRADE arm: a check with NO
-// independent re-derivation, only decoded bits cross-checked against each other (W1's ring-class ○ voice,
+// independent re-derivation, only decoded bits cross-checked against each other (the ring-class ○ voice,
 // "no external oracle"). Never the manifest-grade claim. No currently-registered class uses this arm (all
 // migrate to `live-inputs`); the vocabulary exists so the downgrade is expressible and honestly labelled.
 export type DecodedToken =
   | 'sensing:eligibility-vs-decoded-legs'  // decoded eligible vs the AND of its own decoded component bits (the OLD echo, made honest as a self-check)
   | 'query:los-vs-decoded-components'      // decoded los_clear vs its decoded component verdicts
 
-// ── WitnessInputs — an OPAQUE, INVARIANT input collection minted ONLY by makeWitnessInputs (audit A1, F1) ─
+// ── WitnessInputs — an OPAQUE, INVARIANT input collection minted ONLY by makeWitnessInputs ─
 // A `readonly InputToken[]` is not safe as a declaration field: TypeScript arrays are COVARIANT, so a mutable
 // `InputToken[]` assigns to a wider `(InputToken | ComparandToken)[]` alias, `engine:eligible` is pushed
 // through that alias, and the contaminated value would then satisfy a `readonly InputToken[]` field with ZERO
@@ -107,11 +107,11 @@ export type AgreeSource =
   | { readonly basis: 'decoded-consistency'; readonly decoded: DecodedToken }
 
 // The `basis` DISCRIMINANT is the single source of the Basis vocabulary — voices.BASIS_NOTE keys on THIS
-// type, so the note a surface renders comes from the arm's TAG, never a second author (ev99, W1's convention;
-// W3 owns the union the tag lives on). One truth: `AgreeSource['basis']` IS `Basis`.
+// type, so the note a surface renders comes from the arm's TAG, never a second author (ev99's convention;
+// this module owns the union the tag lives on). One truth: `AgreeSource['basis']` IS `Basis`.
 export type Basis = AgreeSource['basis']
 
-// ── The executor's capability table — PER-FORM witness tuples (audit A1, F2: no Cartesian pairing) ───────
+// ── The executor's capability table — PER-FORM witness tuples (no Cartesian pairing) ───────
 // An executor publishes, PER FormToken, the EXACT input set that form's live leg consumes — ONE truth per
 // form, not two independent flat sets. The old {inputs[], forms[]} shape let the boot guard check input
 // membership and form membership INDEPENDENTLY, so inputs `['sensing:in-fov-claim']` paired with form

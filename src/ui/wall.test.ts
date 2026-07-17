@@ -11,7 +11,7 @@ import { errorSummary, type RunSummary, type VerifyJob } from '../decode/campaig
 import { createCampaignQueue, type CampaignVerifyTransport } from '../decode/campaignQueue'
 import type { CampaignRollup } from '../state/campaignStore'
 
-// ── THE WALL VIEW-MODEL (v0.8 W5) — census math, phase→voice, the decoded gauge, and the verify wiring ──
+// ── THE WALL VIEW-MODEL (v0.8) — census math, phase→voice, the decoded gauge, and the verify wiring ──
 
 // ── SEED PHASE → VOICE (the honesty rail: green is a receipt; error is availability, never a false ✗) ────
 describe('seedVoice: the store phase maps to the honest mark', () => {
@@ -29,7 +29,7 @@ describe('seedVoice: the store phase maps to the honest mark', () => {
     expect(requireGlyph(seedVoice('verified').markId)).toBe(requireGlyph('verified'))
     expect(requireGlyph(seedVoice('mismatch').markId)).toBe(requireGlyph('mismatch'))
   })
-  // THE W4 DISTINCTION THE UI MUST NOT BLUR: an availability failure is NOT a contradiction.
+  // THE DISTINCTION THE UI MUST NOT BLUR: an availability failure is NOT a contradiction.
   test('error is the AVAILABILITY voice (unverifiable ?), distinct from the integrity mismatch (✗)', () => {
     expect(seedVoice('error').markId).toBe('unverifiable')
     expect(seedVoice('error').markId).not.toBe(seedVoice('mismatch').markId)
@@ -59,7 +59,7 @@ describe('census: exact integers, the opening declaration of the unverified', ()
     expect(censusLine(rollup({ verified: 12, pending: 38, total: 50 })))
       .toBe('12 of 50 recomputed and matched here · 50 on record · 0 contradicted')
   })
-  // F4 — the numerator is "recomputed AND matched": a contradicted seed was ALSO fully recomputed here (that
+  // the numerator is "recomputed AND matched": a contradicted seed was ALSO fully recomputed here (that
   // recompute is what produced the ✗), so the leading count names only the CLEAN receipts and `contradicted` is
   // the recomputed-but-disagreed subset. PREMISE-FIRST: the old wording said "48 of 50 recomputed here · 2
   // contradicted", implying only 48 ran when in truth all 50 that reached a verdict were recomputed.
@@ -120,12 +120,12 @@ describe('parseCampaignGauges: the vendored manifest → the decoded gauge model
   })
 })
 
-// ── F3: FAIL-CLOSED — every violation class collapses the WHOLE block to one unverifiable state ────────────
+// ── FAIL-CLOSED — every violation class collapses the WHOLE block to one unverifiable state ────────────
 // The old parse joined by test_id only, DROPPED malformed members, accepted +Infinity, and never checked
 // identity — so a tampered/skewed/truncated sidecar rendered partial/wrong-band/false-pass rows. Each test here
 // mutates ONE thing off the certified manifest and asserts the whole model fail-closes (ok:false) with never a
 // partial member. PREMISE-FIRST is called out on the silent-drop and Infinity cases the old code passed.
-describe('parseCampaignGauges: fail-closed validation (F3) — any violation → ONE unverifiable state', () => {
+describe('parseCampaignGauges: fail-closed validation — any violation → ONE unverifiable state', () => {
   const good = () => JSON.parse(readFileSync('public/campaigns/robust-f3a/campaign-manifest.json', 'utf8'))
 
   test('a non-object manifest is unverifiable (not silently empty)', () => {
@@ -178,9 +178,9 @@ describe('parseCampaignGauges: fail-closed validation (F3) — any violation →
     const parsed = parseCampaignGauges(m, ROBUST_F3A)
     expect(parsed.ok).toBe(false)
   })
-  test('a coherent pass:false + out-of-band statistic is REJECTED — the certified verdict is catalog-pinned (F1)', () => {
-    // PREMISE-FIRST: pre-F1 this VALIDATED (a coherent pass:false agreeing with an out-of-band statistic was
-    // treated as "a legitimate failing verdict" and rendered as a fail gauge). F1 supersedes that: the certified
+  test('a coherent pass:false + out-of-band statistic is REJECTED — the certified verdict is catalog-pinned', () => {
+    // PREMISE-FIRST: this previously VALIDATED (a coherent pass:false agreeing with an out-of-band statistic was
+    // treated as "a legitimate failing verdict" and rendered as a fail gauge). The certified-tuple pin supersedes that: the certified
     // statistic + pass are now PINNED in the catalog, so the sidecar can no longer introduce a DIFFERENT-but-
     // coherent verdict — the campaign's verdict is fixed truth. An ACTUAL failing campaign would pin pass:false
     // in the catalog itself; a manifest that merely CLAIMS a different verdict is a deviation and fail-closes.
@@ -191,15 +191,15 @@ describe('parseCampaignGauges: fail-closed validation (F3) — any violation →
   })
 })
 
-// ── F1: THE CERTIFIED TUPLE IS CATALOG-PINNED — the render is catalog truth CONFIRMED by fetch, never raw fetch ─
-// Pre-F1, parseCampaignGauges checked only IDENTITY + shape + internal consistency, then TRUSTED the sidecar's
+// ── THE CERTIFIED TUPLE IS CATALOG-PINNED — the render is catalog truth CONFIRMED by fetch, never raw fetch ─
+// Previously, parseCampaignGauges checked only IDENTITY + shape + internal consistency, then TRUSTED the sidecar's
 // statistic/pass/dof/alpha/sidedness/bounds. A tampered or stale fetch could therefore render a COHERENT forgery
 // (internally self-consistent, carrying this campaign's identity). Now every certified field is pinned in
 // campaignCatalog.ts and a fetched deviation fail-closes the whole block. Each test mutates ONE field class off
 // the certified manifest and asserts rejection; the pristine manifest still validates (the pins are truth, not a
 // false tripwire). The independent literal copy in publication.test.ts (PINNED_GAUGES) additionally guards the
 // catalog itself against a coordinated catalog+manifest edit — see the note there.
-describe('parseCampaignGauges: F1 — a coherent forgery is rejected; each certified field class is pinned', () => {
+describe('parseCampaignGauges: a coherent forgery is rejected; each certified field class is pinned', () => {
   const good = () => JSON.parse(readFileSync('public/campaigns/robust-f3a/campaign-manifest.json', 'utf8'))
 
   test('the pristine certified manifest still VALIDATES (the catalog pins ARE the truth)', () => {
@@ -207,7 +207,7 @@ describe('parseCampaignGauges: F1 — a coherent forgery is rejected; each certi
   })
   test('a COHERENT forgery (statistic 9999 + pass:false, clean identity, internally consistent) is rejected', () => {
     // NEES: an out-of-band statistic with pass:false is INTERNALLY consistent and keeps this campaign's identity,
-    // so every pre-F1 gate passed it. The catalog statistic + pass pins reject it: the fetch cannot forge the verdict.
+    // so every earlier gate passed it. The catalog statistic + pass pins reject it: the fetch cannot forge the verdict.
     const m = good()
     m.statistical_pointer.members[0].statistic = '9999'
     m.statistical_pointer.members[0].pass = false
@@ -237,11 +237,11 @@ describe('parseCampaignGauges: F1 — a coherent forgery is rejected; each certi
   })
 })
 
-// ── F2: THE PARAMS ECHO IS VALIDATED ATOMICALLY — no silent drop, no duplicate override ──────────────────────
+// ── THE PARAMS ECHO IS VALIDATED ATOMICALLY — no silent drop, no duplicate override ──────────────────────
 // PREMISE-FIRST: the old reader filtered malformed rows away, then Map.set per row with no count/dup/id/kind
 // guard — so a DUPLICATE test_id row (last write wins) could OVERRIDE a real row's dof/bits and the block STILL
 // returned ok:true. The raw array is now gated whole before any map is built.
-describe('parseCampaignGauges: F2 — the raw test_params_echo array is validated atomically', () => {
+describe('parseCampaignGauges: the raw test_params_echo array is validated atomically', () => {
   const good = () => JSON.parse(readFileSync('public/campaigns/robust-f3a/campaign-manifest.json', 'utf8'))
 
   test('a DUPLICATE params row with a WRONG kind + tampered dof is rejected (the old map let it override dof, ok:true)', () => {
@@ -270,8 +270,8 @@ describe('parseCampaignGauges: F2 — the raw test_params_echo array is validate
   })
 })
 
-// ── F5: the per-open discriminated load state + the idempotent stop routine ─────────────────────────────────
-describe('gaugeLoadFromFetch: the modal load state (F5)', () => {
+// ── the per-open discriminated load state + the idempotent stop routine ─────────────────────────────────
+describe('gaugeLoadFromFetch: the modal load state', () => {
   const good = () => JSON.parse(readFileSync('public/campaigns/robust-f3a/campaign-manifest.json', 'utf8'))
   test('a null fetch (network / !ok) → failed (an availability gap, never a fabricated verdict)', () => {
     expect(gaugeLoadFromFetch(null, ROBUST_F3A)).toEqual({ kind: 'failed' })
@@ -290,7 +290,7 @@ describe('gaugeLoadFromFetch: the modal load state (F5)', () => {
   })
 })
 
-describe('stopWallSession: one idempotent teardown (F5)', () => {
+describe('stopWallSession: one idempotent teardown', () => {
   test('invokes all three handles, and a SECOND call is a clean no-op (idempotent)', () => {
     let aborts = 0, cancels = 0, resets = 0
     const handles = { abort: () => { aborts++ }, cancelQueue: () => { cancels++ }, reset: () => { resets++ } }
@@ -400,10 +400,10 @@ describe('verify-all wiring: the queue drives the store; cancel fences cleanly',
     expect(useCampaignStore.getState().rollup.verified).toBe(0)
   })
 
-  // F2 — the FULL component cancel (both halves: q.cancel() + store.cancelPending()) preserves earned evidence.
+  // the FULL component cancel (both halves: q.cancel() + store.cancelPending()) preserves earned evidence.
   // PREMISE-FIRST: the old cancelVerifyAll called store.init(seedIds), which reset EVERY phase — a landed ✓ (or
   // an observed ✗) vanished on an ordinary cancel. The fix keeps terminal receipts and reverts only in-flight.
-  test('cancel (the component wiring) preserves earned evidence: a landed ✓ survives; only in-flight reverts (F2)', async () => {
+  test('cancel (the component wiring) preserves earned evidence: a landed ✓ survives; only in-flight reverts', async () => {
     useCampaignStore.getState().init(IDS)
     const gate: Record<string, (s: RunSummary) => void> = {}
     const transport: CampaignVerifyTransport = (job, signal) =>
@@ -423,7 +423,7 @@ describe('verify-all wiring: the queue drives the store; cancel fences cleanly',
     q.cancel()
     useCampaignStore.getState().cancelPending()
     const s = useCampaignStore.getState()
-    expect(s.phase['42']).toBe('verified') // the receipt SURVIVES the cancel (the F2 fix)
+    expect(s.phase['42']).toBe('verified') // the receipt SURVIVES the cancel (the fix)
     expect(s.rollup.verified).toBe(1)      // the census keeps its earned count — no return to zero
     expect(s.phase['43']).toBe('pending')  // in-flight seeds reverted to attested-pending (running posture gone)
     expect(s.phase['44']).toBe('pending')

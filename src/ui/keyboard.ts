@@ -21,7 +21,7 @@ export function mapKey(code: string, key: string, isEditable: boolean, hasModifi
     case 'KeyL': return { type: 'speedNotch', dir: 1 }
     case 'Escape': return { type: 'deselect' }
     case 'KeyF': return { type: 'focus' }
-    // Observer's Eye POV (v0.6 T4b): stand at the e0 query stage's drawn observer. A CAMERA gesture, the
+    // Observer's Eye POV (v0.6): stand at the e0 query stage's drawn observer. A CAMERA gesture, the
     // sibling of 'focus' (KeyF) — not transport — so it extends the frozen transport grammar without touching
     // it; a no-op on runs with no observer (f0/f1), like focus is a no-op with no selection.
     case 'KeyO': return { type: 'pov' }

@@ -4,7 +4,7 @@ export type Tick = Brand<number, 'Tick'>
 export type Seq = Brand<number, 'Seq'>
 export type EventKindId = Brand<number, 'EventKindId'>
 
-// ── The tick/frame dual domain (v0.8 A3) ─────────────────────────────────────────────────────────────────
+// ── The tick/frame dual domain (v0.8) ─────────────────────────────────────────────────────────────────
 // Three integer axes that share a number line but mean DIFFERENT things — the dual-domain class that produced
 // three real v0.7 bugs (verdict-vs-pose off-by-one, the "other drone" Entities lag, the fractional-half split).
 // Compile-time brands, runtime-erased (no wrapper objects, no cost): the only job is to make the axes

@@ -70,12 +70,12 @@ describe('buildSensingStage — the f2a kind-22 model, against the REAL bundle',
   })
 })
 
-// W1 — the eligible tint indexes by the EVALUATED state frame, not the tick. A tick-k verdict is decided
+// The eligible tint indexes by the EVALUATED state frame, not the tick. A tick-k verdict is decided
 // against state frame k+1's pose (TARGET_FRAME_OFFSET; the excerpt: "g = frame k+1, the frame the tick-k step
 // commits"), and buildTrail lays vertex f = state frame f. So byFrame[f] must be the verdict whose g was read
 // from frame f — landing each eligibility bit on the exact pose it describes, not the pose one 2-m step behind
 // it. Verified against the REAL decoded bundle (the same object identity the renderer paints vertex f with).
-describe('byFrame — the eligible tint indexes by the EVALUATED state frame (W1: not one pose behind)', () => {
+describe('byFrame — the eligible tint indexes by the EVALUATED state frame (not one pose behind)', () => {
   const model = modelFor('f2a_seed42')
   const stage = buildSensingStage(model)
 
@@ -172,8 +172,8 @@ describe('F2A_REGISTRATION — the first conforming citizen of the provenance le
 })
 
 // evaluatedFrame — THE ONE tick→frame map. The sensing head (sensingStageView) and the interactive drone
-// cone / hit target / label / ring / follow+focus targets (Scene.Entities) BOTH call this, so the closure-
-// round fix cannot fork the truth: change the formula here and both surfaces move together.
+// cone / hit target / label / ring / follow+focus targets (Scene.Entities) BOTH call this, so the shared
+// map cannot fork the truth: change the formula here and both surfaces move together.
 describe('evaluatedFrame — the shared tick→frame map (sensing head + interactive cone)', () => {
   test('offset 0 is the identity clamp — non-sensing is byte-identical to the prior Math.min(tick, tickCount)', () => {
     for (const [tick, last] of [[0, 96], [1, 96], [55, 96], [96, 96], [200, 96]] as const)
@@ -188,7 +188,7 @@ describe('evaluatedFrame — the shared tick→frame map (sensing head + interac
   })
 })
 
-// PAUSED-TICK POSE PARITY (the closure-round finding). Before the fix, at a paused tick Scene.Entities
+// PAUSED-TICK POSE PARITY. Before the fix, at a paused tick Scene.Entities
 // painted the drone cone at frame `tick` (offset 0) while SensingStage painted the head at frame tick+1 —
 // two poses of one drone, one 2-m north step apart, on one stage (and the raycast cone hit-tested the stale
 // pose). The fix threads TARGET_FRAME_OFFSET through the interactive pose so both ride the same evaluated
@@ -241,7 +241,7 @@ describe('paused-tick pose parity — the interactive drone rides the frame the 
   })
 })
 
-// FRACTIONAL POSE PARITY (closure round 2). A pause does NOT clear the store fraction (only setTick does —
+// FRACTIONAL POSE PARITY. A pause does NOT clear the store fraction (only setTick does —
 // viewStore), so integer-frame parity is only half the claim: Entities lerps the interactive cone t0→t1 by
 // the fraction, and a head snapped at the integer evaluated frame sat ~1 m behind it at fraction 0.5,
 // approaching the full 2-m split near fraction 1 — the residual half of the original two-pose finding. The
@@ -257,7 +257,7 @@ describe('fractional pose parity — the head lerps the same (t0, t1, fraction) 
   // successor t1, lerped by the fraction — the exact derivation the frame loop writes into the cone /
   // raycast hit-target matrix (Scene.tsx useFrame).
   const conePose = (tick: number, fraction: number): [number, number, number] => {
-    // The test mirror of the cursor idiom now routes through the ONE resolver (A3) — the same (t0, t1) pair
+    // The test mirror of the cursor idiom now routes through the ONE resolver — the same (t0, t1) pair
     // Scene.Entities lerps the interactive cone with, so this parity oracle can never drift from the shipped shape.
     const { t0, t1 } = resolveCursor(asEventTick(tick), OFFSET, asStateFrame(model.tickCount))
     const a: [number, number, number] = [0, 0, 0], b: [number, number, number] = [0, 0, 0]
@@ -311,13 +311,13 @@ describe('fractional pose parity — the head lerps the same (t0, t1, fraction) 
   })
 })
 
-// ── F3 — the sensing SUBJECT is resolved ONCE for every Scene.Entities consumer ────────────────────────────
-// M7 fixed the STAGE mesh to tint the kind-22 subject's flight, but Scene.Entities still consumed entityKeys()[0]'s
+// ── The sensing SUBJECT is resolved ONCE for every Scene.Entities consumer ────────────────────────────
+// An earlier fix set the STAGE mesh to tint the kind-22 subject's flight, but Scene.Entities still consumed entityKeys()[0]'s
 // trail/bounds and tracked instance index 0. sensingSubjectRef resolves the subject KEY (which flight to
 // trail/bound) AND its instance INDEX (which cone the tracking/finale ring name) so camera + highlight name the
-// entity the evidence concerns. Certified bundles are single-subject-at-index-0 (byte-identical to pre-F3); the
+// entity the evidence concerns. Certified bundles are single-subject-at-index-0 (byte-identical to the prior behavior); the
 // synthetic below is the latent multi-subject case — a first entity 1:0 with verdicts naming 1:7.
-describe('sensingSubjectRef (F3) — the subject key + index name the entity the verdicts concern', () => {
+describe('sensingSubjectRef — the subject key + index name the entity the verdicts concern', () => {
   const keys = ['1:0', '1:7']
   const mkDraw = (seq: number, subject: string): SensingDraw => ({
     seq, tick: seq, subject, sensor: '0', inRange: true, inFov: true, losClear: true, eligible: true, tiebreak: false, g: [0, 0, 0],
@@ -359,12 +359,12 @@ describe('sensingSubjectRef (F3) — the subject key + index name the entity the
   })
 })
 
-// F2 — SensingSource.entityStatesAt reads the STATE-FRAME domain. buildSensingStage looks up the target pose at
+// SensingSource.entityStatesAt reads the STATE-FRAME domain. buildSensingStage looks up the target pose at
 // the EVALUATED frame (tick + TARGET_FRAME_OFFSET); typing the accessor's parameter StateFrame closes the
 // method-bivariance hole that let a raw number — or, worse, a raw EVENT tick (substituting the un-shifted tick is
 // the exact historical verdict-vs-pose off-by-one) — index this map through the structural seam. Both directives
 // fire at typecheck; the runtime calls still return the (empty) Map, so the pin locks the domain both ways.
-describe('SensingSource.entityStatesAt — the frame-domain seam rejects raw ticks (F2)', () => {
+describe('SensingSource.entityStatesAt — the frame-domain seam rejects raw ticks', () => {
   // Annotated as SensingSource (not `satisfies`) so `src.entityStatesAt` carries the interface's DECLARED
   // (frame: StateFrame) signature — the pins below then fail specifically on the brand mismatch, not on arity.
   const src: SensingSource = {

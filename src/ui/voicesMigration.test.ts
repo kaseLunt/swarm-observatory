@@ -9,7 +9,7 @@ import { thesisVerdict } from './thesis'
 import { VOICE_GLYPH, cardVerdict } from './hangar'
 import type { BadgeState } from './badges'
 
-// ── SINGLE-SOURCE MIGRATION PINS (v0.8 W1) ──────────────────────────────────────────────────────────────
+// ── SINGLE-SOURCE MIGRATION PINS (v0.8) ──────────────────────────────────────────────────────────────
 // The other half of the voices extraction: proof that every migrated production surface now reads its
 // glyph + class FROM voices.ts (identity-pinned, not a coincidentally-equal twin literal), and that app.css
 // consolidated onto the module's class names — the sensing-strip variant classes retired and the cited
@@ -108,14 +108,14 @@ describe('app.css consolidates onto the module class names (no orphan voice clas
   })
 })
 
-// ── THE SOURCE GLYPH-LITERAL SWEEP (F3 — authorship discipline made a greppable invariant) ──────────────
+// ── THE SOURCE GLYPH-LITERAL SWEEP (authorship discipline made a greppable invariant) ──────────────
 // The lensRegistry boot guard proves the DECLARED voice→mark map is single-sourced; the app.css sweep above
 // proves no orphan voice CLASS survives. Neither can catch a NEW component that hardcodes a verdict glyph as
-// UI OUTPUT (the exact drift F4 fixed on the sensing strip's note). This sweep closes that last hole: no
+// UI OUTPUT (the exact drift fixed on the sensing strip's note). This sweep closes that last hole: no
 // verdict glyph (✓ ○ • ✗) may appear as a source literal in src/ outside voices.ts (the sanctioned source) —
 // with a small, EACH-JUSTIFIED exceptions list. Comments are stripped first (they legitimately cite the marks
 // as prose); the no-verdict states · ? are not swept (they double as prose separators / question marks).
-describe('no verdict-glyph literal as UI output outside voices.ts (F3 authorship sweep)', () => {
+describe('no verdict-glyph literal as UI output outside voices.ts (authorship sweep)', () => {
   const VERDICT_GLYPHS = ['✓', '○', '•', '✗']
   // Each exception is a genuine NON-provenance use, justified inline — never a blanket file exemption.
   const SANCTIONED: { file: string; needle: string }[] = [

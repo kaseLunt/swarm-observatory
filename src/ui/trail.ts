@@ -3,13 +3,13 @@ import type { BoundsSource } from './camera'
 import type { StateFrame } from '../lib/brand'
 
 // ── Trajectory trail ────────────────────────────────────────────────────────────────────────────────
-// Precompute the subject's WHOLE recorded path ONCE at model load (Task 2 §3). It's recorded data — the
+// Precompute the subject's WHOLE recorded path ONCE at model load. It's recorded data — the
 // entire path is known up front — so there is no ring buffer to grow: we lay down one vertex per tick and
 // let the frame loop reveal the traveled portion via drawRange (a single integer write per frame, zero
 // allocation). Vertex i corresponds to tick i (positions are held for ticks where the subject is absent,
 // keeping drawRange = tick+1 exactly tick-aligned).
 //
-// FADE (Task v04-2 §1) is HEAD-RELATIVE and lives in the trail's shader (see Scene.TrajectoryTrail), NOT a
+// FADE is HEAD-RELATIVE and lives in the trail's shader (see Scene.TrajectoryTrail), NOT a
 // precomputed per-vertex ramp. The old ramp baked alpha against the FINAL run length, so at tick 1 of 64
 // the freshly-revealed head rendered at ~0.07 alpha — a near-invisible trail through most of playback. The
 // shader instead fades from a bright head over ~N ticks behind the CURRENT revealed index (a `uHead`
@@ -25,7 +25,7 @@ import type { StateFrame } from '../lib/brand'
 
 // Below this bbox-diagonal extent the "path" is a static point (f0) — not a trajectory to draw. Exported so the
 // sensing-stage gate (sensingStage.sensingStageApplies) tests the SAME emptiness bar against the sensing subject
-// (M7): a positioned-but-static subject yields an empty trail buffer, so the stage must be withheld there.
+// — a positioned-but-static subject yields an empty trail buffer, so the stage must be withheld there.
 export const MIN_EXTENT = 1e-2
 
 // Head-relative fade tuning (consumed by the trail shader's uniforms in Scene.tsx). The head is bright;
@@ -51,7 +51,7 @@ const norm0 = (v: number): number => (v === 0 ? 0 : v)
 // trajectory: no positioned entities (e0), or a static single point (f0). `positions` is interleaved xyz
 // (count*3 floats); `index` carries the vertex index i for vertex i (count floats) for the shader fade.
 //
-// SUBJECT (M7): defaults to entityKeys()[0] (the SUBJECT RULE above — single-subject content today). A caller
+// SUBJECT: defaults to entityKeys()[0] (the SUBJECT RULE above — single-subject content today). A caller
 // MAY pin a specific subject: the sensing stage tints the entity the kind-22 verdicts NAME, which need not be
 // entityKeys()[0] on a multi-entity run. A subjectKey absent from every frame back-fills to empty (first < 0 →
 // the honest positionless shape), so the gate that builds a subject's trail also detects "the subject has no
@@ -68,7 +68,7 @@ export function buildTrail(source: BoundsSource, subjectKey?: string): Trail {
   let minx = Infinity, miny = Infinity, minz = Infinity
   let maxx = -Infinity, maxy = -Infinity, maxz = -Infinity
   for (let t = 0; t < n; t++) {
-    // Load-path walk (once at model publish); brand the integer counter at the frame-domain boundary (F2).
+    // Load-path walk (once at model publish); brand the integer counter at the frame-domain boundary.
     const e = source.entityStatesAt(t as StateFrame).get(subject)
     if (e) {
       entityPosition(scratch, e, 0)

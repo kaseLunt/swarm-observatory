@@ -7,41 +7,41 @@ import { censusLine, gaugeDisplay, gaugeLoadFromFetch, seedVoice, stopWallSessio
 import { TamperDemoPanel } from './tamperDemoView'
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
-// THE CERTIFICATION WALL (v0.8 W5) — the campaign certification surface, opened by declaring what it
-// has NOT verified. The D4 design-of-record + the v0.8 amended consult are binding; this is their pixels.
+// THE CERTIFICATION WALL (v0.8) — the campaign certification surface, opened by declaring what it
+// has NOT verified. The design-of-record + the v0.8 amended design ruling are binding; this is their pixels.
 //
 // LAW-4 DECLARATION (constitution §4 — filed in-code for this new surface, the Hangar precedent):
 //   • Question (Q5, at campaign scale): "can I trust this campaign's artifacts?" — answered by handing
 //     the viewer the recomputation, not a badge. A certification wall that says "don't take our word —
 //     press verify."
 //   • Surface split (LAW 3): this is the INSTRUMENT half — density, DOM/React only, ZERO WebGL and no
-//     frame loop (§8: the Wall never mounts the r3f canvas and does no rAF work; dots flip at EVENT rate
+//     frame loop (the load budget: the Wall never mounts the r3f canvas and does no rAF work; dots flip at EVENT rate
 //     as the store's per-seed transitions land, never on a frame). No React state mutated in any loop;
 //     zero steady per-frame allocation (there is no frame).
 //   • Borrowed hues (LAW 2, zero new tokens): integrity `verified` (green) ONLY on a seed the store
 //     evidence-derived 'verified' THIS session; the attested slate `•` (`--pending`) for on-record; the
 //     alarm `--mismatch` ✗ for a contradicted pin; the dim `--text-dim` availability `?` for a fetch
-//     failure (never ✗). The gauges' statistical pass/fail wears the R3 verdict pair (`--verdict-affirm`/
+//     failure (never ✗). The gauges' statistical pass/fail wears the verdict pair (`--verdict-affirm`/
 //     `--verdict-negate`) — certified DECISIONS, carried by hue while the glyph stays the attested `•`
-//     (D4 Ruling 5/6: the two colour systems are never cross-spent; green ≠ statistical pass).
+//     (a design ruling: the two colour systems are never cross-spent; green ≠ statistical pass).
 //   • What it dims (LAW 1): at rest the whole field is quiet attested dots — beauty is DEFERRED, the
 //     field only lights as the viewer verifies. A ✗ anywhere claims the alarm register.
 //   • Honest empty states: an unfetchable manifest → the gauges say so plainly (no fabricated band); a
 //     campaign at rest declares "0 of 50 recomputed and matched here" — the census IS the design.
 //
-// EVERY glyph is sourced from the ONE voices module (requireGlyph) — never a literal (the F3 source sweep).
-// PROFILE-CONFLATION (D4 Ruling 2 / W2): this surface IS the ROBUST campaign and names it correctly; the
+// EVERY glyph is sourced from the ONE voices module (requireGlyph) — never a literal (the glyph source sweep).
+// PROFILE-CONFLATION (a design ruling): this surface IS the ROBUST campaign and names it correctly; the
 // correct-profile f3a library card stays untouched — the two are separate entities and must never conflate.
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
 
-// The sidecar's own contract line (D4 thesis) — the manifest is an INDEX, never the authority: the ✓ is
+// The sidecar's own contract line (the design thesis) — the manifest is an INDEX, never the authority: the ✓ is
 // re-earned by the browser, never trusted from the manifest. Shared verbatim-class with the Hangar.
 const DISCLAIMER = 'index, not authority — a tampered index can misdirect, never forge.'
 
 // A compact hash form for the plan id (the ProvenancePanel short() idiom): 8…6.
 const shortHash = (h: string): string => (h.length > 16 ? `${h.slice(0, 8)}…${h.slice(-6)}` : h)
 
-// The imperative handle App holds (W5 F5): the ONE synchronous teardown (abort the fetch, fence the queue, reset
+// The imperative handle App holds: the ONE synchronous teardown (abort the fetch, fence the queue, reset
 // the store), so the Esc close path can run the SAME routine the close button + backdrop use before `open` flips.
 export interface CertificationWallHandle {
   readonly stop: () => void
@@ -55,7 +55,7 @@ export interface CertificationWallProps {
 
 // The Wall is mounted ONLY while open, and REMOUNTS on every open (App keys it on an open-generation counter), so
 // there is no `open` prop and no "reset on open" bookkeeping: a fresh mount IS the fresh session. That remount is
-// the F5 fix — the first paint after a reopen is provably fresh (loading gauges, verify-all CTA, 0-of-50 census),
+// the remount fix — the first paint after a reopen is provably fresh (loading gauges, verify-all CTA, 0-of-50 census),
 // never a prior session's retained state.
 export function CertificationWall({ onClose, ref }: CertificationWallProps) {
   const cat = ROBUST_F3A
@@ -63,12 +63,12 @@ export function CertificationWall({ onClose, ref }: CertificationWallProps) {
   const prevFocusRef = useRef<HTMLElement | null>(null)
   const queueRef = useRef<CampaignQueue | null>(null)
   const abortRef = useRef<AbortController | null>(null)
-  // F4 — the tamper demo's in-flight fetch controller, registered by TamperDemoPanel, aborted by the SAME
+  // the tamper demo's in-flight fetch controller, registered by TamperDemoPanel, aborted by the SAME
   // synchronous stop routine below. Hoisting it here means a close-while-demo-fetching tears the demo fetch down
   // synchronously (the Wall's stop path), not only on the child's passive unmount cleanup (the late-work race).
   const demoAbortRef = useRef<AbortController | null>(null)
 
-  // The seed ids in catalog (seed-number) order — the honest geometry (D4 Ruling 4: a seed-ordered field, no fake
+  // The seed ids in catalog (seed-number) order — the honest geometry (a design ruling: a seed-ordered field, no fake
   // scatter). Derived from the ONE shared source (campaignSeedIds) that App's open action seeds the store from, so
   // the open-action seed and this component's seeds can never disagree on the id set. Consumed by the replay-backstop
   // layout effect below and by startVerifyAll's re-init.
@@ -79,7 +79,7 @@ export function CertificationWall({ onClose, ref }: CertificationWallProps) {
   const [load, setLoad] = useState<GaugeLoad>({ kind: 'loading' })
   const [verifying, setVerifying] = useState(false)
 
-  // ── STORE SEED — TWO SEEDS, ONE STORE, A DELIBERATE DIVISION OF LABOR (W5 F5 + the first-frame fix) ────────────
+  // ── STORE SEED — TWO SEEDS, ONE STORE, A DELIBERATE DIVISION OF LABOR (the first-frame fix) ────────────
   // The campaign store is a module-scoped EXTERNAL store, and a close resets it to rest (total=0). A fresh open must
   // paint 0-of-50, never the 0-of-0 flash of the just-reset store. That correctness is split across TWO idempotent
   // seeds — neither redundant; they cover DIFFERENT moments:
@@ -114,21 +114,21 @@ export function CertificationWall({ onClose, ref }: CertificationWallProps) {
   // replay — exactly what this backstop is for.
   useLayoutEffect(() => { useCampaignStore.getState().init(seedIds) }, [])
 
-  // ── THE REMOUNT / SESSION POSTURE (W5 F2 decision, stated in-code) ──────────────────────────────────────
+  // ── THE REMOUNT / SESSION POSTURE (a design decision, stated in-code) ──────────────────────────────────────
   // A "session" is THE MODAL BEING OPEN. Two teardown verbs, deliberately distinct:
   //   • CLOSE (the close button, the backdrop, or Esc) ENDS the session → stopSession() resets the store, so a
   //     REOPEN is a fresh rest (zero green). This is the design's north star made literal: "a ✓ dies when you
   //     leave and is re-earned" — leaving the certification surface is an explicit, labelled act.
   //   • CANCEL (in-view — cancelVerifyAll) is NOT a session end: it stops the in-flight verify but PRESERVES
   //     every terminal receipt already earned this session (a ✓ or an observed ✗). "Green is a receipt THIS
-  //     session" cuts both ways — an ordinary cancel must not silently DELETE observed evidence (F2). Only the
+  //     session" cuts both ways — an ordinary cancel must not silently DELETE observed evidence. Only the
   //     in-flight seeds return to attested-pending (store.cancelPending()).
   //   • RE-RUN (verify-all again) is the explicit intra-session reset: it re-inits to rest, then re-earns.
   // The module store persists across a close (zustand is module-scoped), but CLOSE deliberately resets it —
   // reopening earns from zero — so no prior session's green survives under a fresh open.
   const stopSession = useCallback(() => {
     stopWallSession({
-      // Abort the manifest fetch AND the tamper demo's in-flight fetch (F4) in the one synchronous stop — the
+      // Abort the manifest fetch AND the tamper demo's in-flight fetch in the one synchronous stop — the
       // demo controller rides the same close path as the queue fence + store reset, never the passive-cleanup race.
       abort: () => {
         abortRef.current?.abort(); abortRef.current = null
@@ -140,13 +140,13 @@ export function CertificationWall({ onClose, ref }: CertificationWallProps) {
   }, [])
 
   // App holds this handle so the Esc close path runs the SAME synchronous stop routine the close button + backdrop
-  // use, BEFORE `open` flips (F5) — the store reset + fetch abort + queue fence are never left to the unmount
+  // use, BEFORE `open` flips — the store reset + fetch abort + queue fence are never left to the unmount
   // cleanup alone. Stable (stopSession is a []-dep callback), so the handle identity never churns.
   useImperativeHandle(ref, () => ({ stop: stopSession }), [stopSession])
 
   // MOUNT lifecycle. The component is mounted only while open and remounts per open, so this is a per-session
   // mount effect: fetch the vendored manifest under an AbortController and route the result through the fail-closed
-  // parse (F3) into the discriminated load state. The store seed (the synchronous initializer above) and the
+  // parse into the discriminated load state. The store seed (the synchronous initializer above) and the
   // loading/idle defaults (fresh useState) are already in place — no "reset on open" bookkeeping is needed. On
   // close/unmount the cleanup runs stopSession() — the SAME synchronous teardown the close controls invoke — which
   // aborts this fetch, so a late resolution after close never sets state (the aborted-signal guard).
@@ -180,7 +180,7 @@ export function CertificationWall({ onClose, ref }: CertificationWallProps) {
   // VERIFY-ALL — the hero moment. Re-init to rest first (a re-run re-earns from zero), then start the queue
   // at the spine's default concurrency. Each queue event drives the store's per-seed transition (the store
   // IS the choreography): 'started' → running, 'done' → the evidence-coherent terminal verdict. Dots flip at
-  // REAL completion in TRUE order — no staged cascade, no minimum-duration shimmer (RAIL 2).
+  // REAL completion in TRUE order — no staged cascade, no minimum-duration shimmer.
   const startVerifyAll = () => {
     const store = useCampaignStore.getState()
     store.init(seedIds) // return to rest, then re-earn
@@ -201,7 +201,7 @@ export function CertificationWall({ onClose, ref }: CertificationWallProps) {
   // CANCEL (in-view) — the epoch fence aborts in-flight verifies and clears the queue with no late events. The
   // store's cancelPending() returns ONLY the in-flight seeds (running/pending) to attested-pending and PRESERVES
   // every terminal receipt already earned this session — an observed ✗ (or a ✓) survives an ordinary cancel
-  // (F2). NOT init(seedIds): re-init wiped observed evidence, silently deleting a contradiction off the very
+  // NOT init(seedIds): re-init wiped observed evidence, silently deleting a contradiction off the very
   // surface that exists to show it. (A completed session's evidence is re-earned only on an explicit CLOSE-then-
   // reopen, or a fresh RE-RUN — see the posture note above.)
   const cancelVerifyAll = () => {
@@ -226,7 +226,7 @@ export function CertificationWall({ onClose, ref }: CertificationWallProps) {
   const attestedGlyph = requireGlyph('attested')
 
   // CLOSE (the close button + the backdrop the Wall owns directly): stop the session SYNCHRONOUSLY — abort the
-  // fetch, fence the queue, reset the store — THEN hand up to onClose (F5). Esc is owned by App's keydown owner,
+  // fetch, fence the queue, reset the store — THEN hand up to onClose. Esc is owned by App's keydown owner,
   // which invokes the SAME stopSession through the imperative handle (stop()) before flipping `open` — so all
   // three close paths tear down through one idempotent routine, synchronously, never leaning on passive cleanup.
   const handleClose = () => { stopSession(); onClose() }
@@ -247,7 +247,7 @@ export function CertificationWall({ onClose, ref }: CertificationWallProps) {
             <h2>{cat.campaignId}</h2>
             <p className="wall-subtitle">50-seed statistical campaign</p>
           </div>
-          {/* The ROBUST verdict rides the ATTESTED voice — on record, not a session receipt (RAIL 1). The
+          {/* The ROBUST verdict rides the ATTESTED voice — on record, not a session receipt. The
               wall's ✓s are the receipts; this wordmark is the engine's verdict, decoded/attested. */}
           <span className="wall-verdict attested">
             <span className="wall-glyph" aria-hidden="true">{attestedGlyph}</span>
@@ -260,9 +260,9 @@ export function CertificationWall({ onClose, ref }: CertificationWallProps) {
         </p>
 
         {/* THE GAUGES — the campaign's statistical verdict, on record (attested •). Bounds decoded from pinned
-            f64 bits (never a platform recompute); the whole block is FAIL-CLOSED (F3) — a manifest that does not
+            f64 bits (never a platform recompute); the whole block is FAIL-CLOSED — a manifest that does not
             validate as THIS campaign's certified verdict renders ONE '?' unverifiable state with a reason, never
-            a partial/wrong-band/false-pass row. Per-open discriminated load state (F5), cleared to `loading`. */}
+            a partial/wrong-band/false-pass row. Per-open discriminated load state, cleared to `loading`. */}
         {load.kind === 'loaded' ? (
           <ul className="wall-gauges">
             {load.members.map((g) => (
@@ -321,7 +321,7 @@ export function CertificationWall({ onClose, ref }: CertificationWallProps) {
             : <button className="wall-cta" onClick={startVerifyAll}>verify all {cat.nSeeds}</button>}
         </div>
 
-        {/* THE TAMPER MOMENT (W6): the ✗ path made demonstrable. Beneath the census — the field proves fifty
+        {/* THE TAMPER MOMENT: the ✗ path made demonstrable. Beneath the census — the field proves fifty
             green receipts; this proves the refusal. Its result lives in the panel's OWN ephemeral state and NEVER
             enters the campaign store (the session census above stays pure); the fetched seed-42 bytes are cloned
             before one byte is flipped, so nothing published is touched. See tamperDemoView.tsx. */}

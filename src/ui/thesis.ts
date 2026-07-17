@@ -1,12 +1,12 @@
 import type { TrustVerdict } from '../decode/verify'
 import { markClass, requireGlyph } from './voices'
 
-// Pure text/state helpers for the ZERO-CLICK THESIS card (v0.6 T6, P2 — the cold-open share surface).
+// Pure text/state helpers for the ZERO-CLICK THESIS card (v0.6 — the cold-open share surface).
 // Dependency-free (no DOM, no store, no React) so the verdict-aware wording is unit-testable without a
 // render — mirroring ceremonyFormat.ts's split from Ceremony.tsx.
 
 // VERDICT-AWARE headline (three-voice grammar — never staged). The thesis card's headline is the RUN'S OWN
-// trust verdict (A2 — the seal fold), bound exactly as the ceremony ticks and provenance rows are:
+// trust verdict (the seal fold), bound exactly as the ceremony ticks and provenance rows are:
 //   • manifest-verified → ✓ "verified" (recomputed + matched against the external manifest);
 //   • self-consistent   → ○ "self-consistent — no external manifest" — a det-only KAT reproduces its own
 //     trailer but pins no external oracle, so it wears the self-check voice, NEVER the manifest-grade green;
@@ -22,7 +22,7 @@ export function thesisVerdict(verdict: TrustVerdict): ThesisVerdict {
   }
 }
 
-// WITHHOLD-AWARE verdict (W1 — the most trust-critical surface fails SAFE, never GREEN). null means the
+// WITHHOLD-AWARE verdict (the most trust-critical surface fails SAFE, never GREEN). null means the
 // verdict is WITHHELD: the run-switch identity join failed (the resident hashes belong to a prior run) or
 // no hashes exist yet, so App cannot honestly speak a verdict about the run on stage. The card then renders NO
 // glyph and NO subline rather than the old `?? true` fail-GREEN default — a fail-safe blank beats painting
@@ -34,7 +34,7 @@ export function thesisVerdictFor(verdict: TrustVerdict | null): ThesisVerdict | 
 // The subline under the verdict: WHAT the verdict means, in one plain honest line (the ceremony-thesis voice
 // carried into the app). Bound to the same verdict so a self-consistent run never claims an external check and
 // a mismatched bundle never claims a clean re-check.
-//   SCOPE (F1 — the ceremony thesis's scoping carried to this surface, matching 8f1429c's wording style): the
+//   SCOPE (the ceremony thesis's scoping carried to this surface, matching 8f1429c's wording style): the
 // det-only self-check proves ONLY what matchesTrailer folds — the event & state hashes and the frame counts,
 // re-derived from the bytes and matched to the bundle's OWN sealed trailer. It deliberately does NOT say "every
 // byte": result_id is DERIVED from trailer-SOURCED inputs (case_id, termination_reason) with no in-bundle oracle,
@@ -51,13 +51,13 @@ export function thesisSubline(verdict: TrustVerdict): string {
   }
 }
 
-// The IN-APP INDEPENDENCE LINE (P2): the README independence claim, distilled to one sentence for the app.
+// The IN-APP INDEPENDENCE LINE: the README independence claim, distilled to one sentence for the app.
 // The load-bearing fact of the whole project — the decoder never saw the engine's source, yet reproduces its
 // hashes byte-for-byte. Static (not verdict-bound): it is a claim about how THIS APP was built, always true.
 export const INDEPENDENCE_LINE =
   'The decoder was written from the engine’s binary format spec — not its source — and reproduces its cryptographic run hashes byte-for-byte.'
 
-// COLD-OPEN CARD COLLAPSE (v0.7 T5, critic R6). The zero-click card persists over the WHOLE tour today; it
+// COLD-OPEN CARD COLLAPSE (v0.7). The zero-click card persists over the WHOLE tour today; it
 // should collapse to a header verdict chip once the auto-tour leaves its opening establishing beat. The full
 // card is the cold-open share moment — authored beside beat 0, the establishing shot — and the tour reaching
 // its first PLAYBACK beat (stepIndex >= 1) is the collapse signal. Pure predicate so App's collapse LATCH is

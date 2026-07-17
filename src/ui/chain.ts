@@ -1,6 +1,6 @@
 import type { RunModel } from '../model/runModel'
 
-// THE AGGREGATION HORIZON (constitution Part I.E / III.7; consult-legibility-miniwave §1). ONE constant, TWO
+// THE AGGREGATION HORIZON (constitution Part I.E / III.7). ONE constant, TWO
 // surfaces: the causality module owns the causality horizon, and BOTH the stage (queryStageView.tsx) and the
 // timeline chain overlay (chainTicks → Timeline.tsx) consume it. A selection lights its ≤ HORIZON_HOPS causal
 // neighborhood and NOTHING beyond — aggregation is enforced, not the whole-chain WHY-wash. On a linear chain
@@ -11,7 +11,7 @@ import type { RunModel } from '../model/runModel'
 // neighborhood, so this is constitutional enforcement, not an e0 special case.
 export const HORIZON_HOPS = 3
 
-// PER-HOP BREADTH CAP for the render plane (v0.8 W2). maxHop bounds DEPTH; maxPerHop bounds the fan-out at any
+// PER-HOP BREADTH CAP for the render plane (v0.8). maxHop bounds DEPTH; maxPerHop bounds the fan-out at any
 // single hop, so a pathologically wide graph can never enumerate — or render — an unbounded set of neighbours.
 // On e0 (a linear hash chain, exactly 1 member per hop) it never bites, so it is invisible for shipped content;
 // it exists so the ChainLinks buffer and the stage/timeline overlays have a HARD, DECLARED bound instead of the
@@ -56,7 +56,7 @@ export interface CausalNeighborhood {
   summary: NeighborhoodSummary
 }
 
-// PINNED TRUNCATION ORDER (v0.8 W2, the honesty-tier ruling). When a hop has more than its maxPerHop budget of
+// PINNED TRUNCATION ORDER (v0.8 — the honesty-tier ruling). When a hop has more than its maxPerHop budget of
 // candidate members, the survivors are the maxPerHop with the SMALLEST seq (ascending), and the rest are dropped.
 // WHY seq-ascending: causation in a decoded bundle is forward-only (decodeBundle rejects a child whose seq ≤ its
 // parent), so seq is the event's monotonic creation index and ascending seq is a data-INTRINSIC total order — the
@@ -64,7 +64,7 @@ export interface CausalNeighborhood {
 // same candidates shuffled and the same members survive). Keeping the smallest seqs keeps the earliest, most
 // causally-upstream members of the hop (premise-first). The drop is COUNTED into the summary, never silent.
 //
-// COMBINED PER-HOP CAP (v0.8 W2 F2): the ancestor and descendant sides SHARE one maxPerHop budget at each hop —
+// COMBINED PER-HOP CAP (v0.8): the ancestor and descendant sides SHARE one maxPerHop budget at each hop —
 // the cap bounds byHop[d] (the RETAINED members at distance d), not each side independently. The single ancestor
 // at hop d (parent-walk, at most one) has a smaller seq than the subject, hence than every hop-d descendant, so
 // under the pinned rule it survives NATURALLY and simply consumes one of the hop's slots; the descendants compete
@@ -72,7 +72,7 @@ export interface CausalNeighborhood {
 // children (byHop[1] = 4, one dropped), never the pre-fix five. Directional counts and the dropped total are read
 // AFTER this combined selection.
 //
-// BOUNDED SELECTION (v0.8 W2 F1): the survivors are chosen WITHOUT materialising or sorting the whole fan-out. A
+// BOUNDED SELECTION (v0.8): the survivors are chosen WITHOUT materialising or sorting the whole fan-out. A
 // node with N children still costs O(N) to ENUMERATE (every candidate must be counted for the count-true summary)
 // but only O(maxPerHop) SCRATCH and NO O(N log N) sort — an ascending survivor buffer of length ≤ budget keeps the
 // winners as candidates stream past, and an overflow candidate is only counted, never retained. childrenOf
@@ -80,7 +80,7 @@ export interface CausalNeighborhood {
 // source is an ordered stream; this is the k-way-merge reality, not a max-heap fallback. A wide bundle can no
 // longer freeze the click path with an O(N) scratch Set + array and a full sort.
 //
-// BOUNDED TRAVERSAL (v0.7 T3 fix W3, preserved): the cost is the size of the ≤maxHop neighbourhood, never the total
+// BOUNDED TRAVERSAL (v0.7, preserved): the cost is the size of the ≤maxHop neighbourhood, never the total
 // chain. Ancestors: single-parent walk EXACTLY maxHop steps (the d-th parent is hop d). Descendants: BFS level by
 // level, expanding a level's survivors only while depth < maxHop, so a hop-maxHop node is recorded but its children
 // are never visited. `hop.has` doubles as the visited guard, so a malformed cyclic causation array bounds the work
@@ -89,7 +89,7 @@ export interface CausalNeighborhood {
 // probeHorizon = one extra O(boundary) peek per side to set the *Beyond flags for the chip; it is OFF by default
 // (the geometry/link consumers never pay it) and never enumerates a beyond-horizon SUBTREE.
 //
-// MEMOISED (v0.8 W2 F1): the four render surfaces each resolve the SAME (model, seq, opts, probeHorizon)
+// MEMOISED (v0.8): the four render surfaces each resolve the SAME (model, seq, opts, probeHorizon)
 // neighbourhood once per selection — three of them (ChainLinks, the timeline overlay via chainTicks, and the query
 // stage hop map) issue the IDENTICAL HORIZON_OPTS/unprobed call, the Inspector chip the probed one. A model-keyed
 // LRU (WeakMap → freed when the run is swapped out) collapses those repeats to ONE traversal per distinct key; the
@@ -165,8 +165,8 @@ function computeNeighborhood(
     ancestorsBeyond = model.parentOf(node) !== null
   }
 
-  // ── Descendants — BFS level by level. Each level shares hop d's maxPerHop budget with the ancestor (F2) and
-  //    selects the smallest-seq survivors with O(maxPerHop) scratch (F1). Each level's candidates are the not-yet-
+  // ── Descendants — BFS level by level. Each level shares hop d's maxPerHop budget with the ancestor and
+  //    selects the smallest-seq survivors with O(maxPerHop) scratch. Each level's candidates are the not-yet-
   //    seen children of the previous level's SURVIVORS.
   let descendants = 0
   let frontier: number[] = [seq]
@@ -198,7 +198,7 @@ function computeNeighborhood(
     frontier = survivors
   }
 
-  // Horizon probe (descendant side) — DEPTH continuation ONLY (F3). A maxHop-boundary SURVIVOR having a child means
+  // Horizon probe (descendant side) — DEPTH continuation ONLY. A maxHop-boundary SURVIVOR having a child means
   // the chain extends past the descendant horizon. A breadth cut (truncHop) is a SEPARATE fact the summary already
   // declares as `dropped`; it must NOT be read as a horizon claim (a wide but SHALLOW fan-out ends AT its hop, and
   // the depth of a dropped branch is UNKNOWN — never enumerated). Set only under an explicit probe; unprobed the
@@ -222,7 +222,7 @@ function computeNeighborhood(
 }
 
 // seq → causal HOP distance from `seq` (0 = self), bounded to `maxHop`. A THIN VIEW over causalNeighborhood with
-// no per-hop cap (maxPerHop = ∞) and no horizon probe — so it is byte-identical to the pre-W2 bounded walk and the
+// no per-hop cap (maxPerHop = ∞) and no horizon probe — so it is byte-identical to the earlier bounded walk and the
 // ONE traversal is shared, never re-implemented. Retained as the stage/tool accessor that needs only the hop map.
 export function causalHops(model: RunModel, seq: number, maxHop: number): Map<number, number> {
   return new Map(causalNeighborhood(model, seq, { maxHop, maxPerHop: Number.POSITIVE_INFINITY }).hop)
@@ -230,7 +230,7 @@ export function causalHops(model: RunModel, seq: number, maxHop: number): Map<nu
 
 export interface ChainGeometry { ticks: Float64Array; arcs: Float64Array; members: ReadonlySet<number> }
 
-// HORIZON-BOUNDED chain geometry for the 2D timeline overlay (consult §1.4). Members = the HORIZON_OPTS
+// HORIZON-BOUNDED chain geometry for the 2D timeline overlay. Members = the HORIZON_OPTS
 // neighbourhood — the SAME call ChainLinks and the stage route through, so the timeline lights and the 3D links
 // can never disagree. Ticks are drawn for members only; an arc is emitted ONLY when BOTH its endpoints are members
 // (else the root-most member would drag one dangling arc out to a beyond-horizon tick), so a linear chain draws

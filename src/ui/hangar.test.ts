@@ -7,7 +7,7 @@ import {
   realSimDuration, recordSeal, sealFor, shouldBreakSeal, shouldSealRun, VOICE_GLYPH, type SealStatus,
 } from './hangar'
 
-// ── sim-clock predicate (T5c) — the exact three-way partition ──────────────────────────────────────
+// ── sim-clock predicate — the exact three-way partition ──────────────────────────────────────
 describe('hasRealSimClock: real only when a manifest pins a dt distinct from the playback assumption', () => {
   test('f2a/f3a/f4 dt_us = 125000 → real clock', () => expect(hasRealSimClock(125000)).toBe(true))
   test('det-only (e0/f1) has no dt → assumed', () => expect(hasRealSimClock(undefined)).toBe(false))
@@ -38,7 +38,7 @@ describe('realSimDuration: card duration or null (assumed voice)', () => {
     expect(realSimDuration({ dtUs: 1000, ticks: 2 })).toBeNull())
 })
 
-// ── W4: the assumed-clock tooltip never borrows a false reason ────────────────────────────────────────
+// ── the assumed-clock tooltip never borrows a false reason ────────────────────────────────────────
 describe('assumedClockTitle: the assumed-clock title states the run’s TRUE reason', () => {
   test('f0 (full-manifest, recorded dt == the 1× step) claims NEITHER det-only NOR no-recorded-dt', () => {
     const title = assumedClockTitle({ dtUs: ASSUMED_DT_US }) // f0: dtUs 1000, NOT det-only
@@ -57,11 +57,11 @@ describe('assumedClockTitle: the assumed-clock title states the run’s TRUE rea
   })
 })
 
-// ── kind histogram (T5b) — declared display metadata ────────────────────────────────────────────────
+// ── kind histogram — declared display metadata ────────────────────────────────────────────────
 describe('kindLabel: registry name, numeric fallback', () => {
   test('registered kind', () => expect(kindLabel(23)).toBe('GeometryQueryResolved'))
   test('F0 fixture kind', () => expect(kindLabel(0xf000)).toBe('F0_FIXTURE'))
-  // T5 R4: the EXP-F1 motion substrate (0x0120/0x0121) carries its OWN registry names (spec-3a §6.5.2,
+  // The EXP-F1 motion substrate (0x0120/0x0121) carries its OWN registry names (spec-3a §6.5.2,
   // spec-3b §11.4 k=1 block) — the front door stops showing unnamed integers. These are the registry's
   // names verbatim (DATA, not taste), never invented copy.
   test('EXP-F1 motion kinds carry their registry names', () => {
@@ -76,7 +76,7 @@ describe('histogramRows: sorted by count desc, kind asc, with identity category'
     const rows = histogramRows({ 1: 80, 2: 1, 3: 78, 4: 1, 288: 1, 289: 96 })
     expect(rows.map(r => r.kind)).toEqual([289, 1, 3, 2, 4, 288]) // 96,80,78, then count-1 ties by kind asc
     expect(rows.map(r => r.count)).toEqual([96, 80, 78, 1, 1, 1])
-    // T5 R4: the two motion kinds render their registry names, not the bare '289'/'288' the critic flagged.
+    // The two motion kinds render their registry names, not the bare '289'/'288' flagged in review.
     expect(rows[0]).toMatchObject({ kind: 289, name: 'MotionStepped' })
     expect(rows[5]).toMatchObject({ kind: 288, name: 'MotionSegmentStarted' })
     expect(rows[1]).toMatchObject({ kind: 1, name: 'DetectionMade', category: 'query' })
@@ -87,9 +87,9 @@ describe('histogramRows: sorted by count desc, kind asc, with identity category'
   })
 })
 
-// ── verdict voice (T5b) — session-earned checkmark economy, plus the broken-seal alarm (item 1) ─────
+// ── verdict voice — session-earned checkmark economy, plus the broken-seal alarm ─────
 describe('cardVerdict: attested by default, verified when sealed, alarm when the seal broke', () => {
-  // F1 — cardVerdict is keyed on the runId (its GRADE resolved from the trusted catalog), never a RunEntry.
+  // cardVerdict is keyed on the runId (its GRADE resolved from the trusted catalog), never a RunEntry.
   // f0 is a full-manifest citizen; f1 is det-only. See the lying-index premise-first test below.
   test('unsealed manifest run wears the attested voice', () =>
     expect(cardVerdict('f0', 'none')).toEqual({ state: 'attested', label: 'certified · on record' }))
@@ -97,7 +97,7 @@ describe('cardVerdict: attested by default, verified when sealed, alarm when the
     expect(cardVerdict('f0', 'sealed')).toEqual({ state: 'verified', label: 'recomputed this session' }))
   test('unsealed det-only run reads golden, self-checks on open', () =>
     expect(cardVerdict('f1', 'none')).toEqual({ state: 'attested', label: 'det-only golden · self-checks on open' }))
-  // A2 (H2/H3): a det-only run has NO external oracle, so a self-check this session earns the ATTESTED voice
+  // A det-only run has NO external oracle, so a self-check this session earns the ATTESTED voice
   // (•) with a sharpened label — never the manifest-grade green ✓ that would collapse it into a verified run.
   test('sealed det-only run reads self-verified this session in the ATTESTED voice (never state verified/✓)', () => {
     const v = cardVerdict('f1', 'sealed')
@@ -105,7 +105,7 @@ describe('cardVerdict: attested by default, verified when sealed, alarm when the
     expect(v.state).not.toBe('verified')
     expect(v.label).toBe('self-verified this session · no external oracle')
   })
-  // Closure item 1: a broken seal renders in the ALARM register — the ✗ mismatch voice — never ✓ and
+  // A broken seal renders in the ALARM register — the ✗ mismatch voice — never ✓ and
   // never plain attested (which would quietly forget a witnessed mismatch).
   test('a BROKEN seal wears the mismatch alarm voice (✗) — provably NOT ✓ and NOT plain attested', () => {
     for (const runId of ['f0', 'f1'] as const) {
@@ -120,12 +120,12 @@ describe('cardVerdict: attested by default, verified when sealed, alarm when the
   })
 })
 
-// ── F1: the trust GRADE is keyed on the TRUSTED catalog id, NEVER the unsigned RunEntry.detOnly ────────────
+// ── The trust GRADE is keyed on the TRUSTED catalog id, NEVER the unsigned RunEntry.detOnly ────────────
 // runs/index.json is fetched over the network and unsigned. cardVerdict reconstructs the trust GRADE, so if it
 // keyed on RunEntry.detOnly a lying entry (detOnly:false on a sealed det-only run) would render the manifest-
 // grade ✓ / "recomputed this session" over a self-consistent run. The fix keys the grade on the runId resolved
 // through the in-bundle catalog — no RunEntry field reaches cardVerdict at all.
-describe('cardVerdict grades from the trusted catalog id — a lying RunEntry.detOnly cannot flip the grade (F1)', () => {
+describe('cardVerdict grades from the trusted catalog id — a lying RunEntry.detOnly cannot flip the grade', () => {
   // The PRE-FIX grade source, verbatim: keyed on the (spoofable) entry.detOnly flag. Encoded here so this test
   // DEMONSTRATES the hole it closes — fed a lying flag it flips the sealed grade to the manifest-grade ✓.
   const preFixSealedGrade = (detOnlyFlag: boolean) => (detOnlyFlag
@@ -151,12 +151,12 @@ describe('cardVerdict grades from the trusted catalog id — a lying RunEntry.de
   })
 })
 
-// ── D4 profile-conflation prohibition (W2) — no OTHER-campaign wordmark touches the f3a card ──────────
+// ── profile-conflation prohibition — no OTHER-campaign wordmark touches the f3a card ──────────
 // The published f3a is the CORRECT single-target-track KAT. The 50-seed statistical-acceptance ("robust")
 // campaign is a DIFFERENT bundle whose story belongs to the v0.7 Wall; its claim must never be smuggled
 // onto this card — not as /robust/, and not in the softer "statistical-acceptance / acceptance campaign"
 // words the old /robust/i scan could not see. Scan the note AND every rendered verdict with the full tripwire.
-describe('f3a card carries no OTHER-campaign wordmark (D4 Ruling 2 / W2, pinned)', () => {
+describe('f3a card carries no OTHER-campaign wordmark (pinned)', () => {
   test('no cardVerdict label, in ANY seal status, smuggles a robust / statistical-acceptance verdict', () => {
     for (const status of ['none', 'sealed', 'broken'] as SealStatus[]) {
       for (const runId of ['f0', 'f1'] as const) {
@@ -175,7 +175,7 @@ describe('f3a card carries no OTHER-campaign wordmark (D4 Ruling 2 / W2, pinned)
   })
 })
 
-// ── session-seal state machine (D4 Ruling 1 / NEVER #12; W1 + closure item 1) ─────────────────────────
+// ── session-seal state machine ─────────────────────────
 // The record claims byte-precision ("this ✓ names the exact bytes"), so the machine must honor it at the
 // edges: a later verified load with DIFFERENT bytes renames the seal; a later MISMATCH breaks it (alarm,
 // session-terminal); the happy path is unchanged and reference-stable.
@@ -191,13 +191,13 @@ describe('recordSeal / breakSeal / sealFor: the seal reconciliation machine', ()
     const list = [sealedE0]
     expect(recordSeal(list, 'e0', 'res-A')).toBe(list)
   })
-  test('REGRESSION (item 1a): same runId later verified with a DIFFERENT resultId → the record is REPLACED', () => {
+  test('REGRESSION: same runId later verified with a DIFFERENT resultId → the record is REPLACED', () => {
     const list = [sealedE0, { runId: 'f0', resultId: 'res-F', broken: false }]
     const next = recordSeal(list, 'e0', 'res-B')
     expect(next).toEqual([{ runId: 'e0', resultId: 'res-B', broken: false }, { runId: 'f0', resultId: 'res-F', broken: false }])
     expect(sealFor(next, 'e0')!.resultId).toBe('res-B') // the ✓ now names the bytes it actually verified
   })
-  test('REGRESSION (item 1b): a mismatch after a seal BREAKS it — kept and flagged, never silently green', () => {
+  test('REGRESSION: a mismatch after a seal BREAKS it — kept and flagged, never silently green', () => {
     const next = breakSeal([sealedE0], 'e0')
     expect(next).toEqual([{ runId: 'e0', resultId: 'res-A', broken: true }]) // original resultId kept as the revoked ✓'s name
   })
@@ -231,7 +231,7 @@ describe('recordSeal / breakSeal / sealFor: the seal reconciliation machine', ()
   })
 })
 
-// ── item 1: the render-side identity guard — ✓ only for the bytes actually on stage ──────────────────
+// ── the render-side identity guard — ✓ only for the bytes actually on stage ──────────────────
 describe('effectiveSealStatus: verified holds only while the seal names the loaded bytes', () => {
   const seal = { runId: 'e0', resultId: 'res-A', broken: false }
   test('no record → none (attested)', () => expect(effectiveSealStatus(undefined, 'e0', 'res-A')).toBe('none'))
@@ -249,7 +249,7 @@ describe('effectiveSealStatus: verified holds only while the seal names the load
   })
 })
 
-// ── W1: the identity-join primitive shared by the seal ✓, the break ✗, and the cold-open thesis verdict ──
+// ── the identity-join primitive shared by the seal ✓, the break ✗, and the cold-open thesis verdict ──
 describe('loadIsCurrent: the resident bytes belong to the current run iff loadedRunId === runId', () => {
   test('true only on an exact identity match', () => {
     expect(loadIsCurrent('e0', 'e0')).toBe(true)
@@ -274,7 +274,7 @@ describe('loadIsCurrent: the resident bytes belong to the current run iff loaded
   })
 })
 
-// ── W1: the seal-race fix — seal by IDENTITY carried with the data, never by effect timing ────────────
+// ── the seal-race fix — seal by IDENTITY carried with the data, never by effect timing ────────────
 describe('shouldSealRun: a card seals only for the CURRENT run’s own verified bytes', () => {
   // THE RACE. selectRun flips the store runId to the destination synchronously, but useRun still holds the
   // PRIOR run's model/hashes (matchesTrailer=true) for the commit right after the switch; loadedRunId is set
@@ -304,7 +304,7 @@ describe('shouldSealRun: a card seals only for the CURRENT run’s own verified 
   })
 })
 
-// ── item 1: the mismatch twin — the SAME identity join, opposite verdict ──────────────────────────────
+// ── the mismatch twin — the SAME identity join, opposite verdict ──────────────────────────────
 describe('shouldBreakSeal: breaks only for the CURRENT run’s own failed verification', () => {
   test('mirror-image race: a stale ✗ from the PRIOR run never revokes the destination’s seal', () =>
     // Switched from a mismatched e0 to f0; e0's ✗ hashes still resident for one commit — f0 must keep its seal.
@@ -319,7 +319,7 @@ describe('shouldBreakSeal: breaks only for the CURRENT run’s own failed verifi
   })
 })
 
-// ── I6: the identity join generalized to the WHOLE ready subtree (the delayed-destination-fetch scenario) ──
+// ── the identity join generalized to the WHOLE ready subtree (the delayed-destination-fetch scenario) ──
 describe('readyTreeVisible: the ready subtree paints only when the resident model IS the current run', () => {
   // THE DELAYED-DESTINATION-FETCH SCENARIO. The operator switches from a ready run (e0) to a slow-fetching one
   // (f1). selectRun flips the store runId to f1 synchronously, but useRun still holds e0's model for the commit
@@ -348,7 +348,7 @@ describe('readyTreeVisible: the ready subtree paints only when the resident mode
     expect(readyTreeVisible(priorModel, 'f1', null)).toBe(false) // model present but loadedRunId never set → withheld
   })
 
-  // ── M5: the PRODUCTION gate must BE the tested helper, never a hand-inlined drift twin ────────────────
+  // ── the PRODUCTION gate must BE the tested helper, never a hand-inlined drift twin ────────────────
   // readyTreeVisible was tested here, but App only referenced it in COMMENTS and hand-inlined `!model || !current`
   // — a copy of the helper's logic that could drift from it silently. This source-level pin (the mountGate-name
   // identity-pin precedent) fails if App stops routing its ready-tree gate through the actual function.
@@ -359,11 +359,11 @@ describe('readyTreeVisible: the ready subtree paints only when the resident mode
   })
 })
 
-// ── F5 — cardNote is an OWN-property lookup: an unsigned index id cannot resolve a prototype member ─────────
+// ── cardNote is an OWN-property lookup: an unsigned index id cannot resolve a prototype member ─────────
 // entry.id comes from the UNSIGNED runs/index.json. A plain-object bracket lookup inherits from Object.prototype,
 // so '__proto__' → the prototype and 'constructor' → the Object constructor — TRUTHY non-strings that crash the
 // Hangar (which sits OUTSIDE the run ErrorBoundary → whole app down) when rendered as a React child.
-describe('cardNote — safe against unsigned index ids (F5)', () => {
+describe('cardNote — safe against unsigned index ids', () => {
   test('a real note resolves; a known id with no note yields undefined', () => {
     expect(cardNote('f3a')).toBe(CARD_NOTES.f3a)
     expect(cardNote('f0')).toBeUndefined() // f0 ships no note
@@ -382,5 +382,5 @@ describe('cardNote — safe against unsigned index ids (F5)', () => {
 test('VOICE_GLYPH mirrors the panel grammar', () => {
   expect(VOICE_GLYPH.verified).toBe('✓')
   expect(VOICE_GLYPH.attested).toBe('•')
-  expect(VOICE_GLYPH.mismatch).toBe('✗') // reachable since item 1: the broken-seal alarm voice
+  expect(VOICE_GLYPH.mismatch).toBe('✗') // reachable via the broken-seal alarm voice
 })

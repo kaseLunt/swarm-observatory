@@ -26,9 +26,9 @@ describe('reduced-motion honoring', () => {
   })
 })
 
-// Scrub-from-finale re-fit rate (v0.5d ruling 5): a dedicated GENTLER settle rate for the establish-refit
-// camera move so it reads as a directed move, not a whip. Derived from FOCUS_EASE_RATE, in ruling 5's 0.5–0.7 band.
-describe('re-fit settle rate (v0.5d ruling 5)', () => {
+// Scrub-from-finale re-fit rate (v0.5d): a dedicated GENTLER settle rate for the establish-refit
+// camera move so it reads as a directed move, not a whip. Derived from FOCUS_EASE_RATE, in 's 0.5–0.7 band.
+describe('re-fit settle rate (v0.5d)', () => {
   test('REFIT_EASE_RATE is 0.6× FOCUS_EASE_RATE and lands inside the ruled 0.5–0.7 band', () => {
     expect(REFIT_EASE_RATE).toBeCloseTo(FOCUS_EASE_RATE * 0.6, 12)
     expect(REFIT_EASE_RATE).toBeGreaterThanOrEqual(FOCUS_EASE_RATE * 0.5)
@@ -49,11 +49,11 @@ describe('re-fit settle rate (v0.5d ruling 5)', () => {
   })
 })
 
-// dt-normalized camera easing (v0.5b T1): the per-frame lerp factor is derived from a per-second rate
+// dt-normalized camera easing (v0.5b): the per-frame lerp factor is derived from a per-second rate
 // via factor(dt) = 1 − exp(−rate·dt), making convergence frame-rate-independent. These tests are the
 // proof: (a) 60fps-equivalence to the old constants, (b) exact composition across a frame split (the
 // frame-rate-independence property), (c) reduced-motion snap, (d) dt=0 and the delta clamp boundary.
-describe('dt-normalized easing (v0.5b T1)', () => {
+describe('dt-normalized easing (v0.5b)', () => {
   // (a) The calibrated rates reproduce the former per-frame constants EXACTLY at dt = 1/60, so this is a
   // behavior-preserving refactor at the old 60fps cadence. Tolerance 1e-9 (brief).
   test('60fps-equivalent: factor at dt=1/60 equals the old constant within 1e-9', () => {

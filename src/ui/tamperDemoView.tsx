@@ -4,7 +4,7 @@ import { markClass, requireGlyph } from './voices'
 import { seedVoice } from './wall'
 import { DEMO_SEED_ID, runTamperDemo, TamperDemoError, type DemoSide, type OracleKind, type TamperDemoResult } from './tamperDemo'
 
-// ── THE TAMPER MOMENT — the ✗ path, on the Wall (v0.8 W6) ────────────────────────────────────────────────
+// ── THE TAMPER MOMENT — the ✗ path, on the Wall (v0.8) ────────────────────────────────────────────────
 // The Wall proves fifty green receipts; this makes the REFUSAL visible — the skeptic's ten seconds. It fetches ONE
 // certified bundle (seed 42) via a direct main-thread use of the pure campaignVerify core (the worker queue is for
 // fifty; one bundle needs no queue), verifies the PRISTINE bytes, flips ONE byte of a recorded MEASUREMENT in a
@@ -66,10 +66,10 @@ function DemoColumn({ title, side }: { title: string; side: DemoSide }) {
 }
 
 // The demo affordance + its ephemeral result panel. `cat` is the Wall's catalog (the ROBUST campaign); the demo
-// resolves seed 42's pins + load path from it (the H1 authority — never a manifest field), so it cannot be
+// resolves seed 42's pins + load path from it (the catalog authority — never a manifest field), so it cannot be
 // pointed at other bytes. Rendered by the Wall beneath the census.
 //
-// F4 — the Wall passes its `abortRef` so the demo's in-flight fetch is aborted by the Wall's SYNCHRONOUS stop
+// the Wall passes its `abortRef` so the demo's in-flight fetch is aborted by the Wall's SYNCHRONOUS stop
 // routine (stopWallSession) at close, not only by this child's passive unmount cleanup: the demo controller is
 // registered in the SAME ref the Wall's stop path aborts, so a close-while-fetching tears down synchronously.
 // The unmount cleanup below stays as the secondary fence (Esc/unmount), and the aborted-signal guard stops any

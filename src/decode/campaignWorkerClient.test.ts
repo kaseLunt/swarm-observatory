@@ -4,8 +4,8 @@ import { deriveRunStatus, errorSummary } from './campaignVerify'
 import type { RunStatus, RunSummary, VerifyJob } from './campaignVerify'
 
 // ── The worker-backed transport, exercised against a FAKE worker (a real `new Worker` cannot run under
-//    vitest/node). These pin the two protocol properties the review flagged: TOKEN correlation (F3 — a reused
-//    seed id must not let a stale pre-cancel result settle a restarted job) and CRASH recovery (F4 — an async
+// vitest/node). These pin the two protocol properties the review flagged: TOKEN correlation (a reused
+// seed id must not let a stale pre-cancel result settle a restarted job) and CRASH recovery (an async
 //    worker fault rejects every outstanding request and lets a fresh worker be recreated). ──
 
 type Listener = (ev: { data?: unknown; message?: string }) => void
@@ -27,12 +27,12 @@ class FakeWorker implements WorkerLike {
 
   // ── test drivers ──
   // `summary` is UNKNOWN (not RunSummary) so a test can post a malformed payload (null, {}, wrong id/status) and
-  // exercise the fail-closed validation (F1).
+  // exercise the fail-closed validation.
   emitResult(requestToken: number, summary: unknown): void {
     this.fire('message', { data: { type: 'result', requestToken, summary } })
   }
   // Fire an ARBITRARY (possibly malformed) message envelope on the 'message' channel — used to exercise the
-  // envelope-level fail-closed guard (F1): a non-object payload, a wrong `type`, or a missing/non-integer token.
+  // envelope-level fail-closed guard: a non-object payload, a wrong `type`, or a missing/non-integer token.
   emitRaw(data: unknown): void { this.fire('message', { data }) }
   emitCrash(message = 'boom'): void { this.fire('error', { message }) }
   emitMessageError(message = 'structured-clone failed'): void { this.fire('messageerror', { message }) }
@@ -61,7 +61,7 @@ function summary(id: string, status: RunStatus): RunSummary {
   }
 }
 
-describe('createWorkerTransport: the message protocol (F1 — ids only, F2 — base at init)', () => {
+describe('createWorkerTransport: the message protocol (ids only, base at init)', () => {
   test('inits the worker once with the app base and posts a verify carrying {requestToken, campaignId, seed} only', () => {
     const w = new FakeWorker()
     const { transport } = createWorkerTransport(() => w, '/swarm-observatory/')
@@ -69,13 +69,13 @@ describe('createWorkerTransport: the message protocol (F1 — ids only, F2 — b
 
     const inits = w.messages('init')
     expect(inits).toHaveLength(1)
-    expect(inits[0]!.base).toBe('/swarm-observatory/') // trusted config, passed once (F2)
+    expect(inits[0]!.base).toBe('/swarm-observatory/') // trusted config, passed once
     const verifies = w.messages('verify')
     expect(verifies).toHaveLength(1)
-    expect(verifies[0]!.requestToken).toBe(1) // tokens are monotonic FROM 1 (0 is never-issued — F2)
+    expect(verifies[0]!.requestToken).toBe(1) // tokens are monotonic FROM 1 (0 is never-issued)
     expect(verifies[0]!.campaignId).toBe('robust-f3a')
     expect(verifies[0]!.seed).toBe(42)
-    // The wire carries NO url and NO expected pins — the worker owns those (F1).
+    // The wire carries NO url and NO expected pins — the worker owns those.
     expect('url' in verifies[0]!).toBe(false)
     expect('expected' in verifies[0]!).toBe(false)
   })
@@ -101,7 +101,7 @@ describe('createWorkerTransport: the message protocol (F1 — ids only, F2 — b
   })
 })
 
-describe('createWorkerTransport: TOKEN correlation drops stale results (F3)', () => {
+describe('createWorkerTransport: TOKEN correlation drops stale results', () => {
   test('a stale pre-cancel result (reused seed id) is dropped by token; the restarted job gets its OWN result', async () => {
     const w = new FakeWorker()
     const { transport, stats } = createWorkerTransport(() => w, '/')
@@ -145,7 +145,7 @@ describe('createWorkerTransport: TOKEN correlation drops stale results (F3)', ()
 
 })
 
-describe('createWorkerTransport: issuance-tracked stale vs never-issued tokens (F2)', () => {
+describe('createWorkerTransport: issuance-tracked stale vs never-issued tokens', () => {
   // Only a RETIRED token — one this client actually issued (0 < token < nextToken) then resolved/cancelled/
   // superseded — is a stale drop. A NEVER-ISSUED token (>= nextToken, <= 0, non-safe-integer) could not have been
   // minted by the worker (it mints from the client's monotonic counter), so while a real request is live it is
@@ -238,7 +238,7 @@ describe('createWorkerTransport: issuance-tracked stale vs never-issued tokens (
   })
 })
 
-describe('createWorkerTransport: crash recovery (F4)', () => {
+describe('createWorkerTransport: crash recovery', () => {
   test('a crash rejects ALL outstanding requests, terminates the worker, and the next job runs on a fresh one', async () => {
     const workers: FakeWorker[] = []
     const { transport } = createWorkerTransport(() => { const w = new FakeWorker(); workers.push(w); return w }, '/')
@@ -278,7 +278,7 @@ describe('createWorkerTransport: crash recovery (F4)', () => {
   })
 })
 
-describe('createWorkerTransport: fail-closed protocol validation (F1)', () => {
+describe('createWorkerTransport: fail-closed protocol validation', () => {
   // A malformed-but-deserialisable result on a LIVE token is a worker regression/skew. Under a `messageerror`-only
   // guard it would hang (summary:null → the promise never settles) or lie (summary:{} → a bogus verdict the store
   // ignores, seed stuck 'running'). Fail-closed routes it to the crash path: reject ALL outstanding, terminate,
@@ -365,7 +365,7 @@ describe('createWorkerTransport: fail-closed protocol validation (F1)', () => {
   })
 })
 
-describe('createWorkerTransport: envelope-level fail-closed guard (F1)', () => {
+describe('createWorkerTransport: envelope-level fail-closed guard', () => {
   // A malformed result ENVELOPE has NO valid finite-integer token to correlate, so it can never settle a promise
   // and — unlike a valid-but-stale token — is not attributable to a superseded dispatch. While ANY request is
   // live it would strand it forever (no timeout; messageerror won't fire — the payload cloned fine), so it crashes
@@ -422,7 +422,7 @@ describe('createWorkerTransport: envelope-level fail-closed guard (F1)', () => {
   })
 })
 
-describe('createWorkerTransport: semantic contradiction is fail-closed (F2)', () => {
+describe('createWorkerTransport: semantic contradiction is fail-closed', () => {
   // A summary whose wire status LABEL contradicts its own EVIDENCE must never settle a promise. The derivation is
   // authoritative (deriveRunStatus), so a live-token result carrying such a label is a protocol crash — it rejects
   // (/crashed/) rather than resolving 'verified', so a mislabelled green can never reach the rollup.
@@ -446,7 +446,7 @@ describe('createWorkerTransport: semantic contradiction is fail-closed (F2)', ()
   })
 })
 
-describe('createWorkerTransport: operational errors declare, contradictions crash (F1)', () => {
+describe('createWorkerTransport: operational errors declare, contradictions crash', () => {
   // The three-way rule. An OPERATIONAL errorSummary (sha256ok false ∧ id hexes null ∧ matchesTrailer false ∧ a
   // well-formed {code,message}) DECLARES an operational failure — deriveRunStatus maps that shape to 'mismatch', so
   // it is exempt from derivation equality and is DELIVERED as 'error' rather than crashing the shared worker.
@@ -583,7 +583,7 @@ describe('createWorkerTransport: operational errors declare, contradictions cras
   })
 })
 
-describe('createWorkerTransport: the two-way digest-format law is ENFORCED (F1/F2)', () => {
+describe('createWorkerTransport: the two-way digest-format law is ENFORCED', () => {
   // The empty-hash discriminator used to be ONE-WAY: it GATED the operational exemption, but a NON-operational
   // summary carrying sha256Hex:'' still fell through to deriveRunStatus, which IGNORES the digest — so a skewed
   // {'verified', sha256Hex:'', sha256ok:true, ids non-null, flags true} resolved verified and the store re-derived
@@ -643,7 +643,7 @@ describe('createWorkerTransport: the two-way digest-format law is ENFORCED (F1/F
   })
 })
 
-describe('createWorkerTransport: cross-field coherence — block⟺¬decoded and id pairing (F1/F2)', () => {
+describe('createWorkerTransport: cross-field coherence — block⟺¬decoded and id pairing', () => {
   // The block×status / id-pairing axis, invisible to derivation (deriveRunStatus reads the id hexes only for
   // null-ness and IGNORES the error block). The producer law across BOTH emitters is `error block present ⟺ both
   // ids null (¬decoded)` and `ids are BOTH null or BOTH non-null`. Each illegal row below is a LIVE-token crash;
@@ -718,7 +718,7 @@ describe('createWorkerTransport: cross-field coherence — block⟺¬decoded and
   })
 })
 
-describe('createWorkerTransport: cross-field coherence — ¬decoded ⇒ all outcome flags false (F1)', () => {
+describe('createWorkerTransport: cross-field coherence — ¬decoded ⇒ all outcome flags false', () => {
   // Invariant (III), the null-ids flag column. When both id hexes are null the fold threw (or never ran), so the verify
   // core sets caseIdOk/resultIdOk/matchesTrailer ALL false on every null-ids producer row. deriveRunStatus is BLIND to
   // those three flags when ¬decoded (it reads only sha256ok), so an impossible {ids null, some flag true} summary

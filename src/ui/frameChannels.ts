@@ -1,4 +1,4 @@
-// Frame channels (extracted MOVE-ONLY from Scene.tsx — v0.6 T0 Wave A). The module-scope channels the
+// Frame channels (extracted MOVE-ONLY from Scene.tsx — v0.6). The module-scope channels the
 // Scene frame loop consumes: bare objects read on the frame path by stamp compare / boolean load (never
 // a store hit, zero allocation), written at event rate by App / useTour / OrbitControls handlers, plus
 // the pure predicates TDD'd at channel level. Every block below moved verbatim; see each channel's own
@@ -40,29 +40,29 @@ export function focusSelected(): void {
 // it via stamp compare, and useTour drives it through the requestTrailFrame/cancelTrailFrame writers below
 // (those two ARE production imports).
 //
-// INTENT (ruling 4): a frame request carries an explicit intent so the frame-loop consume can pick the right
+// INTENT (a design ruling): a frame request carries an explicit intent so the frame-loop consume can pick the right
 // framing (and lighting) WITHOUT a second channel. 'tour-arrival' = today's semantics EXACTLY (trail-prefix
 // fit + hold-light); 'establish' = whole-trajectory fit WITHOUT the hold-light (an establishing shot must
 // not light the journey at play start — it would defeat the comet, and the rising-edge play clear at
-// TrajectoryTrail would race it); 'finale' (T3) = the composed natural-end rest shot (see requestFinaleFrame
+// TrajectoryTrail would race it); 'finale' = the composed natural-end rest shot (see requestFinaleFrame
 // below). The default 'tour-arrival' is cosmetic — every writer sets the intent explicitly.
 // Exported for tests, though nothing imports the NAME today: camera.test.ts's intent-scoping asserts are
 // typed through trailFrameRequest's exported shape (this union types its `intent` field), and production
 // writes intents only via the request/cancel writers below — the export gives external code a name for the union.
-// 'pov' (v0.6 T4b — Observer's Eye) rides the SAME trail-frame ease owner (NOT a fourth camera owner — the
-// T0 split guard reserves that trigger): the consume's 'pov' branch eases to the observer POV framing
+// 'pov' (v0.6 — Observer's Eye) rides the SAME trail-frame ease owner (NOT a fourth camera owner — the
+// split guard reserves that trigger): the consume's 'pov' branch eases to the observer POV framing
 // (queryScene.povFraming) exactly as 'finale' eases to its close-up. cancelEstablishFrame is guarded to
 // 'establish', so a selection never cancels a POV ease; its own stand-down is convergence or an orbit-drag.
 export type FrameIntent = 'tour-arrival' | 'establish' | 'finale' | 'pov'
-// `refit` (v0.5d ruling 5) is the establish-path RATE discriminator: an establish request fired by the
+// `refit` (a design ruling) is the establish-path RATE discriminator: an establish request fired by the
 // scrub-from-finale gate (shouldRefitOnFinaleClear → requestRefitFrame) carries refit=true so the consume eases it
 // at the GENTLER refitLerpFactor rate; a plain establish (the play rising edge → requestEstablishFrame) carries
 // refit=false and keeps the FOCUS_EASE_RATE feel that passed two gates. It rides the SAME 'establish' intent (not a
 // new enum member) so cancelEstablishFrame stays byte-identical — a selection still cancels a refit ease exactly as
 // it cancels a plain establish. Only the 'establish' consume branch reads it, and both establish writers set it, so
 // it is always current when read. Exported (with the object) only for the channel tests.
-// `shot` (v0.7 T4) is the AUTHORED per-beat camera descriptor, riding the SAME 'tour-arrival' intent (NOT a new
-// intent, NOT a new camera owner — the T0 arbitration guard). It carries GRAMMAR only (a TourShot kind); the
+// `shot` (v0.7) is the AUTHORED per-beat camera descriptor, riding the SAME 'tour-arrival' intent (NOT a new
+// intent, NOT a new camera owner — the arbitration guard). It carries GRAMMAR only (a TourShot kind); the
 // Scene consume resolves it to a Framing from live scene data at consume time. It is a REFERENCE to the long-
 // lived tour-data literal — zero allocation at request time, read exactly once on the stamp change. INVARIANT
 // (mirroring refit ⟹ 'establish'): shot !== null ⟹ intent === 'tour-arrival'. Only requestTrailFrame sets it
@@ -83,14 +83,14 @@ export const trailHold = { lit: false }
 // the consume block's tour-arrival branch is unchanged, so tour framing + hold-light stay pixel-identical.
 // INVARIANT refit ⟹ intent==='establish': reset refit=false here so a prior requestRefitFrame() can never
 // leave refit=true latched under this non-establish intent.
-// `shot` (v0.7 T4) — the authored per-beat arrive, or null for today's trajectory-so-far fit. Every production
+// `shot` (v0.7) — the authored per-beat arrive, or null for today's trajectory-so-far fit. Every production
 // call site passes it explicitly (useTour's four fire sites); the default keeps the channel tests' no-arg calls
 // (and any future caller) on the byte-identical null path. Sets the intent to 'tour-arrival' as always, so the
 // shot ⟹ 'tour-arrival' invariant holds by construction.
 export function requestTrailFrame(shot: TourShot | null = null): void { trailFrameRequest.cancelled = false; trailFrameRequest.intent = 'tour-arrival'; trailFrameRequest.refit = false; trailFrameRequest.shot = shot; trailFrameRequest.stamp++; trailHold.lit = true }
 export function cancelTrailFrame(): void { trailFrameRequest.cancelled = true; trailFrameRequest.shot = null; trailFrameRequest.stamp++; trailHold.lit = false }
 
-// STEP-BOUNDARY invalidation (v0.7 T4 fixwave, W2). A tour-arrival shot request writes ONE global trailFrameRequest;
+// STEP-BOUNDARY invalidation (v0.7). A tour-arrival shot request writes ONE global trailFrameRequest;
 // but the hold timer (a plain setTimeout, alive across a render suspension) can advance the driver to the NEXT beat
 // before the frame loop consumes it — so a resumed frame loop would consume beat N-1's STALE shot against beat N's
 // live anchors, activate a stale ease, and suppress beat N's follow until convergence. The driver calls this at
@@ -111,17 +111,17 @@ export function cancelTourArrivalFrame(): void {
   trailFrameRequest.stamp++
 }
 
-// Establishing-shot request (T2, ruling 3/4): frame the WHOLE trajectory on the rising edge of an
+// Establishing-shot request (a design ruling): frame the WHOLE trajectory on the rising edge of an
 // unselected, tour-free play, WITHOUT lighting the hold. No trailHold write here — the comet must survive
 // play start, and the rising-edge play clear at TrajectoryTrail keeps lit=false. Splitting framing from
 // lighting is the whole point of the intent enum. Exported for tests (channel intent scoping).
 export function requestEstablishFrame(): void { trailFrameRequest.cancelled = false; trailFrameRequest.intent = 'establish'; trailFrameRequest.refit = false; trailFrameRequest.shot = null; trailFrameRequest.stamp++ }
-// Scrub-from-finale RE-FIT establish request (v0.5d ruling 5). The SAME whole-trajectory establish framing as
+// Scrub-from-finale RE-FIT establish request (a design ruling). The SAME whole-trajectory establish framing as
 // requestEstablishFrame (intent 'establish', no hold-light — the consume is shared), but flagged refit=true so the
-// consume eases it at the gentler refitLerpFactor rate: leaving a finale by a scrub whipped the close-up→wide move
-// (critic n5). Scoped to the falling-edge refit caller only (shouldRefitOnFinaleClear); plain establish keeps the
+// consume eases it at the gentler refitLerpFactor rate: leaving a finale by a scrub whipped the close-up→wide move.
+// Scoped to the falling-edge refit caller only (shouldRefitOnFinaleClear); plain establish keeps the
 // focus rate. cancelEstablishFrame (guarded to intent 'establish') cancels this too — a selection mid-refit hands
-// off to follow exactly as it does mid-establish (T2 semantics intact). Exported for tests.
+// off to follow exactly as it does mid-establish (the establish semantics intact). Exported for tests.
 export function requestRefitFrame(): void { trailFrameRequest.cancelled = false; trailFrameRequest.intent = 'establish'; trailFrameRequest.refit = true; trailFrameRequest.shot = null; trailFrameRequest.stamp++ }
 // SCOPED stand-down: cancels an in-flight ease ONLY when the active intent is 'establish' (a selection
 // landed mid-establishing-ease → the user chose the subject, so follow takes over). The intent guard IS the
@@ -130,32 +130,32 @@ export function requestRefitFrame(): void { trailFrameRequest.cancelled = false;
 // (cancelTrailFrame stays the tour interrupt's intent-agnostic stand-down.) Exported for tests.
 export function cancelEstablishFrame(): void { if (trailFrameRequest.intent !== 'establish') return; trailFrameRequest.cancelled = true; trailFrameRequest.stamp++ }
 
-// Finale request (T3, ruling 2/5): the natural-end edge sets the store finale flag inside the Timeline
+// Finale request (a design ruling): the natural-end edge sets the store finale flag inside the Timeline
 // transport batch; the Entities finale subscription calls this on the rising edge to arm the composed rest
 // shot. Like requestTrailFrame it LIGHTS the hold (trailHold.lit = true — the reusable half of the tour
-// machinery: the journey stays lit at rest, ruling 2), but the consume frames finaleFraming(TRUE head) for a
+// machinery: the journey stays lit at rest), but the consume frames finaleFraming(TRUE head) for a
 // positioned run / the whole-helix bounds for e0 (NOT TRAIL_FRAME_OPTS). A 'finale' intent — a THIRD class on
-// the enum — so cancelEstablishFrame (guarded to 'establish') can NEVER cancel it (r2); the finale's own
+// the enum — so cancelEstablishFrame (guarded to 'establish') can NEVER cancel it; the finale's own
 // stand-down is the store finale FALLING edge (scrub/step/play → the subscription unlights the hold and drops
-// any in-flight ease). v0.5c ruling 3: leaving a finale via a playhead MOVE additionally hands back the
+// any in-flight ease). A design ruling: leaving a finale via a playhead MOVE additionally hands back the
 // establishing context (an establish request on that edge — see shouldRefitOnFinaleClear below); all OTHER
-// finale clears still never re-frame. Idempotent: a play-at-rest re-fire (r1) re-requests harmlessly (the
+// finale clears still never re-frame. Idempotent: a play-at-rest re-fire re-requests harmlessly (the
 // camera is already there → a no-op ease). Exported for tests.
 // INVARIANT refit ⟹ intent==='establish': reset refit=false here too.
 export function requestFinaleFrame(): void { trailFrameRequest.cancelled = false; trailFrameRequest.intent = 'finale'; trailFrameRequest.refit = false; trailFrameRequest.shot = null; trailFrameRequest.stamp++; trailHold.lit = true }
 
-// Observer's Eye POV request (v0.6 T4b, directive II.6): a keyboard gesture (O) requests the POV shot — stand
+// Observer's Eye POV request (v0.6): a keyboard gesture (O) requests the POV shot — stand
 // at the drawn observer O, look toward the interrogated theatre. Rides the SAME trail-frame ease as
 // establish/finale (intent 'pov', no hold-light — it is a vantage, not a "behold the journey" beat); the
 // consume computes the framing from queryScene.povFraming (null → no-op: f0/f1 have no observer). refit=false
 // so a prior requestRefitFrame can't leave refit latched under this non-establish intent. Exported for tests.
 export function requestPovFrame(): void { trailFrameRequest.cancelled = false; trailFrameRequest.intent = 'pov'; trailFrameRequest.refit = false; trailFrameRequest.shot = null; trailFrameRequest.stamp++ }
 
-// Tour-start camera RESET channel (v0.5d ruling 6). A guided tour's step-0 caption assumes the camera opens on
+// Tour-start camera RESET channel (a design ruling). A guided tour's step-0 caption assumes the camera opens on
 // the CameraRig LOAD vantage — the composed default framing the choreography was authored against. But a tour can
 // be launched from ANY prior camera state: a finale rest (~25u off the corridor's far head), a mid-run orbit, or
 // cold. Entered from a finale, ~8s of the ~20s guided pitch played over an empty horizon with the head stranded
-// ~241u away (the critic's RULING: "restores the direction, not touches it"). This one-shot module channel (the
+// ~241u away (a design ruling: "restores the direction, not touches it"). This one-shot module channel (the
 // focusRequest / trailFrameRequest house shape: a bare stamp the frame loop reads by compare, zero-alloc, no store)
 // lets useTour.start() request an INSTANT cut back to the load vantage without importing Scene camera internals it
 // doesn't already have. The Entities consume computes frameFor(bounds, LOAD_FRAME_OPTS) — the SAME opts CameraRig
@@ -165,13 +165,13 @@ export function requestPovFrame(): void { trailFrameRequest.cancelled = false; t
 export const tourStartFrameRequest = { stamp: 0 }
 export function requestTourStartFrame(): void { tourStartFrameRequest.stamp++ }
 
-// Scrub-from-finale re-fit gate (v0.5c ruling 3), extracted as a PURE predicate so it can be TDD'd exhaustively:
+// Scrub-from-finale re-fit gate (a design ruling), extracted as a PURE predicate so it can be TDD'd exhaustively:
 // the falling-edge effect that calls it lives inside a Scene subscription a unit test can't cheaply mount, so the
 // effect stays a thin caller and this predicate carries the whole gate. Returns true when a finale was just LEFT
 // by a playhead MOVE on the SAME run of a positioned, fittable run — the scrub / arrow-key step / deep-link (the
 // "void") class — and the camera should ease back to the wide establishing frame instead of parking at the empty
 // sky where the finale head was.
-//   Store-batch CAUSALITY is the detector (verified by the controller): setTick / applyLink write
+//   Store-batch CAUSALITY is the detector: setTick / applyLink write
 // {tick, finale:false} ATOMICALLY, so a playhead move shows as tick-changed in the SAME batch as the finale
 // clear. The other finale clears are excluded by their batch SHAPE, not by isTourActive(): tour-start's bracket
 // (useTour.ts:341) and play-at-rest (setPlaying(true)) clear finale WITHOUT moving the tick → tick unchanged;
@@ -188,12 +188,12 @@ export function shouldRefitOnFinaleClear(
   return !s.finale && prev.finale && s.tick !== prev.tick && s.runId === prev.runId && positioned && boundsNonNull
 }
 
-// MOUNT-TIME already-playing-and-eligible establish detector (I-1, v0.5d T3 debt → v0.7 T4 rider). The
+// MOUNT-TIME already-playing-and-eligible establish detector (a deferred fix carried forward). The
 // establishing shot's only OTHER caller is the rising-edge arm inside the store subscription Entities registers
 // at MOUNT — but that subscription cannot catch a `playing` rising edge that fired BEFORE it attached. On a slow
 // (SwiftShader) mount the ▶ can land before Entities mounts, so the establishing shot never armed and the camera
 // stranded on the composed load vantage while the subject flew off-frame (severity LOW — a software-rendering
-// window; degraded = the load vantage — but a real gap). CORRECTED diagnosis (progress.md): a MISSED EDGE, not a
+// window; degraded = the load vantage — but a real gap). CORRECTED diagnosis: a MISSED EDGE, not a
 // swallowed stamp — nothing ever REQUESTED, so "stop the mount-seed consuming" fixes nothing. The remedy is this
 // mount-time DECISION, fired ONCE by the Scene mount-effect AFTER the ref seed (so the consume sees a genuine
 // stamp change): the SAME eligibility as the rising-edge arm (positioned · unselected · tour-free · fittable ·
@@ -214,10 +214,10 @@ export function shouldEstablishOnMount(
   return s.playing && positioned && s.selectedEntity === null && !tourActive && boundsNonNull && s.tick < tickCount
 }
 
-// The FOLLOW-ARM half of a play edge, split from the establish half (v0.7 T4 fixwave, W1). The live rising-edge
+// The FOLLOW-ARM half of a play edge, split from the establish half (v0.7). The live rising-edge
 // subscription arm does TWO things — arm the auto-follow coast for ANY positioned run (a moving subject must be
 // tracked), THEN request an establishing shot only when the STRICTER establish eligibility holds — but the mount
-// reconciliation (the I-1 fix) wired ONLY the establish half. So a SELECTED early-play mount (?run=f1&sel=1:0 + ▶
+// reconciliation (the mount-time fix) wired ONLY the establish half. So a SELECTED early-play mount (?run=f1&sel=1:0 + ▶
 // landing before Entities mounts) requested nothing (shouldEstablishOnMount correctly rejects a selection present)
 // AND never armed follow, so the selected vehicle left frame until a pause/resume edge re-armed it. This is the
 // follow-arm gate, INDEPENDENT of establish eligibility: a play moment arms the coast whenever the run is

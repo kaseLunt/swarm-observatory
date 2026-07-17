@@ -34,7 +34,7 @@ describe('lineState — phase → line-state table', () => {
   })
 })
 
-describe('verdictTick — result_id/step tick, verdict-aware (A2 — the seal fold, voices not collapsed)', () => {
+describe('verdictTick — result_id/step tick, verdict-aware (the seal fold, voices not collapsed)', () => {
   test('manifest-verified → the ✓-grade green (matched an external manifest)', () => {
     expect(verdictTick('manifest-verified')).toEqual({ glyph: '✓', cls: 'verified' })
   })
@@ -55,7 +55,7 @@ describe('trailerTick — the event_hash row: in-bundle trailer reproduction, gr
   test('reproduced + self-consistent → ○ self-check (reproduced its own trailer, no external oracle)', () => {
     expect(trailerTick('self-consistent', true)).toEqual({ glyph: '○', cls: 'self' })
   })
-  test('the A2 picture: reproduced trailer but manifest mismatch → event_hash ✓ beside result_id ✗', () => {
+  test('reproduced trailer but manifest mismatch → event_hash ✓ beside result_id ✗', () => {
     // matchesTrailer stays true (a tampered termination_reason breaks result_id, not the trailer reproduction).
     expect(trailerTick('mismatch', true)).toEqual({ glyph: '✓', cls: 'verified' })
     expect(verdictTick('mismatch')).toEqual({ glyph: '✗', cls: 'mismatch' })
@@ -65,9 +65,9 @@ describe('trailerTick — the event_hash row: in-bundle trailer reproduction, gr
   })
 })
 
-// ── F3/F4: per-pin ceremony grading — a NAMED row reflects its OWN comparisons, never the aggregate ────────
+// ── per-pin ceremony grading — a NAMED row reflects its OWN comparisons, never the aggregate ────────
 // The second arg is now the row's PER-FIELD trailer reproduction (trailerPins.<field>), not the aggregate
-// matchesTrailer (F4): so a row whose own bytes reproduced its trailer value stays ✓ even when a DIFFERENT
+// matchesTrailer: so a row whose own bytes reproduced its trailer value stays ✓ even when a DIFFERENT
 // field's trailer comparison fails.
 describe('pinTick — a named hash row grades from its own manifest pin + its own trailer reproduction', () => {
   test('pin matches + this field reproduced → ✓ manifest-matched', () => {
@@ -85,7 +85,7 @@ describe('pinTick — a named hash row grades from its own manifest pin + its ow
   })
 })
 
-// ── F1: result_id's OWN ceremony tick — a DERIVATION, no ○ self-check ring when there is no oracle ───────────
+// ── result_id's OWN ceremony tick — a DERIVATION, no ○ self-check ring when there is no oracle ───────────
 describe('resultIdTick — det-only result_id is attested •, never the ○ the trailer-reproduced hashes earn', () => {
   test('PREMISE: the OLD ceremony fed result_id through pinTick(null, true) → ○ (the unfalsifiable check ring)', () => {
     // pinTick's det-only case is the ○ self-check — correct for a trailer-REPRODUCED hash, but result_id has no
@@ -102,8 +102,8 @@ describe('resultIdTick — det-only result_id is attested •, never the ○ the
   })
 })
 
-// ── F4: the ceremony rows grade from their OWN per-field trailer comparison, not the aggregate matchesTrailer ─
-describe('F4 — corrupt ONLY the trailer state hash: event_hash row ✓ (its own bytes reproduced), step mark ✗', () => {
+// ── the ceremony rows grade from their OWN per-field trailer comparison, not the aggregate matchesTrailer ─
+describe('corrupt ONLY the trailer state hash: event_hash row ✓ (its own bytes reproduced), step mark ✗', () => {
   // The premise, at the trailerPins level: the recomputed event hash still reproduced its trailer value (true),
   // the state hash did not (false), so the AGGREGATE matchesTrailer is false. The ceremony builds the event_hash
   // row from its OWN pin + its OWN reproduction (trailerPins.eventHash), so it must NOT inherit the aggregate ✗.
@@ -127,7 +127,7 @@ describe('F4 — corrupt ONLY the trailer state hash: event_hash row ✓ (its ow
   })
 })
 
-describe('F3 — corrupt ONLY the manifest event_hash: the ceremony rows show the TRUE per-pin picture', () => {
+describe('corrupt ONLY the manifest event_hash: the ceremony rows show the TRUE per-pin picture', () => {
   // Bundle bytes clean → matchesTrailer TRUE; the manifest lies about event_hash ONLY, so its pin disagrees
   // while result_id still matches (result_id does not preimage the manifest's own event_hash field). The
   // aggregate verdict is 'mismatch'. Provenance reds event_hash and greens result_id.

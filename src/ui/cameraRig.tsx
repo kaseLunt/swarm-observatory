@@ -1,5 +1,5 @@
-// CameraRig + the load/rest framing knobs (extracted MOVE-ONLY from Scene.tsx — v0.6 T0 Wave B).
-// OWNERSHIP CALL (documented per the T0 brief): TARGET_LIFT / FIT_MARGIN / FIT_MAX_FACTOR / LOAD_FRAME_OPTS
+// CameraRig + the load/rest framing knobs (extracted MOVE-ONLY from Scene.tsx — v0.6).
+// OWNERSHIP CALL: TARGET_LIFT / FIT_MARGIN / FIT_MAX_FACTOR / LOAD_FRAME_OPTS
 // are genuinely shared — Scene's trail-frame/finale opts and follow aim compose from the same knobs, and
 // Entities' tour-start reset consume frames with LOAD_FRAME_OPTS — so they live HERE, in the file that owns
 // the load vantage they describe, and Scene imports them. The alternative (stay in Scene, re-export) would
@@ -23,7 +23,7 @@ export const FIT_MARGIN = 1.15
 // convey the journey through motion. 2.5× is generous headroom for a real multi-entity swarm bbox.
 export const FIT_MAX_FACTOR = 2.5
 
-// CameraRig LOAD framing opts (v0.5d ruling 6). The composed default framing a fresh model loads to: the FULL
+// CameraRig LOAD framing opts (a design ruling). The composed default framing a fresh model loads to: the FULL
 // FIT_MAX_FACTOR cap (unlike TRAIL_FRAME_OPTS' Infinity), so an oversized corridor (f1) falls back to the composed
 // default and a small run is fit fully — exactly the vantage every tour's step 0 was authored against. Shared by
 // BOTH CameraRig (the load-time write) and the tour-start reset consume so the reset is BYTE-IDENTICAL to the load
@@ -31,20 +31,20 @@ export const FIT_MAX_FACTOR = 2.5
 // numbers). DRY: one source of truth for "where the stage rests".
 export const LOAD_FRAME_OPTS = { fov: DEFAULT_FOV, margin: FIT_MARGIN, lift: TARGET_LIFT, maxDistanceFactor: FIT_MAX_FACTOR }
 
-// STAGE framing opts (v0.6 T3 — the query stage). The positionless query stage lives in real NED space
+// STAGE framing opts (v0.6 — the query stage). The positionless query stage lives in real NED space
 // (core theatre radius ≈674, hundreds of units across), so its whole-stage fit UNCAPS the pull-back
 // (maxDistanceFactor Infinity — the TRAIL_FRAME_OPTS posture): FIT_MAX_FACTOR would reject the fit and fall
 // back to the tiny composed origin default, framing the stage as a distant speck. Shared by CameraRig's
 // load write and Entities' tour-start reset + finale so every e0 stage framing agrees. f0/f1 never use it.
 export const STAGE_FRAME_OPTS = { fov: DEFAULT_FOV, margin: FIT_MARGIN, lift: TARGET_LIFT, maxDistanceFactor: Infinity }
 
-// SENSING stage RESTING vantage elevation, stage-local (G6). The house octant rests ~22.6° above the deck
+// SENSING stage RESTING vantage elevation, stage-local. The house octant rests ~22.6° above the deck
 // (asin(DEFAULT_POSITION.y / |DEFAULT_POSITION|) — the +E/+N azimuth carrying the [6,4.5,9] heading). At that
 // SHALLOW angle the sensing plan geometry SELF-OCCLUDES: the FOV wedge, the range ring and the occluder sphere
 // overlap ambiguously on the ground plane (browser-verified at tick ~56, the crossing INTO the cone). Raising the
 // vantage to ~35° separates the three ground-plane elements so the drone-to-cone-edge relationship reads as a fact.
 // SENSING-LOCAL by construction: only the sensing stage's load/rest frame — and its resting-DERIVED tour bookend
-// (f2a b5), which returns to this exact vantage — thread it. The query stage (e0), f0/f1, the authored
+// (f2a), which returns to this exact vantage — thread it. The query stage (e0), f0/f1, the authored
 // conjunction/head shots and follow-cam all keep STAGE_FRAME_OPTS (no elevationDeg) → byte-identical (frameFor).
 export const SENSING_REST_ELEVATION_DEG = 35
 // The sensing stage's frame opts: the shared uncapped STAGE fit, RAISED to the sensing elevation (frameFor reads
@@ -52,16 +52,16 @@ export const SENSING_REST_ELEVATION_DEG = 35
 // STAGE_FRAME_OPTS and is untouched.
 export const SENSING_STAGE_FRAME_OPTS: FrameOpts = { ...STAGE_FRAME_OPTS, elevationDeg: SENSING_REST_ELEVATION_DEG }
 
-// The shared LOAD / tour-start framing DECISION (v0.7 T2 — the single source of truth behind the plain-tour
+// The shared LOAD / tour-start framing DECISION (v0.7 — the single source of truth behind the plain-tour
 // pixel-equivalence). A non-null stageBounds frames the STAGE uncapped (STAGE_FRAME_OPTS) — the query core
 // theatre (e0) or the sensing scope (f2a), each hundreds of units across; otherwise the capped composed load
 // vantage over the trail bounds (LOAD_FRAME_OPTS). Finite-guarded: a poisoned bundle whose bounds overflow to
 // NaN/Infinity falls back to the bounds-free composed default so the camera still loads to a legible shot.
 // Called by BOTH CameraRig (the load-time write) and Entities' tour-start reset (Scene) with the SAME
-// activeStageBounds, so step 0 opens on byte-identically the frame the load rests at — the fix behind W4:
+// activeStageBounds, so step 0 opens on byte-identically the frame the load rests at — the fix behind an earlier tour-start regression:
 // before this, the tour-start reset consumed the QUERY stageBounds only (null for f2a), cutting f2a's tour
 // start to plain trajectory bounds, away from the sensing frame the load and step 0 were authored around.
-// `stageOpts` (G6) is the opts for the STAGE branch — the query core theatre (e0) keeps STAGE_FRAME_OPTS (the
+// `stageOpts` is the opts for the STAGE branch — the query core theatre (e0) keeps STAGE_FRAME_OPTS (the
 // default); the sensing scope (f2a) threads SENSING_STAGE_FRAME_OPTS so its load/rest vantage sits at the raised
 // elevation. Scene picks it (hasSensing ? SENSING : STAGE) and passes the SAME value to both call sites (the load
 // write here and the tour-start reset), so step 0 still opens byte-identically on the load frame. The non-stage
@@ -88,7 +88,7 @@ export function CameraRig({ bounds, stageBounds, stageOpts = STAGE_FRAME_OPTS }:
     // Written straight to camera.position/controls.target that wedges the camera at load. So if the framing
     // is non-finite, fall back to the composed default (frameFor(null, …) — a bounds-free resting frame) so
     // a poisoned bundle still loads to a legible shot. (camera.test.ts pins frameFor's NaN-radius behavior.)
-    // loadFraming is the module-shared "where the stage rests" (v0.5d ruling 6, extracted v0.7 T2) — the
+    // loadFraming is the module-shared "where the stage rests" (a design ruling, extracted in v0.7) — the
     // tour-start reset calls the SAME helper so the reset lands BYTE-IDENTICALLY on this load vantage (plain-
     // tour pixel-equivalence). A non-null stageBounds frames the stage UNCAPPED (the query core theatre e0, or
     // the sensing scope f2a); every other run keeps the capped load vantage. Scene threads the SAME

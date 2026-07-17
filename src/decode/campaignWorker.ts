@@ -9,14 +9,14 @@ import { getCampaign, resolveCampaignSeed, campaignBundleUrl } from './campaignC
 // models back — the main thread holds 50 flat summaries, never 50 decoded runs (the verify-many-without-useRun×N
 // goal).
 //
-// AUTHORITY (F1): the job carries ONLY {requestToken, campaignId, seed} — NEVER a caller-chosen url or expected
+// AUTHORITY: the job carries ONLY {requestToken, campaignId, seed} — NEVER a caller-chosen url or expected
 // pins. The worker owns the url+pins by resolving them here from CAMPAIGN_CATALOG. A caller therefore cannot
 // submit arbitrary bytes with matching pins and receive verified/basis:'campaign-manifest' (the fetched-manifest
 // -as-authority hole, closed at the worker boundary). An UNKNOWN campaign or seed is a terminal REFUSAL — an
 // 'error' summary that NAMES the refusal, never a 'verified'. campaignCatalog is pure data with ZERO imports, so
 // importing it here drags no React/DOM into the worker chunk.
 //
-// BASE (F2): a worker's RELATIVE fetch resolves against the WORKER SCRIPT url (/swarm-observatory/assets/… under
+// BASE: a worker's RELATIVE fetch resolves against the WORKER SCRIPT url (/swarm-observatory/assets/… under
 // Pages), so 'campaigns/…' would 404. A RELATIVE Vite base ('' / './') also cannot be interpreted here — the
 // worker has no view of the document base. So the MAIN THREAD resolves the deploy base to an ABSOLUTE url
 // (campaignCatalog.resolveAppBase over import.meta.env.BASE_URL + document.baseURI) and posts THAT once
@@ -24,7 +24,7 @@ import { getCampaign, resolveCampaignSeed, campaignBundleUrl } from './campaignC
 // semantics (campaignBundleUrl → new URL(path, absoluteBase)), never string concatenation. init lands before any
 // verify (postMessage is FIFO); the placeholder default below is only a valid-URL stand-in until it arrives.
 //
-// CORRELATION (F3): each request carries a unique requestToken (the client's monotonic counter), echoed in the
+// CORRELATION: each request carries a unique requestToken (the client's monotonic counter), echoed in the
 // result and used to key `inflight`. A {type:'cancel', requestToken} aborts THAT fetch. Correlation is by token,
 // never by seed id — a seed id is reused after a restart, but a token never is.
 //

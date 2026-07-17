@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { actOf, lineFadeFactor, solidRevealSeqs, observerPoint, missRayEndpoint, ghostVisible, povFraming, blockedCorridorBounds, observerCraneFraming, CRANE_BACK_K, CRANE_LIFT_K, ACT_I_END, ACT_II_END, ACT_III_START } from './queryScene'
 import { queryBounds, SPHERE, type QueryDraw, type RayDraw, type SightlineDraw, type LosComposite } from './queryStage'
 
-// Pure render-helper tests for the query stage (v0.6 T3). House style: hand-built draws + boundary probes.
+// Pure render-helper tests for the query stage (v0.6). House style: hand-built draws + boundary probes.
 // The act boundaries mirror the design draw inventory §3.1; the fade mirrors trail.ts's shader math.
 
 describe('actOf — the three acts (draw inventory §3.1)', () => {
@@ -121,7 +121,7 @@ describe('ghostVisible — the NOT-YET gate (selection ahead of the written fron
   })
 })
 
-describe('povFraming — the Observer\'s Eye preset (T4b)', () => {
+describe('povFraming — the Observer\'s Eye preset', () => {
   // An act-III observer draw (O read from data), enough to give queryBounds a theatre (the solids seed it).
   const withObserver = (): (QueryDraw | null)[] => {
     const draws: (QueryDraw | null)[] = new Array(ACT_III_START).fill(null)
@@ -189,7 +189,7 @@ describe('missRayEndpoint — mode-0 miss shaft reaches exactly len along the tr
   })
 })
 
-// ── e0 authored tour shots (v0.8 W7) — decode-true corridor + observer crane, pure/hand-built ─────────────
+// ── e0 authored tour shots (v0.8) — decode-true corridor + observer crane, pure/hand-built ─────────────
 // House style: hand-built draws/composites + boundary probes. The REAL e0 bundle's anchors are pinned separately
 // in queryScene.oracle.test.ts (the f2a decode-true idiom); these prove the composition LOGIC in isolation.
 
@@ -232,7 +232,7 @@ describe('blockedCorridorBounds — the first BLOCKED sightline\'s origin→occl
   })
 })
 
-describe('observerCraneFraming — the crane that stages the Observer\'s-Eye POV (T4b successor)', () => {
+describe('observerCraneFraming — the crane that stages the Observer\'s-Eye POV', () => {
   const withObserver = (): (QueryDraw | null)[] => {
     const draws: (QueryDraw | null)[] = new Array(ACT_III_START).fill(null)
     draws[ACT_III_START] = { kind: 2, seq: ACT_III_START, o: [-601, -37, 0], g: [256, 0, 0], rangeM: 857.9, bearingRad: 0.044, bearingDeg: 2.52, tiebreak: false }

@@ -5,7 +5,7 @@ import type { EntityV2 } from '../decode/payloads'
 // (entityPosition below is the allocation-free, mutating twin of this exact mapping), the interactive drone /
 // cone (Scene.Entities), the tour-camera anchors (Scene's SENSOR_THREE / OCCLUDER_THREE), AND the f2a sensing
 // apparatus (sensingStageView). Exported so those sites cannot each re-derive a private, drift-prone transform:
-// ARCH-4 was exactly that failure — the sensing apparatus had drifted to a MIRRORED [n,−d,e] basis (an x↔z
+// the basis-drift defect was exactly that failure — the sensing apparatus had drifted to a MIRRORED [n,−d,e] basis (an x↔z
 // reflection), so its FOV cone opened +x perpendicular to the +z flight it was judging, and a drone dead-centre
 // of the drawn cone read as "outside FOV". Any surface that draws the flight and the apparatus in one space MUST
 // import this. (The positionless query stage, e0, is exempt: it overlays no flight, so it carries its own

@@ -10,12 +10,12 @@ import { PROFILE_CONFLATION_RE } from './ui/hangar'
 import { parseCampaignGauges, f64FromHexBits } from './ui/wall'
 import identity from '../contract/identity.json'
 
-// The v0.6 publication window (task v06-T5a). The three v8-certified KAT fixtures (f2a/f3a/f4
+// The v0.6 publication window. The three v8-certified KAT fixtures (f2a/f3a/f4
 // seed-42) are published to public/runs/ as FULL-manifest runs and named in index.json. This suite
 // is the house's publication gate: the byte contract must hold end to end — the vendored fixture
 // bytes == the published bytes == the sha256 pinned in <fixture>/IDENTITY.json — and an independent
 // re-fold of the PUBLISHED bytes must recover the pinned identity before anything ships. The house
-// never publishes unverified bytes. The T5 RIDER BLOCK (D4 Certification Wall consult) f3a robust
+// never publishes unverified bytes. The Certification Wall rider's f3a robust
 // prohibition is pinned at the bottom.
 
 interface IdentityAnchor {
@@ -105,10 +105,10 @@ describe.each(PUBLISHED)('published run $id', ({ id, fixture, eventCount, tickCo
   })
 })
 
-// ── T5b: DECLARED index metadata proven against the real decoder (declared-vs-decoded) ───────────
+// ── DECLARED index metadata proven against the real decoder (declared-vs-decoded) ───────────
 // The Hangar renders index.json's declared `kinds` histogram + `ticks` without decoding anything; the
 // declaration is publish-time metadata (tools/runIndex.mjs). Here the REAL decoder re-derives both from
-// the published bytes and the declaration must match EXACTLY — the two-voice split D4 Part 6.2 names:
+// the published bytes and the declaration must match EXACTLY — the two-voice split the design-of-record names:
 // the card shows the declaration, this test proves it true at build time.
 const detBuf = (p: string): ArrayBuffer => { const b = bytes(p); return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer }
 function decodedHistogram(run: { kind: Uint16Array }): Record<string, number> {
@@ -136,10 +136,10 @@ describe.each(index)('index metadata for $id', (entry) => {
   })
 })
 
-// The sim-clock (T5c) carried review item: the three published runs pin dt_us === 125000 EXACTLY —
+// The sim-clock carried review item: the three published runs pin dt_us === 125000 EXACTLY —
 // 96 ticks × 125000µs = 12.0s of real sim time. det-only e0/f1 declare no dtUs (they keep the assumed
 // voice); f0's dtUs equals the playback assumption (1000) so it too keeps the assumed voice.
-describe('index metadata: real sim-clock dt (T5c)', () => {
+describe('index metadata: real sim-clock dt', () => {
   test.each(PUBLISHED)('$id declares dtUs === 125000', ({ id }) => {
     expect(index.find(e => e.id === id)!.dtUs).toBe(125000)
   })
@@ -152,15 +152,15 @@ describe('index metadata: real sim-clock dt (T5c)', () => {
   })
 })
 
-// ── T5 RIDER BLOCK (D4 Certification Wall consult) — the f3a ROBUST prohibition ──────────────────
+// ── CERTIFICATION WALL RIDER — the f3a ROBUST prohibition ──────────────────
 // The vendored f3a_seed42 is the CORRECT single-target-track campaign (case ff4b6a1f…, pins_record
 // EXP-F3a-correct.json — it certifies track CONSISTENCY, not statistical acceptance). The ROBUST
 // 50-seed statistical acceptance is a DIFFERENT bundle (case 0b82614b…, EXP-F3a-robust.json): same
-// seed number, two campaigns (controller byte-verified 2026-07-09; both cases re-pinned at the v9
+// seed number, two campaigns (byte-verified 2026-07-09; both cases re-pinned at the v9
 // contract flip per D-002 — a schema bump re-pins every identity). The published f3a card/entry
 // must NEVER carry the ROBUST wordmark, and the bytes we shipped must be the correct campaign — not
 // the robust sidecar.
-describe('T5 rider: f3a is the CORRECT campaign and carries no ROBUST wordmark', () => {
+describe('f3a is the CORRECT campaign and carries no ROBUST wordmark', () => {
   const F3A_CORRECT_CASE = 'ff4b6a1f002ca2f2df5406d72bccd76d53dd4601e0921f491dff6b7d19f08299'
   const F3A_ROBUST_CASE_PREFIX = '0b82614b' // the v9 robust sidecar seed-42 row we must NOT have shipped
   const anchor = json<IdentityAnchor>('contract/fixtures/f3a_seed42/IDENTITY.json')
@@ -204,12 +204,12 @@ test('committed index.json is byte-identical to serializeIndex() (the generator 
   expect(text('public/runs/index.json')).toBe(serializeIndex())
 })
 
-// ── H1/F2: the trusted run catalog agrees with the generated index — EXACT key-set equality (drift gate) ──
+// ── the trusted run catalog agrees with the generated index — EXACT key-set equality (drift gate) ──
 // runCatalog.ts pins the load plan (base + manifest policy) IN THE APP BUNDLE; index.json is discovery only.
 // The two are separate lists, so a run added/reordered in one but not the other would diverge silently — this
 // gate (the byte-identity gate's sibling) fails if the two id sets are not EXACTLY equal, or if any published
 // index entry is not a certified catalog citizen with the SAME base and the SAME manifest policy.
-//   F2 strengthened this from SUBSET (index ⊆ catalog) to EXACT equality (index = catalog): the prior gate
+//   This gate was strengthened from SUBSET (index ⊆ catalog) to EXACT equality (index = catalog): the prior gate
 // caught an index entry with no catalog pin, but NOT a catalog citizen with no index entry (a run pinned in the
 // app bundle that the front door never lists) — the reverse divergence. Exact key-set equality closes both.
 test('the catalog id set and the published index id set are EXACTLY equal (no divergence in either direction)', () => {
@@ -230,10 +230,10 @@ test('every published index entry is a certified catalog citizen with matching b
   }
 })
 
-// ── W4: THE ROBUST-F3A CAMPAIGN DRIFT GATE (catalog ⇄ vendored manifest ⇄ vendored bytes) ─────────────────
+// ── THE ROBUST-F3A CAMPAIGN DRIFT GATE (catalog ⇄ vendored manifest ⇄ vendored bytes) ─────────────────
 // The campaign vendored 50 bundle.det + a campaign-manifest.json into public/campaigns/robust-f3a/, and pinned
 // the plan_id + 50 per-seed {case_id, result_id, sha256} IN THE APP BUNDLE (campaignCatalog.ts — the authority;
-// the fetched manifest is discovery only, the H1 lesson at birth). These three artifacts must agree exactly, or
+// the fetched manifest is discovery only, the index-is-not-authority lesson at birth). These three artifacts must agree exactly, or
 // a consumer could verify a seed against forged pins. This gate closes all three seams: the in-bundle catalog
 // vs the vendored manifest rows, and (spot-check) the catalog pins vs the ACTUAL vendored bundle bytes — the
 // same publish-time byte contract the single-run runs get above, at campaign scale.
@@ -289,7 +289,7 @@ describe('robust-f3a campaign: catalog pins ⇄ ACTUAL vendored bundle bytes (al
   })
 })
 
-// ── W5: THE GAUGE DRIFT GATE (the Wall's statistical instrument reads the vendored manifest) ───────────────
+// ── THE GAUGE DRIFT GATE (the Wall's statistical instrument reads the vendored manifest) ───────────────
 // The Wall renders the aggregate ROBUST verdict — NEES/NIS statistics + their precommitted critical bounds —
 // from the vendored campaign-manifest.json (the certifier's verdict.det is a distinct binary format the app's
 // frames/payloads infrastructure does not decode; the honest source is the drift-gated sidecar). NOTHING
@@ -303,16 +303,16 @@ interface GaugeManifest {
   test_params_echo: { members: { test_id: number; dof: number; alpha_ppm: number; critical_lo_bits: string; critical_hi_bits: string }[] }
 }
 
-// F1 — THE PRECOMMITTED LITERALS (the fix for the CIRCULAR gate). The old gate decoded the manifest's own
+// THE PRECOMMITTED LITERALS (the fix for the CIRCULAR gate). The old gate decoded the manifest's own
 // critical bits and compared them to THEMSELVES (`g.criticalLo === f64FromHexBits(p.critical_lo_bits)`): editing
 // the manifest moved BOTH sides, so nothing pinned the precommit and a skewed bound sailed through (the mutation
 // test below proves the old gate passed a nibble flip). These are the four bound bit-strings + the
-// statistic-relevant params, captured ONCE from the certified gate run — the controller-verified values; the
+// statistic-relevant params, captured ONCE from the certified gate run — the verified values; the
 // current vendored manifest IS that certified drop, so the bits were read from it once and FROZEN here as
 // literals. The gate compares them against the manifest AND against parseCampaignGauges' decoded output, so a
 // future manifest edit that drifts a bound away from the precommit fails against a fixed literal, not a copy.
 //
-// TWO PIN LAYERS, THREE INDEPENDENT WITNESSES (W5 F1). There are now two places the certified tuple is pinned:
+// TWO PIN LAYERS, THREE INDEPENDENT WITNESSES. There are now two places the certified tuple is pinned:
 //   1. campaignCatalog.ts — the RUNTIME authority. parseCampaignGauges rejects any FETCHED value that differs
 //      from it, so a tampered/stale MANIFEST alone can never reach the Wall (the catalog guards the user).
 //   2. PINNED_GAUGES here — an INDEPENDENT CI literal copy that imports neither the catalog nor the manifest.
@@ -335,7 +335,7 @@ const PINNED_GAUGES = {
   },
 } as const
 
-describe('W5 gauge drift gate: the Wall gauge model decodes from the vendored, pinned manifest', () => {
+describe('gauge drift gate: the Wall gauge model decodes from the vendored, pinned manifest', () => {
   const man = json<GaugeManifest>('public/campaigns/robust-f3a/campaign-manifest.json')
   const model = parseCampaignGauges(man, ROBUST_F3A)
   const gauges = model.ok ? model.members : []
@@ -428,12 +428,12 @@ describe('W5 gauge drift gate: the Wall gauge model decodes from the vendored, p
   })
 })
 
-// ── W5: THE WALL ROBUST-WORDMARK RIDER (D4 Ruling 2 / W2 — the two entities never conflate) ────────────────
+// ── THE WALL ROBUST-WORDMARK RIDER (the two entities never conflate) ────────────────
 // The Certification Wall IS the ROBUST campaign and NAMES it correctly (its catalog-sourced header wears the
 // robust wordmark). The correct-profile f3a RUN is a DIFFERENT entity that must never carry it. This rider
 // pins BOTH directions so the tripwire cannot be satisfied by scrubbing the wordmark off the surface that
 // SHOULD carry it: the campaign catalog carries robust; the f3a run entry does not.
-describe('W5 Wall rider: the Wall names ROBUST; the f3a run surfaces never do (no conflation)', () => {
+describe('Wall rider: the Wall names ROBUST; the f3a run surfaces never do (no conflation)', () => {
   test('the campaign catalog carries the ROBUST wordmark — the Wall names its own campaign', () => {
     expect(ROBUST_F3A.campaignId).toMatch(PROFILE_CONFLATION_RE)
     expect(ROBUST_F3A.verdictLevelName).toMatch(PROFILE_CONFLATION_RE)

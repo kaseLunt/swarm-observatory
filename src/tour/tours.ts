@@ -11,14 +11,14 @@ import { loadIsCurrent } from '../ui/hangar'
 //       origin" (36-55: 5 LOS composites; the FIRST BLOCK is tk39 — the sphere @ (191,0,0)), Act III "the
 //       drawn observer" (56-74: a per-seed observer at n=−601 interrogates from a new vantage; the closing
 //       CLEAR is tk74, O→(−1024,0,0), the only observer-phase clear line). Event 74 is the terminal.
-//   F1: single drone '1:0', 67 events / 64 ticks, 3 MotionSegmentStarted chapters (ticks 0/24/48)
+// single drone '1:0', 67 events / 64 ticks, 3 MotionSegmentStarted chapters (ticks 0/24/48)
 //       rendered as bands beneath the timeline. Both bundles are det-only, so their honesty voice is the
-//       SELF-CHECK, not verification (F5, two-voice truth: self-check ≠ verified). The event_hash / result_id
+//       SELF-CHECK, not verification (two-voice truth: self-check ≠ verified). The event_hash / result_id
 //       the ceremony re-computes tick ○ (self-consistent) on load — the bundle's event and state hashes (and its
 //       counts) recomputed from these bytes and matched its OWN sealed trailer; there is NO external manifest
 //       oracle. That self-check's SCOPE is exactly those payload hashes + counts (what matchesTrailer folds) —
 //       NOT case_id or termination_reason, which are trailer-SOURCED (CRC-fixable) inputs to result_id, never
-//       recomputed against anything (F6). So these det-only captions claim the HASHES settled on load — never
+//       recomputed against anything. So these det-only captions claim the HASHES settled on load — never
 //       "every byte" or "end to end" (that would over-claim the trailer-sourced fields), and NEVER "verified"
 //       (that green is reserved for a full-manifest run).
 // Selection contract (see tourTypes.ts TourStep.select): undefined = preserve current selection,
@@ -37,10 +37,10 @@ export const TOURS: Record<string, Tour> = {
     // (constitution §5 RM hold-sizing rider — never discounted on assumed flight pre-exposure). Sized at
     // ≤20 chars/sec of caption length (holdMs ≈ caption.length·50, rounded up): step0 153ch→7700, step1
     // 221ch→11100, step2 208ch→10400, step3 177ch→8900, step4 175ch→8800, step5 163ch→8400 (a valid floor —
-    // the F6 rewording left it below 8400). Every number
+    // a later rewording left it below 8400). Every number
     // is decode-true (draw inventory §3): first block tk39 (S), the drawn observer at n=−601, the closing
     // CLEAR tk74. Step 0 opens on the composed stage frame (the tour-start reset frames stageBounds).
-    //   AUTHORED PER-BEAT CAMERA (v0.8 W7 — captions/holdMs UNCHANGED, so the §5 reading windows survive
+    //   AUTHORED PER-BEAT CAMERA (v0.8 — captions/holdMs UNCHANGED, so the §5 reading windows survive
     // verbatim; beats 0–1 stay on the composed stage frame the tour-start reset already frames, and beat 3's
     // Show-the-Math beat keeps the inspector as its subject — none of them move). The three authored arrives are
     // DECODE-TRUE (queryScene composes each from the parsed draws, never eyeballed): beat 2 'corridor' fits the
@@ -66,12 +66,12 @@ export const TOURS: Record<string, Tour> = {
     // f1 is the DEFAULT + the cold-open star (HERO SWITCH, dev/v0.6): this tour is the first thing a bare-
     // cold-open visitor ever sees — auto-played, zero-click. holdMs is the FULL reading window for each
     // caption (constitution §5 RM hold-sizing rider — never discounted on assumed flight pre-exposure),
-    // sized ≤20 chars/sec exactly as the e0 tour's T4 wave was (holdMs ≥ caption.length·50, rounded up to
+    // sized ≤20 chars/sec exactly as the e0 tour's wave was (holdMs ≥ caption.length·50, rounded up to
     // the next 100): step0 115ch→5800, step1 141ch→7100, step2 63ch→3200. The pre-switch holds
     // (5000/4000/5000) read the first two captions FASTER than 20 ch/s (≈23 and ≈35 ch/s — a reading-window
     // violation) so they are raised onto the rider; step2 was already above its 3200 floor and is kept at
     // 5000 (a generous close-beat window is never shortened — the rider is a floor, not a ceiling).
-    // AUTHORED CAMERA (v0.7 T4, shot-authored first — the cold-open star's front door). Beat 0 is the calibrated
+    // AUTHORED CAMERA (v0.7, shot-authored first — the cold-open star's front door). Beat 0 is the calibrated
     // hero frame (the composed load vantage + a focus ease that is a near-no-op at the origin) — PROTECTED, no
     // arrive. Beats 1–2 retire the trajectory-so-far fit (the app's own ruling: f1's oversized corridor is read
     // through MOTION + trail, never a wide fit — the 168u/340u prefix fits ended the front door on the "near-
@@ -88,9 +88,9 @@ export const TOURS: Record<string, Tour> = {
   f2a: {
     id: 'f2a-sensing',
     runId: 'f2a',
-    // Tour title behind the G5 naming placeholder (identityPlate.F2A_TOUR_TITLE) — the owner's one-line swap.
+    // Tour title behind the naming placeholder (identityPlate.F2A_TOUR_TITLE) — the owner's one-line swap.
     title: F2A_TOUR_TITLE,
-    // THE SENSING GAUNTLET (Task v07-2), now with its NATIVE AUTHORED CAMERA (v0.7 T4). Every number is decode-
+    // THE SENSING GAUNTLET, now with its NATIVE AUTHORED CAMERA (v0.7). Every number is decode-
     // true from the f2a bundle: the drone (1:0) flies north (e = 48 constant); the sensor watches from the
     // origin. Eligibility is a GAUNTLET of three gates and the run exercises all three — the drone enters the FOV
     // cone at the EXACT 3-4-5 edge (tick 55, a boundary tie), the occluder cuts line of sight for a stretch
@@ -99,7 +99,7 @@ export const TOURS: Record<string, Tour> = {
     // split on show), #211 (tick 95 — the terminal verdict). holdMs is the FULL reading window per caption
     // (constitution §5 RM hold-sizing rider — never discounted), sized ≥ caption.length·50 rounded up to the next
     // 100. The first step establishes full selection state explicitly (the deep-link contract).
-    //   AUTHORED ARRIVES (design consult §4.2 → T4; captions/holds UNCHANGED, so §5 windows survive verbatim):
+    //   AUTHORED ARRIVES (a design consult; captions/holds UNCHANGED, so §5 windows survive verbatim):
     // this tour was authored against the STATIC stage frame — its most important claims (the FOV gap, the
     // crossing, the eclipse, the range tie) were sub-2% of frame and effectively invisible. Beat 0 opens on the
     // whole-instrument stage fit (the tour-start reset already frames the sensing scope — the FOCUS PAN is DROPPED
@@ -130,7 +130,7 @@ export function hasTour(runId: string): boolean {
   return Object.hasOwn(TOURS, runId)
 }
 
-// ── THE ONE TOUR-ADMISSION PREDICATE (F1) ────────────────────────────────────────────────────────────────
+// ── THE ONE TOUR-ADMISSION PREDICATE ────────────────────────────────────────────────────────────────
 // A tour may start iff ALL of:
 //   • a model is resident (hasModel), and
 //   • it belongs to the CURRENT run (loadIsCurrent — closes the switch-gap hole: during a run switch a STALE
@@ -150,12 +150,12 @@ export function tourAdmitted(
   return hasModel && loadIsCurrent(runId, loadedRunId) && verdict !== 'mismatch' && hasTour(runId)
 }
 
-// The Hangar → tour handoff decision as a PURE action (F1/F6), so App's effect is a thin dispatch and the
+// The Hangar → tour handoff decision as a PURE action, so App's effect is a thin dispatch and the
 // switch-gap + cancellation behavior is unit-testable without a render harness. The parked intent is
 // "tour <pendingTour> ON ARRIVAL at it" — never "tour <pendingTour> whenever it is next opened":
 //   • 'idle'   — no pending tour: do nothing (never consume pendingTour).
 //   • 'cancel' — the intent no longer applies, so DROP it (consume pendingTour without starting). Two triggers
-//                (F6): (a) NAVIGATION AWAY — pendingTour names a run that is NOT the current one, so we are no
+//                (a) NAVIGATION AWAY — pendingTour names a run that is NOT the current one, so we are no
 //                longer heading to the parked destination; leaving it parked would let a LATER plain-open of that
 //                destination start a tour on a non-tour visit (the stale-replay bug). (b) TERMINAL ERROR — the
 //                pending destination's own load failed (hasError), so the arrival will never complete; drop the

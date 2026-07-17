@@ -8,13 +8,8 @@
 byte-exact verification, causal replay, instanced 3D playback.**
 
 [![CI](https://github.com/kaseLunt/swarm-observatory/actions/workflows/ci.yml/badge.svg)](https://github.com/kaseLunt/swarm-observatory/actions/workflows/ci.yml)
-[![license: MIT](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
-<!-- BADGES SLOT (conformance badge pending flip-prep):
 [![byte-exact conformance](https://github.com/kaseLunt/swarm-observatory/actions/workflows/conformance.yml/badge.svg)](https://github.com/kaseLunt/swarm-observatory/actions/workflows/conformance.yml)
-     — conformance.yml has landed. Flip switch: uncomment the conformance badge once that
-     workflow has run green on main; until then the workflow-status badge renders "no
-     status" / unknown, so the reserved slot stays commented. The MIT license badge above
-     is live (LICENSE landed). -->
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
 
 The decoder in this app was written from the simulation engine's binary format
 specification — not from the engine's Rust source — and it reproduces the engine's
@@ -160,6 +155,9 @@ subset) and **34 Playwright end-to-end checks** (as of v0.8); CI runs typecheck,
 full test suite, a production build, and the browser smoke pass on every push, and has been
 green on GitHub runners since the first push. The test suite re-derives every pinned hash
 from the vendored bundles on every run.
+
+**Process receipts.** The committed [plans](./docs/superpowers/plans/) and the living
+[roadmap](./docs/superpowers/ROADMAP.md) are in the repo — the build process is inspectable.
 <!-- CUT-POINT D -->
 
 ## Stack

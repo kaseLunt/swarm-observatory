@@ -7,8 +7,8 @@ import { categoryOf } from './categorize'
 import { CATEGORY } from './theme'
 import { buildQueryDraws, losComponents, queryStageApplies, E0_REGISTRATION, type QueryDraw } from './queryStage'
 import { showMath, recomputeAll, type MathCard } from './showMath'
-import { buildSensingStage } from './sensingStage'
-import { SensingStrip } from './sensingStrip'
+import { buildSensingStage, sensingRegister } from './sensingStage'
+import { SensingStrip, SensingLiveStrip } from './sensingStrip'
 import { recomputedVerdict } from './lensContract'
 import type { AgreeSource } from './agreeSource'
 import { identityPlate, fullPlate } from './identityPlate'
@@ -82,7 +82,7 @@ function CatGlyph({ kind }: { kind: number }) {
   return <span className="cat-glyph" style={{ color: CATEGORY[cat].hue }}>{CATEGORY[cat].glyph}</span>
 }
 
-export function Inspector({ model, open = false }: { model: RunModel; open?: boolean }) {
+export function Inspector({ model, open = false, tourActive = false }: { model: RunModel; open?: boolean; tourActive?: boolean }) {
   const sel = useViewStore(s => s.selectedEntity)
   const ev = useViewStore(s => s.selectedEvent)
   const tick = usePlayheadSample(8)
@@ -108,6 +108,24 @@ export function Inspector({ model, open = false }: { model: RunModel; open?: boo
   // under App's run-scoped ErrorBoundary, so a malformed-bundle throw lands on the boundary as the stage's does.
   const positionless = useMemo(() => model.entityKeys().length === 0, [model])
   const hasStageContent = useMemo(() => queryStageApplies(model), [model])
+  // THE SENSING REGISTER (the reveal clock's first consumer): the kind-22 verdicts ordered by tick + the shared
+  // reveal clock over them, built once per model. It drives the LIVE strip — the four-gate instrument follows
+  // the playhead instead of a held selection, so it no longer goes dark on free playback or stale during a
+  // tour's flight. Built for EVERY model but empty (ordered.length 0) for a non-sensing run, so those runs keep
+  // the exact idle empty rail below. Memoised per model (the ShowTheMath / stage precedent — a small pure pass).
+  const sensingReg = useMemo(() => sensingRegister(buildSensingStage(model)), [model])
+  // Is the SELECTED event itself a sensing verdict? Then the detail path (EventDetail's SensingStrip) pins that
+  // ONE verdict's full form and the live register stands down — the two modes are mutually exclusive. Memoised
+  // on [model, ev] so the 8Hz playback sampling never re-decodes the selected payload to re-answer this.
+  const evIsSensing = useMemo(() => ev !== null && model.eligibilityAt(ev) !== null, [model, ev])
+  // Show the live register whenever the run carries verdicts AND (a tour is running OR a specific verdict is
+  // NOT being inspected). The tour clause is load-bearing: a tour holds a sensing selection (event #99 at tick
+  // 48) while its play beats advance the playhead to later ticks — so a running tour must let the live strip
+  // OWN the sensing aside and track the playhead, or the strip would freeze on the tick-48 gates while the
+  // caption narrates tick 56/67/82. It reads correct at the hold beat too: the playhead sits at 48 there, so
+  // the live strip shows the same tick-48 verdict the held detail would. Outside a tour, a user-held sensing
+  // selection still pins EventDetail (the point of selecting) — that is the DETAIL mode; the two never coexist.
+  const showLiveStrip = sensingReg.ordered.length > 0 && (tourActive || !evIsSensing)
   // DESIGNED EMPTY STATE (stable stage viewport). The inspector column is permanently
   // RESERVED in the desktop grid (app.css: fixed first track), because mounting/unmounting this aside
   // resized the 3D canvas ~250px sideways on every selection change — corrupting every held frame (tour
@@ -116,7 +134,11 @@ export function Inspector({ model, open = false }: { model: RunModel; open?: boo
   // app's one missing empty state (every other surface already has an honest empty posture). Below the
   // 1080px breakpoint the aside is an off-canvas overlay (position: fixed), so the drawer mechanics are
   // unchanged — the toggle now simply shows this hint instead of a blank slide-in.
-  if (!sel && ev === null) return (
+  // The idle empty rail — no selection AND no live register to show. A sensing run with verdicts falls through
+  // to the main aside below (which renders the live strip even with nothing selected), so its strip is live on
+  // free playback. Every non-sensing run keeps this exact centred empty rail (byte-identical): f4's "no stage
+  // lens" voice, f0/f1/f2a-free's hints.
+  if (!sel && ev === null && sensingReg.ordered.length === 0) return (
     <aside className={open ? 'inspector inspector-idle open' : 'inspector inspector-idle'}>
       <p className="inspector-empty">
         no selection
@@ -169,7 +191,14 @@ export function Inspector({ model, open = false }: { model: RunModel; open?: boo
           </ul>
         </section>
       )}
-      {ev !== null && <EventDetail model={model} seq={ev} onPick={pick} />}
+      {ev !== null && <EventDetail model={model} seq={ev} onPick={pick} showSensingStrip={!tourActive} />}
+      {/* THE LIVE SENSING STRIP — the four-gate instrument tracks the playhead (the reveal clock's current
+          verdict), so it is live on free playback, stays current under a held entity/non-sensing selection, and
+          OWNS the aside while a tour flies (the tour holds a sensing selection but the playhead moves). It is
+          suppressed only for a user-held sensing verdict outside a tour (EventDetail's strip is the detail mode
+          then — and EventDetail suppresses ITS strip whenever a tour is active), and absent on non-sensing runs;
+          the two modes never both draw. Fed the same 8Hz playhead sample the state panel reads. */}
+      {showLiveStrip && <SensingLiveStrip reg={sensingReg} tick={tick} />}
     </aside>
   )
 }
@@ -177,7 +206,7 @@ export function Inspector({ model, open = false }: { model: RunModel; open?: boo
 // Tick-invariant: depends only on seq/model. Memoised so the Inspector's 8Hz playback sampling does
 // not re-render it — its props (model, seq, onPick) are all stable while a selection is held (onPick is
 // useCallback'd in the parent; verified no inline-object/closure prop reaches it).
-const EventDetail = memo(function EventDetail({ model, seq, onPick }: { model: RunModel; seq: number; onPick: (n: number) => void }) {
+const EventDetail = memo(function EventDetail({ model, seq, onPick, showSensingStrip = true }: { model: RunModel; seq: number; onPick: (n: number) => void; showSensingStrip?: boolean }) {
   const e = model.eventAt(seq)
   const q = model.geometryQueryAt(seq)
   // The sensing verdict for a kind-22 event (with its decoded target pose attached) — built only when the
@@ -213,7 +242,10 @@ const EventDetail = memo(function EventDetail({ model, seq, onPick }: { model: R
         <span className="chainmeta">{chainMetaText(meta)}</span>
       </p>
       {q && <ShowTheMath model={model} seq={seq} />}
-      {sensingDraw && <SensingStrip draw={sensingDraw} />}
+      {/* The DETAIL strip — one selected verdict's full form. Suppressed while a tour is active (showSensingStrip
+          false): the tour holds this selection but its playhead moves, so the LIVE strip owns the sensing aside
+          and tracks the playhead instead of this frozen selection. Outside a tour it renders as before. */}
+      {showSensingStrip && sensingDraw && <SensingStrip draw={sensingDraw} />}
     </section>
   )
 })

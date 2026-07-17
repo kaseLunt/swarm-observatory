@@ -1,9 +1,11 @@
 import { describe, expect, test } from 'vitest'
 import {
   MARKS, VOICE_CLASSES, VOICE_GLYPHS, VERDICT_HUES, noVerdictHuesAreDim,
-  markGlyph, requireGlyph, badgeGlyph, badgeMark, basisNote, BASIS_NOTE, VOICE_MARK,
-  type MarkKey,
+  markGlyph, markClass, requireGlyph, badgeGlyph, badgeMark, basisNote, BASIS_NOTE, VOICE_MARK,
+  QUALITY_MARK, CAVEAT_NOTE, caveatNote, CAVEAT_TREATMENT, qualityPresentation,
+  type MarkKey, type QualityCaveat,
 } from './voices'
+import { LENSES } from './lensRegistry' // importing it runs the module-load boot guard (assertVoiceAlphabetSingleSourced)
 import type { BadgeState } from './badges'
 
 // ── THE VOICES MODULE — the single source for the seven trust marks (v0.8) ──────────────────────────
@@ -106,5 +108,75 @@ describe('BadgeState → mark seam (provenance / hangar data tables)', () => {
       expect(badgeGlyph(b)).toBe(glyph)
       expect(badgeGlyph(b)).toBe(requireGlyph(id)) // identity: same source, not a parallel literal
     }
+  })
+})
+
+// ── THE QUALITY REGISTER — a THIRD register, distinct BY TREATMENT (no 8th glyph) ────────────────────────
+// The register carries provenance-QUALITY facts (a dirty build tree; later the comms link-quality states) — TRUE
+// and on record, but a fitness caveat, not an integrity verdict. It reuses the • attested mark + a caveat note +
+// a caution treatment, so it mints ZERO glyphs and never borrows a verdict hue. These pin its shape as law: the
+// voice is the •, the note/treatment are single-sourced (the ev99 basis shape), and the register is never
+// confusable with either integrity family (never green ✓, never alarm ✗, never no-verdict ·).
+describe('the QUALITY REGISTER (a third register, no 8th glyph)', () => {
+  test('the register voices as the • attested mark — never a verdict ✓/✗, never the no-verdict ·', () => {
+    expect(QUALITY_MARK).toBe('attested')
+    expect(MARKS[QUALITY_MARK].glyph).toBe('•')
+    expect(MARKS[QUALITY_MARK].family).toBe('verdict') // • is a verdict-family mark (a claim on record), slate-hued
+    // never-green / never-x / never-dot — the three ways it could be mistaken for another register:
+    expect(QUALITY_MARK).not.toBe('verified')   // never the green ✓
+    expect(QUALITY_MARK).not.toBe('mismatch')   // never the alarm ✗
+    expect(QUALITY_MARK).not.toBe('withheld')   // never the no-verdict ·
+  })
+
+  test('NO eighth glyph — the alphabet is unchanged and the register mints no rendered voice', () => {
+    // The register is distinct BY TREATMENT: it reuses the frozen • mark, so VOICE_GLYPHS stays the six-char set
+    // and the exhaustive rendered-voice map gains no entry (nothing for the boot guard to newly resolve).
+    expect(VOICE_GLYPHS.size).toBe(6)
+    expect(Object.keys(VOICE_MARK)).not.toContain('quality')
+    expect(Object.keys(VOICE_MARK)).not.toContain('caveat')
+  })
+
+  test('the caveat NOTE + TREATMENT are single-sourced (a note vocabulary + a class token — the ev99 basis shape)', () => {
+    expect(caveatNote('dirty')).toBe(CAVEAT_NOTE.dirty) // accessor identity (single source), NOT the contract check below
+    expect(CAVEAT_TREATMENT).toBe('caveat')
+    // the caveat note is PROSE — it never smuggles a mark glyph in as a distinction (the basis-note law, mirrored).
+    for (const note of Object.values(CAVEAT_NOTE))
+      for (const g of VOICE_GLYPHS) expect(note.includes(g)).toBe(false)
+  })
+
+  test('the dirty disclosure is the v0.8.1 contract string, character-for-character (the literal IS the contract)', () => {
+    // An INDEPENDENT literal — NOT compared to its own backing record (that would pin nothing). This whole
+    // sentence is the publication-contract disclosure the dirty row must show; a silent drift (e.g. "at
+    // generation" → "at build") fails HERE even though every fragment-match above would still pass.
+    const DIRTY_DISCLOSURE = 'manifest self-declares an unclean build tree at generation — a build-hygiene disclosure, not a byte-verification failure (the hashes above are checked independently); a dirty run is non-citable under the publication contract'
+    expect(caveatNote('dirty')).toBe(DIRTY_DISCLOSURE)
+    expect(CAVEAT_NOTE.dirty).toBe(DIRTY_DISCLOSURE)
+  })
+
+  test('the register presentation resolves mark + note + treatment TOGETHER, for EVERY caveat kind (extensibility)', () => {
+    // Iterate the caveat kinds GENERICALLY (off the runtime record), so a NEW kind added to CAVEAT_NOTE is
+    // automatically covered here — the extensibility claim, proven: a new quality state needs ONLY a CAVEAT_NOTE
+    // entry, and its full presentation (the • mark, its note, the shared treatment) resolves with zero new wiring.
+    const kinds = Object.keys(CAVEAT_NOTE) as QualityCaveat[]
+    expect(kinds.length).toBeGreaterThan(0)
+    for (const c of kinds) {
+      const q = qualityPresentation(c)
+      expect(q.mark, c).toBe(QUALITY_MARK)          // every kind wears the register's ONE voice — the •…
+      expect(q.mark, c).toBe('attested')            // …never a verdict ✓/✗ or the no-verdict ·
+      expect(q.note, c).toBe(caveatNote(c))         // …its own note text, resolved from the same source…
+      expect(q.note, c).toBe(CAVEAT_NOTE[c])
+      expect(q.treatment, c).toBe(CAVEAT_TREATMENT) // …and the shared caveat treatment
+      // the row CLASS (the glyph's hue-carrier) is that mark's OWN class — the SAME source as the glyph char, so
+      // a QUALITY_MARK change would move the glyph and its hue together; it is NEVER re-derived from a BadgeState.
+      expect(q.cls, c).toBe(markClass(q.mark))
+    }
+  })
+
+  test('the boot guard still passes — importing the registry (which runs it at load) does not throw', () => {
+    // assertVoiceAlphabetSingleSourced runs at lensRegistry module load; if the register had disturbed the
+    // rendered-voice alphabet it would have thrown and this import would have failed the whole file. Reaching a
+    // populated registry proves the guard passed, and the module predicate it depends on still holds.
+    expect(LENSES.length).toBeGreaterThan(0)
+    expect(noVerdictHuesAreDim()).toBe(true)
   })
 })

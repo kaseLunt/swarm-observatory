@@ -1,7 +1,7 @@
 import type { RunManifest } from '../decode/manifest'
 import { comparableManifestPins, type TrustVerdict, type VerifyResult } from '../decode/verify'
 import { metaBadge, type BadgeState } from './badges'
-import { badgeMark, requireGlyph, type MarkKey } from './voices'
+import { badgeMark, qualityPresentation, requireGlyph, type MarkKey, type QualityCaveat } from './voices'
 import { ASSUMED_DT_US } from '../state/transport'
 
 // Pure row/footer helpers for the ProvenancePanel (spec §Provenance), extracted from ProvenancePanel.tsx so
@@ -15,7 +15,11 @@ import { ASSUMED_DT_US } from '../state/transport'
 // nothing recomputed, no manifest to attest). The seam mapped BOTH to ○; the no-claim rows carry `mark: null`
 // (an honest no-verdict presentation — glyphless, dim, a note) so a VERDICT glyph never rings an unadjudicated
 // row. `mark: null` = render no glyph; a non-null mark names the ONE voices-module mark to paint.
-export type ProvRow = { k: string; val: string; b: BadgeState; mark: MarkKey | null; cls?: string; note?: string; title?: string }
+// `caveat` is the row's SEMANTIC quality-register field (not a pre-baked class string): a row that carries a
+// QualityCaveat has its mark + note + treatment resolved TOGETHER from that one kind (qualityPresentation),
+// so the three register tokens can never be wired à-la-carte or drift to a verdict voice. The render reads
+// `caveat` (not a stringly class) to paint the treatment; the finalize pass folds the mark + note off it here.
+export type ProvRow = { k: string; val: string; b: BadgeState; mark: MarkKey | null; cls?: string; note?: string; caveat?: QualityCaveat; title?: string }
 
 // Row → group layout. event_count / tick_count are now COMPARISON rows in the integrity group (they were
 // only in the footer count display before), so a manifest that lies about a count reds a VISIBLE row instead of
@@ -53,14 +57,8 @@ const TRAILER_CHECKED: Record<string, keyof VerifyResult['trailerPins']> = {
 const DERIVED_NOTE = 'derived from the sealed inputs · no oracle'
 const TRAILER_SOURCED_NOTE = 'trailer value · not recomputed'
 const ATTESTED_NOTE = 'manifest claim · not recomputed'
-// The dirty=true disclosure note. The dirty row keeps the alarm voice (badge 'mismatch') by deliberate ruling —
-// the manifest itself declares the build tree unclean — but the alarm hue alone reads to a cold visitor like a
-// byte-verification FAILURE. This note draws BOTH distinctions the hue cannot: (1) dirty=true is the generating
-// manifest's own build-hygiene self-declaration, not a recomputed hash that disagreed (the hashes above are
-// checked independently); and (2) the contract consequence — a dirty run is NON-CITABLE under the publication contract
-// (contract/spec-3a-event-schema.md §4.5: "Citable additionally requires dirty=false ∧ valid evidence metadata";
-// spec-3b §7 pins the same, DirtyAttempt). Terse note register; claims only what dirty=true actually is.
-const DIRTY_NOTE = 'manifest self-declares an unclean build tree at generation — a build-hygiene disclosure, not a byte-verification failure (the hashes above are checked independently); a dirty run is non-citable under the publication contract'
+// The dirty=true caveat note + its treatment are single-sourced in the voices module (caveatNote('dirty') /
+// CAVEAT_TREATMENT — the quality register), so the disclosure text lives once beside the other note vocabularies.
 // a det-only NO-CLAIM row (a metadata field that under a manifest would be an ATTESTED • claim, but a
 // det-only bundle pins no manifest): there is no claim to attest and no recompute to check, so it wears the
 // honest no-verdict presentation (mark: null → glyphless) and says why. (The assumed-dt row carries its own
@@ -110,20 +108,25 @@ export function provenanceRows(manifest: RunManifest | null, verify: VerifyResul
     { k: 'schema_registry', val: short(m?.schemaRegistryHash ?? ''), b: meta },
     { k: 'state_registry', val: short(m?.stateRegistryHash ?? ''), b: meta },
     { k: 'commit', val: m?.commit ?? '—', b: meta },
-    // dirty=false is a manifest self-declaration (nothing recomputes it) → attested, not a green ✓. dirty=true
-    // keeps the alarm voice: the manifest itself declares the build tree unclean — and carries DIRTY_NOTE so a
-    // cold visitor can tell this build-hygiene disclosure apart from a byte-verification failure. The note is set
-    // for the dirty=true row only: the ATTESTED_NOTE pass below fires on 'attested' rows (dirty=true is
-    // 'mismatch', so it is left untouched), and the det-only path (m===null) never reaches DIRTY_NOTE — so a
-    // det-only dirty row keeps its no-claim note unchanged.
-    { k: 'dirty', val: String(m?.dirty ?? '—'), b: m ? (m.dirty ? 'mismatch' : metaBadge(true)) : 'pending', ...(m?.dirty ? { note: DIRTY_NOTE } : {}) },
+    // dirty is a build-hygiene fact, NOT a byte-integrity comparison: the manifest self-declares whether its
+    // engine tree was clean at generation, and nothing here recomputes or contradicts it. So BOTH truth values
+    // wear the • attested mark (a claim on record — the meta badge). dirty=true additionally joins the QUALITY
+    // REGISTER by carrying the SEMANTIC caveat field `caveat: 'dirty'`; the finalize pass folds its mark + note
+    // off that ONE field (qualityPresentation), and the render resolves the treatment class off it too — so the
+    // • mark, the disclosure note, and the treatment always trace to the single register source, never wired
+    // à-la-carte. The alarm ✗ is reserved for a byte-integrity REFUSAL — a pinned value that DISAGREED — which a
+    // self-declared build flag is not; painting ✗ here would read as a verification failure the bytes never
+    // suffered. The caveat is set for the dirty=true row only; dirty=false is a plain attested claim (the
+    // ATTESTED_NOTE pass below gives it the manifest-claim note), and a det-only run (m===null → 'pending') has no
+    // manifest to attest, so its dirty row keeps the no-claim voice threaded in the finalize pass.
+    { k: 'dirty', val: String(m?.dirty ?? '—'), b: meta, ...(m?.dirty ? { caveat: 'dirty' as const } : {}) },
   ]
   // The attested voice (R2) on every claim-only row — the • says "on record", the note says why it is not a ✓.
   // Runs BEFORE the det-only block so the det-only rows that legitimately BECOME 'attested' below (result_id,
   // case_id, termination_reason — derived / trailer-sourced, no oracle) keep their OWN honest notes rather than
   // this manifest-claim wording. On a full-manifest run only the meta rows are 'attested' here (a det-only run's
   // meta rows are 'pending'), so this stays the manifest-only attested-note pass it always was.
-  for (const r of rows) if (r.b === 'attested') r.note = ATTESTED_NOTE
+  for (const r of rows) if (r.b === 'attested' && r.note === undefined && r.caveat === undefined) r.note = ATTESTED_NOTE
   // The det-only voice, per row-class — det-only has no manifest, so no ✓ green anywhere:
   //   • a trailer-checked recomputed row (event/state hashes + counts) is a GENUINE in-bundle self-check — matched
   //     keeps the ○ self-check (badge stays 'pending') + the honest note, MISMATCHED reds THAT row (badge
@@ -149,6 +152,13 @@ export function provenanceRows(manifest: RunManifest | null, verify: VerifyResul
   // Every OTHER row's mark follows its BadgeState through the same seam the hangar data table uses: a trailer-
   // reproduced 'pending' → ○ selfConsistent (the check RAN and matched), 'attested' → •, verified/mismatch → ✓/✗.
   return rows.map(r => {
+    // A quality-register row resolves its mark + note TOGETHER off its ONE semantic caveat field (never the
+    // generic badge seam, so QUALITY_MARK is genuinely CONSUMED here — the equality is not coincidental). The
+    // render resolves the treatment class off the same `caveat` field.
+    if (r.caveat !== undefined) {
+      const q = qualityPresentation(r.caveat)
+      return { ...r, mark: q.mark, note: q.note }
+    }
     const noClaim = detOnly && r.b === 'pending' && !TRAILER_CHECKED[r.k]
     const mark: MarkKey | null = noClaim ? null : badgeMark(r.b) // null = glyphless (nothing to adjudicate here)
     return noClaim && r.note === undefined && r.cls !== 'assumed'

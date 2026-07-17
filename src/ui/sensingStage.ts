@@ -7,7 +7,8 @@ import { ELIGIBLE_CONJUNCTION_INPUTS } from './sensingMath'
 import { makeWitnessInputs } from './agreeSource'
 import { MIN_EXTENT } from './trail'
 import type { Eligibility, Detection } from '../decode/payloads'
-import type { StateFrame } from '../lib/brand'
+import type { EventTick, StateFrame } from '../lib/brand'
+import { buildRevealClock, type RevealClock } from '../model/revealClock'
 
 // ── The Sensing Gauntlet — f2a kind-22 model layer ────────────────────────────────────────
 // A PURE, load-path model layer that turns each decoded EligibilityEvaluated (core kind 22) payload into a
@@ -147,6 +148,33 @@ export function buildSensingStage(source: SensingSource): SensingStageData {
 // the stage MOUNT and the honesty CHIP route through the COMPLETE predicate below (sensingStageApplies),
 // which pairs it with the positioned conjunct. Mirrors hasQueryDraws exactly. Pure; O(draws), early exit.
 export const hasSensingEvents = (draws: readonly (SensingDraw | null)[]): boolean => draws.some(d => d !== null)
+
+// ── THE SENSING REGISTER — the sensing kind-sequence as the reveal clock's first consumer ─────────────────
+// The four-gate strip is a per-tick instrument, but its mount fed it a SELECTED event's verdict — so it went
+// dark on free playback and stale while a tour flew. This makes it LIVE: the kind-22 verdicts ordered ascending
+// by tick, plus the shared reveal clock over their ticks, so the strip can ask "which verdict has the playhead
+// REACHED?" (revealedDraw) rather than "which verdict is selected?". The ordering aligns index-for-index with
+// the clock's ticks, so a revealed count maps straight to a verdict. Load-path (built once per model); the
+// comms strip and belief ellipse reuse the SAME clock over their own kind-sequences — a different kind-filter,
+// no second clock.
+export interface SensingRegister {
+  ordered: SensingDraw[]   // the kind-22 verdicts, ascending by tick (index i ↔ the clock's ordinal i)
+  clock: RevealClock       // the prefix-count over ordered[i].tick
+}
+export function sensingRegister(data: SensingStageData): SensingRegister {
+  const ordered = data.draws.filter((d): d is SensingDraw => d !== null).sort((a, b) => a.tick - b.tick)
+  return { ordered, clock: buildRevealClock(ordered.map(d => d.tick)) }
+}
+
+// The verdict the playhead has REACHED — the latest revealed in the register (tick ≤ playhead), or null when
+// the playhead sits before the first verdict (the honest empty: no verdict yet, never a stale sticky one that
+// a scrub-back left behind). Pure; O(log n) via the reveal clock, zero allocation — the live strip re-asks
+// this on every playhead move. `playhead` rides the EventTick brand (the strip brands the store playhead at
+// its own ingestion), so a raw StateFrame cannot be laundered in through this seam.
+export function revealedDraw(reg: SensingRegister, playhead: EventTick): SensingDraw | null {
+  const i = reg.clock.latestRevealedIndex(playhead)
+  return i >= 0 ? reg.ordered[i]! : null
+}
 
 // ── THE COMPLETE APPLICABILITY PREDICATE (the sibling of queryStageApplies) ──────────────────────────────
 // The sensing stage applies to a run iff it is POSITIONED and carries kind-22 verdicts. POSITIONED is not a

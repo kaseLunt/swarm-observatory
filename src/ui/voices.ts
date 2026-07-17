@@ -159,3 +159,41 @@ export const BASIS_NOTE: Record<Basis, string> = {
   'decoded-consistency': 'checked for decoded self-consistency — no external oracle',
 }
 export const basisNote = (b: Basis): string => BASIS_NOTE[b]
+
+// ── THE QUALITY REGISTER — a THIRD semantic register: provenance-QUALITY facts ──────────────────────────
+// The two-family law above governs the INTEGRITY axis: a VERDICT glyph (✓ ○ • ✗) adjudicates whether the
+// recomputed bytes reproduce their pins. A QUALITY fact is a different KIND of claim — TRUE and ON RECORD,
+// but carrying a caveat about FITNESS, not integrity: the engine tree was dirty at capture (and, as the comms
+// surface grows, a degraded / stale / dropped link). Such a fact was never CONTRADICTED, so it must never
+// wear the alarm ✗; and it is not an ABSENCE, so it never wears the withheld ·. It voices as the • ATTESTED
+// mark (a claim on record — nothing here re-derives it) PLUS a caveat NOTE, made noticeable by a caution
+// TREATMENT that is a legibility cue, NOT a colour (hue-free: a caution hue is a future opt-in on this one
+// treatment class). This mints ZERO new glyphs — the register is distinct BY TREATMENT — and it is single-
+// sourced HERE, exactly as the ev99 basis note above is, so every quality fact reads ONE definition and none
+// re-mints a note or a class. A new quality state (the comms link-quality states, when their lens ships) joins
+// by adding a caveat kind + its note text below; the mark and the treatment are already theirs, no rework.
+//
+// The register's ONE voice — the • attested mark. Never a verdict ✓/✗, never the no-verdict ·.
+export const QUALITY_MARK: MarkKey = 'attested'
+// The caveat kinds. `dirty` (a build-hygiene disclosure) is the first citizen; comms link-quality states land
+// here as further kinds when their lens is built.
+export type QualityCaveat = 'dirty'
+export const CAVEAT_NOTE: Record<QualityCaveat, string> = {
+  dirty: 'manifest self-declares an unclean build tree at generation — a build-hygiene disclosure, not a byte-verification failure (the hashes above are checked independently); a dirty run is non-citable under the publication contract',
+}
+export const caveatNote = (c: QualityCaveat): string => CAVEAT_NOTE[c]
+// The caution TREATMENT — the ONE class token a quality note wears so a caveat is NOTICED without alarm. It is
+// a legibility cue (app.css lifts the note weight + a hairline rule), NOT a hue; the seam a future caution
+// hue opts into is this single class. Single-sourced so a consumer names the register, never a bare literal.
+export const CAVEAT_TREATMENT = 'caveat' as const
+// THE REGISTER'S FULL PRESENTATION — the WHOLE rendered voice resolved TOGETHER from the ONE semantic caveat
+// kind: the mark (the glyph char), the `cls` (the mark's OWN class — what the table paints the glyph's HUE
+// through, so glyph char and glyph hue can never split), the note, and the treatment. A consumer carries a
+// QualityCaveat and reads every axis FROM HERE, so none can be wired à-la-carte or drift apart. `cls` is the
+// mark's canonical class (markClass) — NOT re-derived from a BadgeState — so a change to QUALITY_MARK moves the
+// glyph AND its hue-class together. A new caveat kind is covered automatically: it adds ONLY a CAVEAT_NOTE
+// entry, and this resolves the rest (mark, cls, and treatment are the register's, shared by every kind).
+export interface QualityPresentation { readonly mark: MarkKey; readonly cls: string; readonly note: string; readonly treatment: string }
+export const qualityPresentation = (c: QualityCaveat): QualityPresentation => ({
+  mark: QUALITY_MARK, cls: markClass(QUALITY_MARK), note: caveatNote(c), treatment: CAVEAT_TREATMENT,
+})

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, test } from 'vitest'
 import { PROV_GROUPS, provenanceFooter, provenanceRows } from './provenanceFormat'
-import { badgeMark } from './voices'
+import { badgeMark, caveatNote, QUALITY_MARK } from './voices'
 import { pinTick } from './ceremonyFormat'
 import { comparableManifestPins, foldAndVerify, verdictAgainstManifest, type VerifyResult } from '../decode/verify'
 import { FILE_HEADER_LEN, FrameTag } from '../decode/frames'
@@ -120,51 +120,74 @@ describe('provenanceRows — the threaded per-row mark', () => {
   })
 })
 
-// ── The dirty row explains itself — a build-hygiene disclosure, not a byte verdict ──────────────────────────
-// dirty=true renders in the alarm voice by deliberate ruling (the manifest itself declares the build tree
-// unclean), but the alarm hue alone reads to a cold visitor like a byte-verification failure. The row now
-// carries a disclosure note drawing the distinction the hue cannot — while the voice/badge/family stay exactly
-// as they were. dirty=false and the absent-manifest (det-only) paths are untouched.
-describe('provenanceRows — the dirty row explains itself: build-hygiene disclosure, not a byte verdict', () => {
-  test('dirty=true keeps the alarm badge AND now carries the disclosure note', () => {
+// ── The dirty row wears the QUALITY REGISTER — a build-hygiene disclosure, not a byte verdict ────────────────
+// SANCTIONED SEMANTICS CHANGE: dirty=true used to render in the alarm voice (badge 'mismatch', the ✗), which read
+// to a cold visitor like a byte-verification failure. It now joins the third register — the • attested mark + a
+// caveat note + the caveat treatment — because a self-declared unclean build tree is a QUALITY fact (true, on
+// record, a fitness caveat), never an integrity refusal. The alarm ✗ is reserved for a pinned value that
+// DISAGREED. The caveat note text is unchanged (it was already correct); only the mark/badge/treatment moved.
+// dirty=false and the absent-manifest (det-only) paths are untouched.
+describe('provenanceRows — the dirty row wears the quality register: build-hygiene disclosure, not a byte verdict', () => {
+  test('dirty=true wears the • attested mark + the caveat note + the caveat treatment — never the alarm ✗, never green', () => {
     const r = rowFor({ ...cleanManifest(), dirty: true }, 'dirty')
     expect(r.val).toBe('true')
-    expect(r.b).toBe('mismatch')     // the alarm voice is UNCHANGED — the deliberate ruling holds
-    expect(r.mark).toBe('mismatch')  // …and the threaded glyph stays the ✗ family (no new glyph)
-    // The note draws the distinction the alarm hue cannot: a self-declaration about build hygiene, not a hash lie.
-    expect(r.note).toBeDefined()
+    // THE MIGRATION: off the alarm badge, onto the quality register's • attested voice.
+    expect(r.b).toBe('attested')          // the on-record voice — NOT the alarm 'mismatch' it used to wear
+    expect(r.mark).toBe('attested')       // the threaded glyph is the • (attested), the register's ONE voice
+    expect(r.mark).toBe(QUALITY_MARK)     // …and it IS the register's declared voice (single-sourced), not a coincidence
+    // never-green / never-x: the register must never be confusable with EITHER integrity family.
+    expect(r.b).not.toBe('verified')      // never the green ✓
+    expect(r.mark).not.toBe('verified')
+    expect(r.b).not.toBe('mismatch')      // never the alarm ✗
+    expect(r.mark).not.toBe('mismatch')
+    // DISTINCT BY TREATMENT: the row carries the SEMANTIC caveat field, off which the render resolves the
+    // treatment class + this note + the • mark TOGETHER — so the row is legibly a caveat, not a plain attested
+    // metadata row (commit/scenario carry no caveat field, so no treatment).
+    expect(r.caveat).toBe('dirty')
+    // The note is single-sourced from the register and states plainly what dirty=true is (text unchanged).
+    expect(r.note).toBe(caveatNote('dirty'))
     expect(r.note).toMatch(/self-declares/)
     expect(r.note).toMatch(/build-hygiene/)
     expect(r.note).toMatch(/not a byte-verification failure/)
-    // …and it states the CONTRACT consequence: a dirty run is non-citable under the publication contract
-    // (contract/spec-3a-event-schema.md §4.5 — "Citable additionally requires dirty=false").
+    // …and the CONTRACT consequence: a dirty run is non-citable under the publication contract.
     expect(r.note).toMatch(/non-citable/)
     expect(r.note).toMatch(/publication contract/)
   })
-  test('dirty=false does NOT carry the disclosure note — it keeps its attested state and note', () => {
+  test('dirty=false does NOT wear the caveat — it keeps its plain attested state, note, and no treatment', () => {
     const r = rowFor(cleanManifest(), 'dirty') // cleanManifest() is dirty:false
     expect(r.val).toBe('false')
     expect(r.b).toBe('attested')                            // the on-record voice, unchanged
-    expect(r.note).toBe('manifest claim · not recomputed')  // the attested note, never the dirty disclosure
+    expect(r.note).toBe('manifest claim · not recomputed')  // the attested note, never the dirty caveat
     expect(r.note).not.toMatch(/build-hygiene/)
+    expect(r.caveat).toBeUndefined()                         // no caveat field — dirty=false is not a quality caveat
   })
-  test('a det-only run (absent manifest) is unchanged — the dirty row keeps its no-claim note, no disclosure', () => {
+  test('a det-only run (absent manifest) is unchanged — the dirty row keeps its no-claim note, no caveat', () => {
     const r = rowFor(null, 'dirty')
     expect(r.b).toBe('pending')
     expect(r.mark).toBeNull()
     expect(r.note).toMatch(/no manifest claim/) // the no-claim note, exactly as before
     expect(r.note).not.toMatch(/build-hygiene/)
+    expect(r.caveat).toBeUndefined()            // no manifest → no quality caveat to disclose
   })
-  test('dirty=true beside a MISMATCHED hash row: the note claims the CHECK, not the outcome — no contradiction', () => {
-    // A dirty=true manifest that ALSO lies about event_hash: the event_hash row reds AND the dirty row shows its
-    // note in the SAME table. The note must not read "the hashes above VERIFY" (a false claim beside a red row) —
-    // it claims the PROCESS ("are checked independently"), which stays true whether a check passed or failed.
+  test('INTEGRITY STAYS INTEGRITY: a real MISMATCH row keeps the alarm ✗ while the dirty row wears the quality •', () => {
+    // A dirty=true manifest that ALSO lies about event_hash: the event_hash row reds (a genuine byte-integrity
+    // REFUSAL) in the SAME table where the dirty row shows its caveat. The two registers must not be confusable —
+    // the mismatch row wears the ✗ family, the dirty row the • quality register, side by side.
     const rows = provenanceRows({ ...cleanManifest(), dirty: true, eventHash: 'f'.repeat(64) }, verify)
     const dirty = rows.find(r => r.k === 'dirty')!
     const eventHash = rows.find(r => r.k === 'event_hash')!
-    expect(eventHash.b).toBe('mismatch')                    // the hash row is red — a check that FAILED
-    expect(dirty.note).toMatch(/are checked independently/) // the note claims the check ran, not that it passed
-    expect(dirty.note).not.toMatch(/verify independently/)  // never the outcome-claim that would contradict the red row
+    // the integrity family keeps the alarm ✗ (a pinned value disagreed) — the register did NOT bleed onto it.
+    expect(eventHash.b).toBe('mismatch')
+    expect(eventHash.mark).toBe('mismatch')
+    expect(eventHash.caveat).toBeUndefined()                // an integrity refusal is not a quality caveat
+    // the dirty row stays the quality • + caveat EVEN beside a real red — it never borrows the alarm.
+    expect(dirty.b).toBe('attested')
+    expect(dirty.mark).toBe('attested')
+    expect(dirty.caveat).toBe('dirty')
+    // the note claims the PROCESS ("are checked independently"), true whether a check passed or failed — never a
+    // "the hashes above VERIFY" outcome-claim that would contradict the red event_hash row it sits beside.
+    expect(dirty.note).toMatch(/are checked independently/)
+    expect(dirty.note).not.toMatch(/verify independently/)
   })
 })
 

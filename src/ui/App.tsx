@@ -16,6 +16,9 @@ import { GateScreen } from './GateScreen'
 import { TourOverlay } from './TourOverlay'
 import { Hangar } from './hangarView'
 import { CertificationWall, type CertificationWallHandle } from './wallView'
+import { HeaderMenu } from './HeaderMenu'
+import { useHeaderTier } from './useHeaderTier'
+import { headerLayout } from './headerModel'
 import { ROBUST_F3A, campaignSeedIds } from '../decode/campaignCatalog'
 import { useCampaignStore } from '../state/campaignStore'
 import { loadIsCurrent, readyTreeVisible, shouldBreakSeal, shouldSealRun } from './hangar'
@@ -123,7 +126,21 @@ function SensingChip({ model, tourActive }: { model: RunModel; tourActive: boole
 // times — not just during the transient cold-open card. A new ANSWER in an existing surface (LAW-4), never new
 // chrome: the SAME copyShareLink, the same honest "copied ✓" feedback (never a false confirm if the clipboard
 // is blocked — the label flips only on a resolved success, mirroring the card's copy handler verbatim).
-function HeaderCopyLink({ onCopyLink }: { onCopyLink: () => Promise<boolean> }) {
+// The header ladder condenses copy-link in three steps as the viewport narrows, so this ONE component
+// carries three presentations of the SAME copy action + the same honest "copied" feedback (the label
+// flips only on a resolved success — never a false confirm if the clipboard is blocked):
+//   • 'label'    — full tier: the "copy link" / "link copied ✓" text button (the visible text IS the
+//                  accessible name, so the success is announced to assistive tech).
+//   • 'icon'     — condensed tier: the ⧉ / ✓ glyph (the design's kept copy mark) with a CONSTANT
+//                  aria-label "copy link", so the accessible name stays complete though a glyph alone
+//                  would not be descriptive.
+//   • 'menuitem' — overflow tier: a labeled item inside the `⋯` overflow menu (role menuitem).
+// Only ONE variant renders per tier (the tier is a JS branch, not two co-mounted copies), so there is
+// never a second live "copied" state to keep in sync.
+function HeaderCopyLink({ onCopyLink, variant }: {
+  onCopyLink: () => Promise<boolean>
+  variant: 'label' | 'icon' | 'menuitem'
+}) {
   const [copied, setCopied] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current) }, [])
@@ -134,7 +151,18 @@ function HeaderCopyLink({ onCopyLink }: { onCopyLink: () => Promise<boolean> }) 
     if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(() => setCopied(false), 2000)
   }
-  return <button className="header-copy" onClick={copy}>{copied ? 'link copied ✓' : 'copy link'}</button>
+  const className = variant === 'icon' ? 'header-copy header-copy-icon'
+    : variant === 'menuitem' ? 'header-menu-item'
+    : 'header-copy'
+  const content = variant === 'icon' ? (copied ? '✓' : '⧉') : (copied ? 'link copied ✓' : 'copy link')
+  return (
+    <button
+      className={className}
+      role={variant === 'menuitem' ? 'menuitem' : undefined}
+      aria-label={variant === 'icon' ? 'copy link' : undefined}
+      onClick={copy}
+    >{content}</button>
+  )
 }
 
 export default function App() {
@@ -227,6 +255,27 @@ export default function App() {
   // "state on a stable element" precedent). Event-rate (the flag flips once at natural-end and once on any
   // clear), so this App re-render never touches the frame path. The e2e smoke asserts on it.
   const finale = useViewStore(s => s.finale)
+  // Header condensation tier (the priority ladder). A width-driven external store that re-renders the
+  // header only when the viewport crosses a ladder threshold — never on the frame path. headerLayout
+  // turns the tier into the per-control intents the header JSX branches on (run switcher form, low-
+  // priority chrome form, wall label, wordmark) — the SINGLE source shared with the unit-tested pure
+  // model, so the ladder's rules are never a hand-maintained twin between the code and the CSS.
+  const layout = headerLayout(useHeaderTier())
+  // Header-menu keyboard ownership — IDENTITY-KEYED and SYNCHRONOUS. A header disclosure (the run picker
+  // or the ⋯ overflow) claims the keyboard the SAME way the Hangar/Wall modals do: while one is open the
+  // window keydown owner goes inert on this EXPLICIT token — a ref holding WHICH menu owns it ('picker' |
+  // 'overflow' | null), read without re-registering the listener and updated SYNCHRONOUSLY from the menu's
+  // event handlers (open / Esc / outside / focus-exit / child-action / unmount), so the owner sees a close
+  // the instant it happens. The token is keyed by menu id and released CONDITIONALLY on identity: a second
+  // instance mounting or unmounting can never clear another's claim (the tier-change bug where the newly-
+  // mounted ⋯ cleared the still-open picker's ownership). Both instances publish here; only the holder
+  // clears. (The header's stacking-context raise above the cold-open thesis card is pure CSS —
+  // `header:has(.header-menu-popup)` in app.css — so it tracks the popup's DOM presence directly.)
+  const activeMenuRef = useRef<string | null>(null)
+  const onMenuOwnership = useCallback((id: string, open: boolean) => {
+    if (open) activeMenuRef.current = id
+    else if (activeMenuRef.current === id) activeMenuRef.current = null // identity-conditional release — never clear another's claim
+  }, [])
   useEffect(() => { applyUrlOnLoad() }, [])
   useEffect(() => { loadRunIndex().then(setRuns).catch(() => setRuns([])) }, [])
   const { model, gate, error, progress, phase, hashes, settling, loadedRunId } = useRun(runId)
@@ -434,6 +483,12 @@ export default function App() {
         if (e.key === 'Escape') { e.preventDefault(); closeWall() }
         return
       }
+      // Header-disclosure capture: the run picker / the ⋯ overflow own the keyboard while open, exactly
+      // as the modals above do — the transport is inert whenever ANY menu holds the ownership token (this
+      // is the EXPLICIT-STATE guard, not event-bubbling alone, so a stray arrow/space can never scrub a run
+      // even if focus has drifted off a menu item, and it survives a tier change that mounts a second menu
+      // beneath the open one). The menu's own capture-phase listeners handle Esc/arrows and close it.
+      if (activeMenuRef.current !== null) return
       const t = e.target as HTMLElement
       const editable = t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t.isContentEditable
       const action = mapKey(e.code, e.key, editable, e.ctrlKey || e.metaKey || e.altKey)
@@ -535,9 +590,15 @@ export default function App() {
       {/* SR-only: announces the run's VERDICT (verified, or loaded-but-unverified on a trailer
           mismatch) once the app is interactive (see component note). */}
       <ReadyAnnouncement runId={runId} model={model} verdict={hashes?.verdict} />
-      <header>
-        {/* Identity lockup: the favicon's radar mark (same paths, same cyan) locked left of the
-            wordmark — the browser-tab identity carried into the app chrome. Decorative, so aria-hidden. */}
+      {/* `header-mobile` tightens the phone-floor spacing so the protected controls fit a 360px viewport
+          (ladder-model driven — layout.dense). The stacking-context raise above the cold-open card while a
+          disclosure is open is handled in CSS via `header:has(.header-menu-popup)`, not a class here. */}
+      <header className={layout.dense ? 'header-mobile' : undefined}>
+        {/* Identity lockup (priority-(a)): the favicon's radar mark (same paths, same cyan) locked left
+            of the wordmark — the browser-tab identity carried into the app chrome. Decorative, so
+            aria-hidden. At the narrowest (overflow) tier the WORD recedes to just the mark: the <h1> is
+            kept in the DOM as the page heading for assistive tech (sr-only), while the accent-cyan mark
+            alone holds the visual identity — the chrome yields its pixels last, never its meaning. */}
         <div className="wordmark">
           <svg className="wordmark-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
             <circle cx="16" cy="16" r="15" fill="#080b0f" />
@@ -549,39 +610,60 @@ export default function App() {
             <circle cx="16" cy="16" r="1.8" fill="#56b6ff" />
             <circle cx="22.6" cy="11.4" r="2" fill="#56b6ff" />
           </svg>
-          <h1>swarm observatory</h1>
+          <h1 className={layout.wordmark === 'mark' ? 'sr-only' : undefined}>swarm observatory</h1>
         </div>
-        {/* Run switcher surfaces the runs/index.json titles as native tooltips (v0.5d) — the
-            smallest honest surface: the ids stay the compact switch labels, the authored titles ("E0
-            geometry sweep (golden, det-only)") answer "which run is this?" on hover/focus. */}
-        <nav>{runs.map(r => <button key={r.id} title={r.title} className={r.id === runId ? 'active' : ''} onClick={() => selectRun(r.id)}>{r.id}</button>)}</nav>
-        {/* The Hangar front door: opens the run-library overlay. Placed beside the run switcher —
-            the least-invasive coherent entry (reachable from the header, not a takeover of the default view).
-            Gated on runs so it never opens an empty library. */}
-        {runs.length > 0 && (
-          <button className="hangar-open" onClick={() => setHangarOpen(true)}>hangar</button>
+        {/* THE RUN SWITCHER (priority-(b), ALWAYS reachable). At full width the six-run button row
+            (ids as the compact labels, the runs/index.json titles as native tooltips). Below the condense
+            threshold it collapses to a compact `run ▾` picker — the largest single space win, and the
+            picker scales past six runs the button row cannot. The picker is a keyboard-operable disclosure
+            (a button + a menu of the same run entries), NOT a hidden two-row wrap. */}
+        {layout.runSwitcher === 'buttons'
+          ? <nav>{runs.map(r => <button key={r.id} title={r.title} className={r.id === runId ? 'active' : ''} onClick={() => selectRun(r.id)}>{r.id}</button>)}</nav>
+          : runs.length > 0 && (
+            <HeaderMenu menuId="picker" label="run ▾" ariaLabel="switch run" className="run-picker" onOwnership={onMenuOwnership}>
+              {(close) => runs.map(r => (
+                <button
+                  key={r.id}
+                  role="menuitem"
+                  className={r.id === runId ? 'header-menu-item active' : 'header-menu-item'}
+                  aria-current={r.id === runId ? 'true' : undefined}
+                  title={r.title}
+                  onClick={() => { close(); selectRun(r.id) }}
+                >{r.id}</button>
+              ))}
+            </HeaderMenu>
+          )}
+        {/* THE HANGAR front door (priority-(e), low-priority chrome): opens the run-library overlay.
+            Inline while the row has room — a full label at the full tier, a ⌂ icon (with a kept accessible
+            name) at the condensed tier. At the narrowest (overflow) tier it is NOT here: it folds into the
+            `⋯` overflow menu below. Gated on runs so it never opens an empty library. */}
+        {layout.chrome !== 'overflow' && runs.length > 0 && (
+          <button
+            className="hangar-open"
+            aria-label={layout.chrome === 'icons' ? 'hangar' : undefined}
+            onClick={() => setHangarOpen(true)}
+          >{layout.chrome === 'icons' ? '⌂' : 'hangar'}</button>
         )}
-        {/* Certification Wall front door: the app's hero surface — the byte-verification wall and, inside it,
-            the "test the seal" tamper demo — reachable directly from the persistent chrome, not only three
-            interactions deep behind the Hangar. Routes through the SAME openWall action the Hangar's campaign
-            card uses (one open path — the synchronous store seed + keyed remount), never a second entry. Not
-            gated on the run index: the campaign is independent of which run is loaded, so the wall is always
-            reachable once the app is interactive. Styled to match the header controls (.wall-open ≡ .hangar-open).
-            Two label spans (CSS-swapped at ≤1080px): the full "certification wall" at desktop widths, the compact
-            "wall" at narrow widths so a tour-bearing header stays within the viewport (no overflow) without hiding
-            the entry. The hidden span is display:none, so the button's accessible name is always the visible label. */}
-        <button className="wall-open" onClick={openWall}>
-          <span className="wall-open-full">certification wall</span>
-          <span className="wall-open-short">wall</span>
-        </button>
-        {/* Guided-tour launcher: shown only when an authored tour exists for the current run. The
-            header renders only after the model is ready (past the !model gate), so model-readiness is
-            already guaranteed here. Clicking starts (restart-safe); interrupts are source-signaled and
-            the overlay's × calls stop() — no keyboard key is bound (transport grammar is frozen).
-            ONE tour CTA (v0.5d): the first-visit nudge is a TREATMENT of this button (the
-            accent wash + nudge-pulse ring, plus the quiet dismiss ×), never a second button — two CTAs
-            for one action made the chrome compete with itself. Starting a tour or dismissing retires
-            the treatment forever (NUDGE_KEY). */}
+        {/* Certification Wall front door (priority-(c), a BRAND CTA): the app's hero surface — the
+            byte-verification wall and, inside it, the "test the seal" tamper demo — reachable directly from
+            the persistent chrome, not three interactions deep behind the Hangar. Routes through the SAME
+            openWall action the Hangar's campaign card uses (one open path — the synchronous store seed +
+            keyed remount), never a second entry. Not gated on the run index: the campaign is independent of
+            which run is loaded, so the wall is always reachable once the app is interactive.
+            LADDER RULE: this CTA never folds — it is always inline at every width. Only its LABEL condenses,
+            from "certification wall" (full tier) to "wall" (condensed/overflow), so a heavier header stays
+            within the viewport without ever hiding the entry. The visible text is the accessible name at
+            both weights. */}
+        <button className="wall-open" onClick={openWall}>{layout.wallLabel}</button>
+        {/* Guided-tour launcher (priority-(c), a BRAND CTA — always inline, never folds): shown only when
+            an authored tour exists for the current run. The header renders only after the model is ready
+            (past the !model gate), so model-readiness is already guaranteed here. Clicking starts
+            (restart-safe); interrupts are source-signaled and the overlay's × calls stop() — no keyboard key
+            is bound (transport grammar is frozen).
+            ONE tour CTA (v0.5d): the first-visit nudge is a TREATMENT of this button (the accent wash +
+            nudge-pulse ring, plus the quiet dismiss ×), never a second button — two CTAs for one action made
+            the chrome compete with itself. Starting a tour or dismissing retires the treatment forever
+            (NUDGE_KEY). */}
         {/* the ▶ button is the third tour entry point, gated on the ONE admission predicate (tour-exists +
             identity + verdict): withheld on a MISMATCH run (its det-only captions claim a self-check the mismatched
             bytes did not earn), admitted for every honest run. model is non-null here (past the readyTree gate) and
@@ -597,24 +679,69 @@ export default function App() {
             )}
           </div>
         )}
-        {/* Copy-link permanent home: the share weapon, now always reachable in the app chrome — not
-            only inside the transient cold-open card. Gated on runs so it never offers a link before a run loaded. */}
-        {runs.length > 0 && <HeaderCopyLink onCopyLink={copyShareLink} />}
-        {/* Collapsed cold-open card: once the auto-tour leaves beat 0 the full card becomes this
-            header verdict chip — the existing verdict voice, × still dismisses. Gated on thesisOpen && collapsed. */}
-        {thesisOpen && thesisCollapsed && <ThesisChip verdict={thesisVerdict} onDismiss={dismissThesis} />}
-        {/* Mobile-only (CSS-hidden ≥901px). Each toggle opens its panel and closes the other. */}
+        {/* Copy-link (priority-(d), low-priority chrome): the share weapon, reachable in the app chrome —
+            not only inside the transient cold-open card. Inline while the row has room (a "copy link" label
+            at the full tier, a ⧉ icon at the condensed tier); at the narrowest (overflow) tier it folds into
+            the `⋯` overflow menu below. Gated on runs so it never offers a link before a run loaded. */}
+        {layout.chrome !== 'overflow' && runs.length > 0 && (
+          <HeaderCopyLink onCopyLink={copyShareLink} variant={layout.chrome === 'icons' ? 'icon' : 'label'} />
+        )}
+        {/* THE `⋯` OVERFLOW MENU (the narrowest tiers): the escape hatch where the low-priority chrome
+            folds — the two brand CTAs and the run picker above NEVER fold in here. A keyboard-operable
+            disclosure. At the overflow tier it holds the hangar + copy-link; at the mobile floor it ALSO
+            absorbs the two panel-toggles (the last inline chrome to fold, per the ladder's priority order).
+            Rendered when there is anything to fold: runs present (hangar/copy need the index) OR the phone
+            floor (the panel-toggles fold regardless of the index). */}
+        {layout.chrome === 'overflow' && (runs.length > 0 || layout.panelToggles === 'overflow') && (
+          <HeaderMenu menuId="overflow" label="⋯" ariaLabel="more actions" className="header-overflow" onOwnership={onMenuOwnership}>
+            {(close) => (
+              <>
+                {/* close() FIRST — it restores focus to the ⋯ trigger before the action, so the modal/panel
+                    that opens snapshots the trigger (a stable element) as its opener, never document.body. */}
+                {runs.length > 0 && (
+                  <button role="menuitem" className="header-menu-item" onClick={() => { close(); setHangarOpen(true) }}>hangar</button>
+                )}
+                {/* the copy item keeps the menu OPEN so its "link copied ✓" feedback is seen — Esc or an
+                    outside press closes it. */}
+                {runs.length > 0 && <HeaderCopyLink onCopyLink={copyShareLink} variant="menuitem" />}
+                {/* Phone floor: the panel-toggles join the overflow (they are the last inline chrome to fold).
+                    close() first so focus lands on the ⋯ trigger, never body, after the panel opens. */}
+                {layout.panelToggles === 'overflow' && (
+                  <>
+                    <button role="menuitem" className="header-menu-item" onClick={() => { close(); setPanelOpen(p => (p === 'inspector' ? null : 'inspector')) }}>agent panel</button>
+                    <button role="menuitem" className="header-menu-item" onClick={() => { close(); setPanelOpen(p => (p === 'provenance' ? null : 'provenance')) }}>provenance panel</button>
+                  </>
+                )}
+              </>
+            )}
+          </HeaderMenu>
+        )}
+        {/* Collapsed cold-open card: once the auto-tour leaves beat 0 the full card becomes this header
+            verdict chip — the existing verdict voice, × still dismisses. It is a REAL header occupant on a
+            bare cold open, so the ladder models it: the chip is `compact` at every tier (headerModel.ts —
+            even the full tier's narrow end cannot fit the six-button chrome beside the wide headline), so it
+            sheds "self-consistent — no external manifest" to just the verdict glyph, keeping the headline as
+            an sr-only reading so the meaning survives and the row never overflows. */}
+        {thesisOpen && thesisCollapsed && <ThesisChip verdict={thesisVerdict} onDismiss={dismissThesis} compact={layout.chip === 'glyph'} />}
+        {/* Side-panel toggles (present only ≤1080px, where the panels are overlays; CSS-hidden above).
+            They ride the ladder: labeled at the condensed tier, sheared to ☰ icons at the overflow tier,
+            and folded into the `⋯` menu at the mobile floor (rendered there instead of here). */}
+        {layout.panelToggles !== 'overflow' && (
         <div className="panel-toggles">
-          <button onClick={() => setPanelOpen(p => (p === 'inspector' ? null : 'inspector'))}>☰ agent</button>
-          <button onClick={() => setPanelOpen(p => (p === 'provenance' ? null : 'provenance'))}>☰ provenance</button>
+          <button aria-label={layout.panelToggles === 'icons' ? 'agent panel' : undefined} onClick={() => setPanelOpen(p => (p === 'inspector' ? null : 'inspector'))}>{layout.panelToggles === 'icons' ? '☰' : '☰ agent'}</button>
+          <button aria-label={layout.panelToggles === 'icons' ? 'provenance panel' : undefined} onClick={() => setPanelOpen(p => (p === 'provenance' ? null : 'provenance'))}>{layout.panelToggles === 'icons' ? '☰' : '☰ provenance'}</button>
         </div>
+        )}
         {/* Visible help affordance: discoverable without knowing the ?-shortcut (some layouts need
             AltGr for ?). Opens the same overlay the ? key toggles; focus moves into the modal on open. */}
         <button className="help-toggle" aria-label="keyboard shortcuts" onClick={() => setHelpOpen(true)}>?</button>
       </header>
       {/* Keyed on runId so a caught error clears when the operator switches runs (fresh boundary). */}
       <ErrorBoundary key={runId}>
-        <Inspector model={model} open={panelOpen === 'inspector'} />
+        {/* tourActive lets the live sensing strip OWN the aside during a tour: the f2a tour holds a sensing
+            selection while its play beats move the playhead, so the strip must track the playhead, not freeze on
+            the held verdict. Same run-scoped signal the honesty chips read (tour.active?.runId === runId). */}
+        <Inspector model={model} open={panelOpen === 'inspector'} tourActive={tour.active?.runId === runId} />
         {/* stage-enter: the CEREMONY HANDOFF — a one-shot CSS fade-up as the stage takes over from
             the load ceremony (the stage "fades up beneath" while the confirmed hash lines settle into their
             provenance rows). Fires on this element's mount, i.e. exactly at the ceremony→app handoff; no rAF,
@@ -640,8 +767,9 @@ export default function App() {
         <Timeline model={model} />
       </ErrorBoundary>
       <HelpOverlay open={helpOpen} onClose={() => setHelpOpen(false)} />
-      {/* The Hangar run-library overlay. DOM/React only — no WebGL, no frame loop. tourRunIds
-          = the runs with authored tours (their cards make the tour the primary action). */}
+      {/* The Hangar run-library overlay. DOM/React only — no WebGL, no frame loop. A card whose run has
+          an authored tour makes the tour its primary action; the chip names the lens (tours.ts tourTitle,
+          own-property-safe over the unsigned index ids). */}
       <Hangar
         open={hangarOpen}
         runs={runs}
@@ -649,7 +777,6 @@ export default function App() {
         sealedRuns={sealedRuns}
         loadedRunId={loadedRunId}
         loadedResultId={hashes?.resultId ?? null}
-        tourRunIds={Object.keys(TOURS)}
         onClose={() => setHangarOpen(false)}
         onOpenRun={openRunFromHangar}
         onOpenTour={openTourFromHangar}

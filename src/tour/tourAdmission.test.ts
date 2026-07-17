@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { hasTour, tourAdmitted, tourHandoffAction, TOURS } from './tours'
+import { hasTour, tourTitle, tourAdmitted, tourHandoffAction, TOURS } from './tours'
 import type { TrustVerdict } from '../decode/verify'
 
 // ── the ONE tour-admission predicate, consumed by all three tour entry points ─────────────────────────
@@ -20,6 +20,20 @@ describe('hasTour — an OWN-property check (never an inherited member)', () => 
   })
   test('a prototype key never resolves an INHERITED member as a "tour exists"', () => {
     for (const k of ['__proto__', 'constructor', 'toString', 'hasOwnProperty']) expect(hasTour(k)).toBe(false)
+  })
+})
+
+describe('tourTitle — the authored tour title by run id, an OWN-property lookup (never an inherited member)', () => {
+  test('every authored tour resolves its own byte-pinned title (consumed from TOURS, never duplicated)', () => {
+    for (const id of Object.keys(TOURS)) expect(tourTitle(id)).toBe(TOURS[id]!.title)
+  })
+  test('a run without an authored tour resolves undefined — its Hangar card shows "open run", never a tour chip', () => {
+    for (const id of ['f0', 'f3a', 'f4', 'nope']) expect(tourTitle(id)).toBeUndefined()
+  })
+  test('a prototype-shaped id never resolves an INHERITED member as a title (the retired render-crash class)', () => {
+    // TOURS['__proto__'] would be Object.prototype and TOURS['toString'] a function; a plain bracket read would
+    // hand one of those to the chip as its label. Object.hasOwn keeps every inherited key on the NO-tour branch.
+    for (const k of ['__proto__', 'constructor', 'toString', 'hasOwnProperty']) expect(tourTitle(k)).toBeUndefined()
   })
 })
 

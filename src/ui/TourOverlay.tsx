@@ -17,10 +17,10 @@ export function TourOverlay({
   const total = active.steps.length
   return (
     <div className="tour-overlay" role="group" aria-label={`guided tour: ${active.title}`}>
-      {/* Tour TITLE — the product's name rendered NOWHERE a sighted user could see it (aria-label
-          only), and the Hangar's three '▶ tour' chips are identical, naming nothing they launch. Surface the
-          title here on the tour's own overlay — no new chrome, it just names the surface. aria-hidden because
-          the group's aria-label already announces the same title to assistive tech (no double read). */}
+      {/* Tour TITLE — names the surface the tour is running on, shown here on the tour's own overlay
+          (the Hangar's launch chips already name each lens they start). No new chrome — it just labels the
+          surface. aria-hidden because the group's aria-label already announces the same title to assistive
+          tech (no double read). */}
       <p className="tour-title" aria-hidden="true">{active.title}</p>
       <div className="tour-row">
         {/* Progress dots: filled for done+current (current accented), hollow for pending. Decorative —

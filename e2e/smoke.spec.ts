@@ -886,6 +886,18 @@ test('the Hangar renders all six cards; a visited full-manifest run earns ✓, a
   await page.getByRole('button', { name: 'hangar', exact: true }).click()
   await expect(page.locator('.hangar-panel')).toBeVisible()
   await expect(page.locator('.hangar-card')).toHaveCount(6)
+  // Each run with an authored tour names its chip by the lens it launches (consumed from the TOURS
+  // titles), so the three tour chips differentiate instead of reading one generic label — the ▶
+  // affordance stays. exact:true pins the whole "▶ {title}" accessible name, not a substring of it.
+  await expect(page.locator('.hangar-card[data-run="e0"]').getByRole('button', { name: '▶ The query stage', exact: true })).toBeVisible()
+  await expect(page.locator('.hangar-card[data-run="f1"]').getByRole('button', { name: '▶ Motion lifecycle', exact: true })).toBeVisible()
+  await expect(page.locator('.hangar-card[data-run="f2a"]').getByRole('button', { name: '▶ What the sensor admits', exact: true })).toBeVisible()
+  // Every run WITHOUT an authored tour offers exactly one action — "open run" — and zero tour chips.
+  for (const noTour of ['f0', 'f3a', 'f4']) {
+    const card = page.locator(`.hangar-card[data-run="${noTour}"]`)
+    await expect(card.getByRole('button')).toHaveCount(1)
+    await expect(card.getByRole('button', { name: 'open run', exact: true })).toHaveCount(1)
+  }
   // The disclaimer chip is the surface's thesis: the index is a map, not the authority.
   await expect(page.locator('.hangar-disclaimer')).toContainText('a tampered index can misdirect, never forge')
   // e0 (DET-ONLY) was opened this session → its card earned the SELF-CHECK voice (attested •, "self-verified this
@@ -929,6 +941,31 @@ test('the readout shows real dt_us sim time on f3a and keeps the assumed tick re
   await expect(page.locator('.readout')).toHaveText('0:00.0 / 0:12.0')
   // The provenance panel shows the real dt (not "(assumed)") for a full-manifest run.
   await expect(page.locator('.provenance')).toContainText('125000µs')
+
+  // THE QUALITY REGISTER on a REAL dirty manifest: f3a self-declares dirty=true. That row now wears the register
+  // — the • attested mark + a caveat note carrying the treatment class — NOT the alarm ✗ it once did. Prove BOTH
+  // visible carriers end-to-end: the class interpolation AND the CSS rule (its computed effect), so a deleted
+  // interpolation or a misspelled `.prov-note.caveat` rule fails HERE, not only in the unit tests.
+  const dirtyRow = page.locator('.provenance tr[data-prov-key="dirty"]')
+  await expect(dirtyRow).toHaveClass(/attested/)      // the on-record voice…
+  await expect(dirtyRow).not.toHaveClass(/mismatch/)  // …never the alarm register
+  const dirtyCaveat = dirtyRow.locator('.prov-note.caveat')
+  await expect(dirtyCaveat).toHaveCount(1)            // the treatment class is really interpolated onto the note
+  await expect(dirtyCaveat).toContainText('build-hygiene disclosure')
+  await expect(dirtyCaveat).toContainText('non-citable under the publication contract')
+  // the treatment's CSS rule actually EXISTS and APPLIES: the caveat note carries the hairline left-rule (its own
+  // property), which a plain provenance note does NOT — the computed-style contrast proves the rule is live.
+  const caveatBorder = await page.evaluate(`getComputedStyle(document.querySelector('.provenance tr[data-prov-key="dirty"] .prov-note.caveat')).borderLeftStyle`)
+  expect(caveatBorder).toBe('solid')
+  const plainBorder = await page.evaluate(`getComputedStyle(document.querySelector('.provenance tr[data-prov-key="commit"] .prov-note')).borderLeftStyle`)
+  expect(plainBorder).toBe('none') // a plain attested note has no such rule — the contrast proves the treatment is the register's own
+  // HUE COHERENCE: the • glyph's colour follows the row CLASS the register set (tr.attested → the slate --pending),
+  // the SAME hue a plain attested row (commit) wears — so the glyph char AND its hue both follow the register mark,
+  // never a badge-class split painting the • the wrong colour. (Contrast: a real ✗ integrity row is red.)
+  const dirtyGlyphColor = await page.evaluate(`getComputedStyle(document.querySelector('.provenance tr[data-prov-key="dirty"] .prov-glyph')).color`)
+  const attestedGlyphColor = await page.evaluate(`getComputedStyle(document.querySelector('.provenance tr[data-prov-key="commit"] .prov-glyph')).color`)
+  expect(dirtyGlyphColor).toBe(attestedGlyphColor)
+
   await page.screenshot({ path: 'e2e/screenshots/task-v06-5b-simclock-real.png', fullPage: true })
 
   // e0 is det-only (KAT tier): the readout keeps the neutral tick voice — no false real-clock claim.
@@ -1060,37 +1097,306 @@ test('the Certification Wall header entry opens the Wall directly (same zero-gre
   expect(errors, `no console errors: ${errors.join(' | ')}`).toEqual([])
 })
 
-// ── The always-on Wall entry must not overflow a tour-bearing header at ≤1080px ─────────────────────────────
-// The header is flex-wrap:nowrap; the new always-on certification-wall control could push a tour-bearing header
-// (▶ tour + the first-visit nudge ×) past the viewport at the ≤1080px narrow band (where the panel-toggles also
-// appear). The entry CONDENSES to "wall" at ≤1080px (a CSS label-swap), so the header stays within the viewport.
-// The overflow check would FALSE-GREEN if it ran before the widest chrome existed — nav / Hangar / copy-link hang
-// off the async runs/index.json load — so every header control is asserted PRESENT before measuring, and the
-// button's accessible name is role-asserted "wall" at 1080px. The 1081px boundary then proves the full label
-// releases with no overflow either.
-test('the header does not overflow at 1080px (all controls present, the Wall entry condenses to "wall"); the 1081px boundary restores the full label', async ({ page }) => {
-  await page.setViewportSize({ width: 1080, height: 720 })
+// ── v0.9 THE HEADER LADDER — priority-condensation across every tier, zero horizontal overflow ──────────────
+// SUPERSEDES the v0.8.1 narrow-width stopgap (the two-span "certification wall"/"wall" label swap at ≤1080px and
+// its `.wall-open-full` display:none pin). The header now sheds chrome from the outside in, in a fixed priority
+// order, and stays ONE row at every width: the six-run switcher collapses to a `run ▾` picker; the low-priority
+// chrome (hangar, copy-link) sheds its labels to icons then folds into a `⋯` overflow menu; the wordmark word
+// recedes to its mark; the cold-open verdict chip sheds its wide headline to its glyph; and at the phone floor
+// the panel-toggles also fold into `⋯` and the spacing tightens. The two BRAND CTAs — the ▶ tour launcher and
+// the certification-wall entry — never fold and survive at EVERY width. Breakpoints (headerModel.ts): condense
+// ≤1080px, overflow ≤960px, mobile ≤640px. (The bare-cold-open + phone-floor coverage lives in its own test
+// below — this one drives the deep-linked tiers.)
+//
+// The overflow check would FALSE-GREEN if it ran before the widest chrome existed (nav / hangar / copy-link hang
+// off the async runs/index.json load), so we load at the full width and assert the widest chrome PRESENT before
+// measuring anything — the precondition the v0.8.1 test established, kept and extended across the ladder's tiers.
+test('the header ladder: one row with zero overflow at every tier; the run switcher, low-priority chrome, and wordmark condense while the tour + wall CTAs survive at every width', async ({ page }) => {
+  const noOverflow = () => page.evaluate('document.documentElement.scrollWidth <= window.innerWidth') // string form: the e2e tsconfig has no DOM lib
+
+  // ── FULL TIER (1280px) — the widest chrome, asserted PRESENT before any measurement (the false-green guard). ──
+  await page.setViewportSize({ width: 1280, height: 720 })
   await page.goto('/?run=f2a')
   await expect(page.locator('.provenance')).toContainText('trailer consistent ✓', { timeout: 15000 })
-  // THE WIDEST CHROME MUST EXIST BEFORE MEASURING (guards the false-green: these hang off the async index load):
-  await expect(page.locator('header nav button')).toHaveCount(6)                          // all six run entries
-  await expect(page.getByRole('button', { name: 'hangar', exact: true })).toBeVisible()   // Hangar front door
-  await expect(page.locator('.header-copy')).toBeVisible()                                // copy-link
-  await expect(page.getByRole('button', { name: '▶ tour', exact: true })).toBeVisible()   // tour launcher (f2a has a tour)
-  await expect(page.getByRole('button', { name: 'dismiss tour nudge' })).toBeVisible()    // the first-visit nudge ×
-  // At ≤1080px the entry CONDENSES: its accessible name is exactly "wall" (the full label span is display:none).
-  await expect(page.getByRole('button', { name: 'wall', exact: true })).toBeVisible()
-  await expect(page.locator('.wall-open-full')).toBeHidden()
-  // THE GATE (string form: the e2e tsconfig has no DOM lib): no horizontal overflow — every header control fits.
-  const noOverflow1080 = await page.evaluate('document.documentElement.scrollWidth <= window.innerWidth')
-  expect(noOverflow1080, 'no horizontal overflow at 1080px with a tour-bearing run').toBe(true)
+  await expect(page.locator('header nav button')).toHaveCount(6)                              // all six run entries, in the button row
+  await expect(page.getByRole('button', { name: 'hangar', exact: true })).toBeVisible()       // hangar, labeled
+  await expect(page.locator('.header-copy')).toBeVisible()                                    // copy-link, labeled
+  await expect(page.getByRole('button', { name: '▶ tour', exact: true })).toBeVisible()       // BRAND CTA: tour launcher (f2a has a tour)
+  await expect(page.getByRole('button', { name: 'dismiss tour nudge' })).toBeVisible()        // the first-visit nudge ×
+  await expect(page.getByRole('button', { name: 'certification wall', exact: true })).toBeVisible() // BRAND CTA: wall, FULL label
+  await expect.poll(noOverflow, { timeout: 5000, message: 'no horizontal overflow at the full tier (1280px)' }).toBe(true)
 
-  // BOUNDARY (1081px): the media query releases — the FULL "certification wall" label shows (panel-toggles hide
-  // above 1080px, so the header still fits). Proves the condense is scoped to the narrow band, not a permanent hide.
-  await page.setViewportSize({ width: 1081, height: 720 })
-  await expect(page.getByRole('button', { name: 'certification wall', exact: true })).toBeVisible()
-  const noOverflow1081 = await page.evaluate('document.documentElement.scrollWidth <= window.innerWidth')
-  expect(noOverflow1081, 'no horizontal overflow at 1081px either (full label restored)').toBe(true)
+  // ── CONDENSED TIER (1080px, the picker threshold) — the switcher collapses to `run ▾`, low-priority chrome
+  //    sheds labels to icons, the wall label condenses to "wall". The BRAND CTAs stay visible. ──
+  await page.setViewportSize({ width: 1080, height: 720 })
+  await expect(page.getByRole('button', { name: 'switch run' })).toBeVisible()                // the `run ▾` picker replaces…
+  await expect(page.locator('header nav button')).toHaveCount(0)                              // …the six-button row (gone)
+  await expect(page.getByRole('button', { name: '▶ tour', exact: true })).toBeVisible()       // BRAND CTA survives
+  await expect(page.getByRole('button', { name: 'wall', exact: true })).toBeVisible()         // BRAND CTA survives; label condensed to "wall"
+  await expect(page.getByRole('button', { name: 'certification wall', exact: true })).toHaveCount(0) // …the full label is gone at this tier
+  await expect(page.getByRole('button', { name: 'copy link' })).toBeVisible()                 // copy-link sheds to its icon, accessible name kept
+  await expect.poll(noOverflow, { timeout: 5000, message: 'no horizontal overflow at the condensed tier (1080px)' }).toBe(true)
+
+  // ── OVERFLOW TIER (960px, the ⋯ threshold) — the low-priority chrome folds into `⋯`; the wordmark word
+  //    recedes to its mark. The picker and BOTH brand CTAs stay inline. ──
+  await page.setViewportSize({ width: 960, height: 720 })
+  await expect(page.getByRole('button', { name: 'more actions' })).toBeVisible()              // the `⋯` overflow menu appears
+  await expect(page.getByRole('button', { name: 'hangar', exact: true })).toHaveCount(0)      // hangar folded away (into ⋯, closed)
+  await expect(page.getByRole('button', { name: 'switch run' })).toBeVisible()                // the picker still reachable
+  await expect(page.getByRole('button', { name: '▶ tour', exact: true })).toBeVisible()       // BRAND CTA survives
+  await expect(page.getByRole('button', { name: 'wall', exact: true })).toBeVisible()         // BRAND CTA survives (never folds into ⋯)
+  await expect(page.locator('header h1')).toHaveClass(/sr-only/)                              // the wordmark word recedes to the mark
+  await expect.poll(noOverflow, { timeout: 5000, message: 'no horizontal overflow at the overflow tier (960px)' }).toBe(true)
+
+  // ── VERY NARROW (900px) — deep inside the overflow tier: still one row, still zero overflow, and the two
+  //    brand CTAs are STILL visible (the ladder's whole promise: the hero beats never disappear). ──
+  await page.setViewportSize({ width: 900, height: 720 })
+  await expect(page.getByRole('button', { name: 'more actions' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '▶ tour', exact: true })).toBeVisible()       // BRAND CTA survives at 900px
+  await expect(page.getByRole('button', { name: 'wall', exact: true })).toBeVisible()         // BRAND CTA survives at 900px
+  await expect.poll(noOverflow, { timeout: 5000, message: 'no horizontal overflow at a very narrow width (900px)' }).toBe(true)
+})
+
+// The run picker is REAL, not chrome: at the condensed tier it opens and switches runs.
+test('the header ladder: the `run ▾` picker opens and switches runs (condensed tier)', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 720 }) // condensed (≤1080, >960) → the picker, not the button row
+  await page.goto('/?run=f2a')
+  await expect(page.locator('.provenance')).toContainText('trailer consistent ✓', { timeout: 15000 })
+  await expect(page.locator('header nav button')).toHaveCount(0) // the button row is condensed away
+  // Open the picker and switch f2a → f0 through a menu item. A run switch unmounts the whole ready tree (a full
+  // WebGL context re-init on CI's software renderer), so allow the first-paint timeout, as the run-switch tests do.
+  await page.getByRole('button', { name: 'switch run' }).click()
+  await page.getByRole('menuitem', { name: 'f0', exact: true }).click()
+  await expect(page.locator('.readout')).toHaveText('tick 0 / 2', { timeout: 15000 }) // f0 tickCount = 2 — the switch landed
+  await expect(page).toHaveURL(/run=f0/)
+})
+
+// The `⋯` overflow menu is REAL, not chrome: at the narrowest tier it opens and its folded items work; and
+// opening a modal from it closes the menu (focus leaves the disclosure), so no stale menu lingers and the
+// first Esc closes the MODAL, not a menu behind it (the modal-Esc interleave).
+test('the header ladder: the `⋯` overflow menu opens, its folded hangar item works, and the menu closes when the modal takes focus', async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 720 }) // overflow (≤960) → hangar + copy-link folded into ⋯
+  await page.goto('/?run=f2a')
+  await expect(page.locator('.provenance')).toContainText('trailer consistent ✓', { timeout: 15000 })
+  await expect(page.getByRole('button', { name: 'hangar', exact: true })).toHaveCount(0) // not inline — it lives in ⋯
+  // Open ⋯ and activate the folded hangar item → the Hangar overlay opens (proves the folded action is live).
+  await page.getByRole('button', { name: 'more actions' }).click()
+  await expect(page.locator('.header-menu-popup')).toBeVisible()
+  await page.getByRole('menuitem', { name: 'hangar', exact: true }).click()
+  await expect(page.locator('.hangar-panel')).toBeVisible()
+  await expect(page.locator('.header-menu-popup')).toHaveCount(0) // the menu closed when the modal took focus — no stale menu
+  // The FIRST Esc closes the MODAL (not a menu behind it) — the interleave is coherent.
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.hangar-panel')).toHaveCount(0)
+})
+
+// F1 — the open menu OWNS the keyboard (the modal idiom, by explicit state): transport is inert beneath it,
+// Esc closes the MENU only, and the menu closes when focus leaves it; with the menu closed the transport is
+// fully live again. Uses f1 (64 playable ticks) at the condensed tier so the `run ▾` picker is the switcher.
+test('the header ladder: an open disclosure owns the keyboard — transport inert, Esc closes the menu only, closed → transport live', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 720 }) // condensed → the picker
+  await page.goto('/?run=f1')
+  await expect(page.locator('.readout')).toHaveText('tick 0 / 64', { timeout: 15000 })
+
+  // Open the picker. While it is open the transport is INERT: ArrowRight must NOT scrub the run beneath it.
+  await page.getByRole('button', { name: 'switch run' }).click()
+  await expect(page.locator('.header-menu-popup')).toBeVisible()
+  await page.keyboard.press('ArrowRight')
+  await expect(page.locator('.readout')).toHaveText('tick 0 / 64') // no scrub beneath the open menu
+
+  // Esc closes the MENU only — it does NOT also reach the transport as a deselect/scrub (the readout holds).
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.header-menu-popup')).toHaveCount(0)
+  await expect(page.locator('.readout')).toHaveText('tick 0 / 64')
+
+  // With the menu CLOSED the transport is fully live again: ArrowRight now steps the playhead.
+  await page.keyboard.press('ArrowRight')
+  await expect(page.locator('.readout')).toHaveText('tick 1 / 64')
+
+  // Close-on-focus-exit: reopen, move focus OUT of the disclosure subtree (to the help button) → the menu closes
+  // (no stale-open menu whose listeners would linger behind another surface — the Tab-away / focus-departure form).
+  await page.getByRole('button', { name: 'switch run' }).click()
+  await expect(page.locator('.header-menu-popup')).toBeVisible()
+  await page.getByRole('button', { name: 'keyboard shortcuts' }).focus()
+  await expect(page.locator('.header-menu-popup')).toHaveCount(0)
+})
+
+// F2 + F3 — the bare cold open appends the verdict CHIP into the header (the TRUE widest chrome the deep-linked
+// tests never exercised), and the phone floor (360-390px) must still be one row. Sweep the tight tier edges and
+// the phones WITH the chip present, asserting zero overflow at each — the chip stays compact (glyph only) so its
+// wide headline never enters the row.
+test('the header ladder: a bare cold open keeps one row with the verdict chip present, down to the phone floor (360px)', async ({ page }) => {
+  const noOverflow = () => page.evaluate('document.documentElement.scrollWidth <= window.innerWidth') // string form: the e2e tsconfig has no DOM lib
+  await page.setViewportSize({ width: 1280, height: 720 })
+  await page.goto('/')
+  // Let the auto-tour collapse the full cold-open card into the header verdict CHIP (beat 1 — f1's playback beat).
+  await expect(page.locator('.tour-caption')).toContainText('Playback advances the recorded trajectory', { timeout: 15000 })
+  const chip = page.locator('.thesis-chip')
+  await expect(chip).toBeVisible()
+  // The chip is COMPACT: its wide headline is sr-only (never in the row), leaving just the verdict glyph.
+  await expect(chip.locator('.thesis-chip-verdict .sr-only')).toHaveCount(1)
+  // Sweep the tier edges + the phones with the chip PRESENT — one row, zero overflow at every width. Includes
+  // the full tier's narrow end (1081), both sides of the overflow floor (961/960) and the mobile floor (641/640),
+  // and three phone widths (390/375/360).
+  for (const w of [1081, 1080, 961, 960, 641, 640, 390, 375, 360]) {
+    await page.setViewportSize({ width: w, height: 720 })
+    await expect(chip).toBeVisible() // the chip persists across resizes (a latched cold-open surface)
+    // POLL until the resize re-render SETTLES: the ladder re-renders on the resize event, so a raw read can
+    // catch the wider previous tier mid-transition (the tier boundaries shrink the content monotonically, so
+    // a settled fit is the true steady state). A genuine overflow never settles and still fails the poll.
+    await expect.poll(noOverflow, { timeout: 5000, message: `no horizontal overflow at ${w}px with the cold-open verdict chip present` }).toBe(true)
+  }
+})
+
+// F4 — a disclosure opened over the cold-open CARD must paint ABOVE it (the header lifts into its own stacking
+// layer while open — the app layers overlays by z-index, no portal idiom — above the card's z-47, below the
+// modals' z-50), and its items must be clickable over the card.
+test('the header ladder: a disclosure opens ABOVE the cold-open card and its items are clickable (stacking-context raise)', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 720 }) // condensed → the picker exists AND the full card is up
+  await page.goto('/')
+  const card = page.locator('.thesis-card')
+  await expect(card).toBeVisible({ timeout: 15000 }) // beat 0 — the full card is up (z-47)
+  // Escape stops the auto-tour at beat 0 but KEEPS the card (the share weapon survives the interrupt) — a stable
+  // state to open a menu over.
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.tour-overlay')).toHaveCount(0)
+  await expect(card).toBeVisible()
+
+  await page.getByRole('button', { name: 'switch run' }).click()
+  await expect(page.locator('.header-menu-popup')).toBeVisible()
+  // The header is lifted into its own stacking layer while a disclosure is open (49: above the card's 47, below
+  // the modals' 50) — the direct proof of the fix.
+  const headerZ = await page.evaluate('getComputedStyle(document.querySelector("header")).zIndex')
+  expect(Number(headerZ), 'the header is raised above the cold-open card while a disclosure is open').toBe(49)
+  // Paint order: elementFromPoint at the popup's own centre returns the popup (or a descendant) — nothing paints over it.
+  const onTop = await page.evaluate(`(() => {
+    const r = document.querySelector('.header-menu-popup').getBoundingClientRect()
+    const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+    return !!el && !!el.closest('.header-menu-popup')
+  })()`)
+  expect(onTop, 'the popup paints above the cold-open card').toBe(true)
+  // …and a folded item is clickable over the card: switch runs to prove it (f0 → tick 0 / 2).
+  await page.getByRole('menuitem', { name: 'f0', exact: true }).click()
+  await expect(page.locator('.readout')).toHaveText('tick 0 / 2', { timeout: 15000 })
+})
+
+// F1 (closure) — keyboard ownership is IDENTITY-KEYED, so a tier change that mounts a SECOND disclosure
+// beneath the open one cannot steal the first's claim. Open the picker at 1000px → resize to 960px (the ⋯
+// overflow menu mounts while the picker stays open) → the picker must KEEP the keyboard: K does not toggle
+// playback and the menu stays open.
+test('the header ladder: keyboard ownership survives a tier change — the open picker keeps it when the ⋯ menu mounts beneath', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 720 }) // condensed → the picker (the ⋯ is not yet mounted)
+  await page.goto('/?run=f1')
+  await expect(page.locator('.readout')).toHaveText('tick 0 / 64', { timeout: 15000 })
+  await page.getByRole('button', { name: 'switch run' }).click()
+  await expect(page.locator('.header-menu-popup')).toBeVisible()
+  // Cross the overflow boundary: the ⋯ overflow menu MOUNTS (a second HeaderMenu instance) while the picker
+  // stays mounted AND open. The ⋯ mount must NOT clear the picker's ownership token (identity-conditional).
+  await page.setViewportSize({ width: 960, height: 720 })
+  await expect(page.getByRole('button', { name: 'more actions' })).toBeVisible() // the ⋯ mounted…
+  await expect(page.locator('.header-menu-popup')).toBeVisible()                  // …and the picker is STILL open
+  // Shift+Tab from the item to the picker trigger (focus stays in the disclosure subtree → menu stays open),
+  // then press K (the play toggle). The picker still OWNS the keyboard, so K is swallowed: no playback.
+  await page.keyboard.press('Shift+Tab')
+  await page.keyboard.press('KeyK')
+  await expect(page.locator('.header-menu-popup')).toBeVisible() // the menu remains open
+  await expect(page.locator('.readout')).toHaveText('tick 0 / 64') // transport unchanged — K did not toggle play
+})
+
+// F2 (closure) — a folded action restores focus to the ⋯ trigger BEFORE the modal/panel opens, so the modal
+// snapshots the trigger (not document.body) as its opener and returns focus there on close; a panel action
+// leaves focus on the trigger, never on body. Run at the phone floor where the ⋯ holds both kinds of item.
+test('the header ladder: a folded action restores focus to the ⋯ trigger (the modal snapshots it; a panel action never lands on body)', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 720 }) // mobile → ⋯ holds hangar + copy + the two panel toggles
+  await page.goto('/?run=f2a')
+  await expect(page.locator('.provenance')).toContainText('trailer consistent ✓', { timeout: 15000 })
+  const trigger = page.getByRole('button', { name: 'more actions' })
+  const focusName = () => page.evaluate('document.activeElement && document.activeElement.getAttribute("aria-label")')
+
+  // Hangar via ⋯: the item restores focus to the ⋯ trigger before opening the Hangar, so the Hangar snapshots
+  // the trigger as its opener — and its Esc returns focus THERE (the Hangar restores its opener on close).
+  await trigger.click()
+  await page.getByRole('menuitem', { name: 'hangar', exact: true }).click()
+  await expect(page.locator('.hangar-panel')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.hangar-panel')).toHaveCount(0)
+  expect(await focusName(), 'focus returns to the ⋯ trigger after the Hangar closes (never body)').toBe('more actions')
+
+  // A mobile panel action: opening the agent panel closes the ⋯ and leaves focus on the ⋯ trigger, never body.
+  await trigger.click()
+  await page.getByRole('menuitem', { name: 'agent panel', exact: true }).click()
+  await expect(page.locator('.inspector.open')).toBeVisible()
+  expect(await focusName(), 'focus stays on the ⋯ trigger after a panel action (never body)').toBe('more actions')
+})
+
+// F3 (closure) — the OPEN ⋯ popup must stay within a phone viewport in the REAL widest state: a FRESH deep
+// link (Playwright isolates storage per test) still shows the tour nudge, pushing the ⋯ trigger far right, so
+// a left-anchored popup would open off-screen. Right-anchored, it opens INTO the viewport. Measured with the
+// menu OPEN, and both folded panel toggles activated from inside it.
+test('the header ladder: at a phone width with the tour nudge present, the OPEN ⋯ popup stays within the viewport and its folded panel toggles work', async ({ page }) => {
+  for (const w of [375, 360]) {
+    await page.setViewportSize({ width: w, height: 720 })
+    await page.goto('/?run=f2a') // a deep link with fresh (isolated) storage → the first-visit tour nudge is PRESENT
+    await expect(page.locator('.provenance')).toContainText('trailer consistent ✓', { timeout: 15000 })
+    await expect(page.getByRole('button', { name: 'dismiss tour nudge' })).toBeVisible() // the real widest state (nudge present)
+    // OPEN the ⋯: the right-anchored popup AND the document must both stay within the viewport.
+    await page.getByRole('button', { name: 'more actions' }).click()
+    await expect(page.locator('.header-menu-popup')).toBeVisible()
+    const box = await page.evaluate(`(() => {
+      const r = document.querySelector('.header-menu-popup').getBoundingClientRect()
+      return { left: r.left, right: r.right, iw: window.innerWidth, scrollW: document.documentElement.scrollWidth }
+    })()`) as { left: number; right: number; iw: number; scrollW: number }
+    expect(box.left, `the open ⋯ popup's left edge is within the viewport at ${w}px`).toBeGreaterThanOrEqual(0)
+    expect(box.right, `the open ⋯ popup's right edge is within the viewport at ${w}px`).toBeLessThanOrEqual(box.iw)
+    expect(box.scrollW <= box.iw, `no document overflow with the ⋯ open at ${w}px`).toBe(true)
+    // ACTIVATE both folded panel toggles from inside the popup — the agent panel, then the provenance panel.
+    await page.getByRole('menuitem', { name: 'agent panel', exact: true }).click()
+    await expect(page.locator('.inspector.open')).toBeVisible()
+    await page.getByRole('button', { name: 'more actions' }).click()
+    await page.getByRole('menuitem', { name: 'provenance panel', exact: true }).click()
+    await expect(page.locator('.provenance.open')).toBeVisible()
+  }
+})
+
+// The run picker carries UNSIGNED runs/index.json ids — a hostile long id must not escape the left-anchored
+// popup at a phone width (horizontal scroll + unreachable choices). Stub the index (no existing idiom, so a
+// page.route intercept — the index is a single memoized fetch) to inject a 64-char id, OPEN the picker at 360
+// AND 375, and assert the popup box, every item box, and the document scrollWidth all stay within the
+// viewport (the id ellipsizes, never extends the box), and the hostile item is still activatable.
+const HOSTILE_ID = 'a'.repeat(64) // an unsigned, URL-safe long id — ~448px of text, far past any phone width
+test('the header ladder: a hostile long run id ellipsizes inside the picker and never escapes the viewport (360/375), and stays activatable', async ({ page }) => {
+  // Inject the long id into the index (its base points at a real bundle; we assert the SWITCH fires, not the
+  // load). route persists for the page's lifetime, so one registration covers both goto()s in the loop.
+  await page.route('**/runs/index.json', async (route) => {
+    const runs = await route.fetch().then(r => r.json()) as unknown[]
+    runs.push({ id: HOSTILE_ID, title: 'hostile long id', base: 'runs/f0', ticks: 2, kinds: {} })
+    await route.fulfill({ json: runs })
+  })
+  for (const w of [375, 360]) {
+    await page.setViewportSize({ width: w, height: 720 })
+    await page.goto('/?run=f2a')
+    await expect(page.locator('.provenance')).toContainText('trailer consistent ✓', { timeout: 15000 })
+    // OPEN the PICKER (the left-anchored disclosure that carries the run ids).
+    await page.getByRole('button', { name: 'switch run' }).click()
+    await expect(page.locator('.header-menu-popup')).toBeVisible()
+    // the hostile item must be PRESENT (the index injection took) and its accessible name is the FULL id.
+    await expect(page.getByRole('menuitem', { name: HOSTILE_ID, exact: true })).toBeVisible()
+    // the popup box, EVERY item box, and the document must all stay within the viewport.
+    const box = await page.evaluate(`(() => {
+      const iw = window.innerWidth
+      const pop = document.querySelector('.header-menu-popup').getBoundingClientRect()
+      const items = Array.from(document.querySelectorAll('.header-menu-popup .header-menu-item')).map(el => el.getBoundingClientRect())
+      const rights = [pop.right, ...items.map(r => r.right)]
+      const lefts = [pop.left, ...items.map(r => r.left)]
+      return { minLeft: Math.min(...lefts), maxRight: Math.max(...rights), iw, scrollW: document.documentElement.scrollWidth }
+    })()`) as { minLeft: number; maxRight: number; iw: number; scrollW: number }
+    expect(box.minLeft, `picker popup + items left edge within the viewport at ${w}px`).toBeGreaterThanOrEqual(0)
+    expect(box.maxRight, `picker popup + items right edge within the viewport at ${w}px`).toBeLessThanOrEqual(box.iw)
+    expect(box.scrollW <= box.iw, `no document overflow with the picker open (hostile id) at ${w}px`).toBe(true)
+    // …and the hostile item is still ACTIVATABLE — clicking it fires the switch (the URL updates to the id).
+    await page.getByRole('menuitem', { name: HOSTILE_ID, exact: true }).click()
+    await expect(page).toHaveURL(new RegExp('run=' + HOSTILE_ID))
+  }
 })
 
 // The Wall re-earns from zero: reopening after a completed verify shows a fresh ZERO-GREEN rest state (a ✓

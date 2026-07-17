@@ -7,16 +7,23 @@ import type { TrustVerdict } from '../decode/verify'
 // chrome. × still dismisses (App stops the tour + retires it for the session; a fresh cold open re-mounts the
 // full card). The copy-link is deliberately NOT repeated here: it now has its own permanent home in the app
 // chrome. The verdict WITHHOLDS exactly as the card does (null → no glyph/headline); × always renders.
-export function ThesisChip({ verdict, onDismiss }: {
+//   The chip is a REAL header occupant on a bare cold open, so it rides the header ladder: `compact` (every
+// tier below full) sheds the wide headline ("self-consistent — no external manifest", "hash mismatch —
+// integrity claim failed") to an sr-only reading, leaving just the verdict GLYPH visible — the verdict voice
+// survives (the glyph is the mark; the headline stays available to assistive tech) and the narrow one-row
+// header never overflows. Full width keeps the full headline.
+export function ThesisChip({ verdict, onDismiss, compact }: {
   verdict: TrustVerdict | null
   onDismiss: () => void
+  compact?: boolean
 }) {
   const v = thesisVerdictFor(verdict)
   return (
     <span className="thesis-chip" aria-label="run verdict">
       {v && (
         <span className={`thesis-chip-verdict ${v.cls}`}>
-          <span className="thesis-glyph" aria-hidden="true">{v.glyph}</span>{v.headline}
+          <span className="thesis-glyph" aria-hidden="true">{v.glyph}</span>
+          <span className={compact ? 'sr-only' : undefined}>{v.headline}</span>
         </span>
       )}
       <button className="thesis-chip-dismiss" aria-label="dismiss" onClick={onDismiss}>×</button>

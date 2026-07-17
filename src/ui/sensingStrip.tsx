@@ -1,7 +1,9 @@
 import { sensingGates, fovClaim, type GateLine, type GateId } from './sensingMath'
 import { identityPlate, compactPlate, fullPlate } from './identityPlate'
-import { F2A_REGISTRATION, type SensingDraw } from './sensingStage'
+import { F2A_REGISTRATION, revealedDraw, type SensingDraw, type SensingRegister } from './sensingStage'
 import { recomputedVerdict } from './lensContract'
+import { eventTickOf } from './cursor'
+import type { TransportTick } from '../lib/brand'
 import type { AgreeSource } from './agreeSource'
 import { markClass, requireGlyph } from './voices'
 
@@ -80,6 +82,32 @@ export function SensingStrip({ draw }: { draw: SensingDraw }) {
         <span className={markClass('attested')}>{requireGlyph('attested')}</span>) — a pinned vendored-libm
         angle, no bearing in the bundle to recompute
       </p>
+    </section>
+  )
+}
+
+// ── THE LIVE STRIP — the four-gate instrument follows the PLAYHEAD, not a held selection ───────────────────
+// The strip is a per-tick instrument, so its content follows the reveal clock: at the playhead it shows the
+// verdict the playhead has REACHED (the latest revealed in the register, tick ≤ playhead) and re-derives as the
+// playhead advances or scrubs back — no sticky reveal, because revealedDraw is a pure function of the playhead.
+// A held sensing selection still pins ONE verdict's full form through the Inspector's detail path (the existing
+// mount); this is the OTHER mode — the live register that was owed since the strip first shipped. Nothing about
+// how a verdict RENDERS changes: at full reveal (an end-of-run playhead) this feeds SensingStrip the terminal
+// verdict, byte-identical to selecting it. `tick` is the plain store playhead (a TransportTick); it is branded
+// into the event domain HERE, at this surface's own read, exactly as the sensing stage's head does.
+//
+// Before the first verdict's tick the playhead has revealed nothing — but the aside must NOT go blank (a blank
+// reads as broken, and the register is non-empty, so the idle rail is suppressed). The playhead simply sits
+// ahead of the run's first sensor reading: a recorded-but-not-yet-reached fact, which is exactly the NOT-YET
+// voice (the constitution's fourth voice — a future fact, rendered dim, never blooming, never a verdict mark).
+// So it speaks that state in prose and fills in the instant the playhead reaches the first verdict. Same on a
+// scrub back past the first verdict.
+export function SensingLiveStrip({ reg, tick }: { reg: SensingRegister; tick: number }) {
+  const draw = revealedDraw(reg, eventTickOf(tick as TransportTick))
+  if (draw) return <SensingStrip draw={draw} />
+  return (
+    <section className={`sensing-pending ${markClass('notYet')}`}>
+      no sensor verdict yet — the playhead sits before this run’s first reading
     </section>
   )
 }

@@ -3,6 +3,7 @@ import type { RunEntry } from './useRun'
 import { assumedClockTitle, cardNote, cardVerdict, effectiveSealStatus, histogramRows, realSimDuration, sealFor, VOICE_GLYPH, type SealRecord, type SealStatus } from './hangar'
 import { CATEGORY } from './theme'
 import { ROBUST_F3A } from '../decode/campaignCatalog'
+import { tourTitle } from '../tour/tours'
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
 // THE HANGAR — the run-library front door.
@@ -51,7 +52,6 @@ export interface HangarProps {
   // bytes actually on stage when that run is the open one (the identity-join guard's "hold only while" clause).
   loadedRunId: string | null
   loadedResultId: string | null
-  tourRunIds: readonly string[]
   onClose: () => void
   onOpenRun: (id: string) => void
   onOpenTour: (id: string) => void
@@ -60,7 +60,7 @@ export interface HangarProps {
   onOpenWall: () => void
 }
 
-export function Hangar({ open, runs, currentRunId, sealedRuns, loadedRunId, loadedResultId, tourRunIds, onClose, onOpenRun, onOpenTour, onOpenWall }: HangarProps) {
+export function Hangar({ open, runs, currentRunId, sealedRuns, loadedRunId, loadedResultId, onClose, onOpenRun, onOpenTour, onOpenWall }: HangarProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   const prevFocusRef = useRef<HTMLElement | null>(null)
 
@@ -115,7 +115,7 @@ export function Hangar({ open, runs, currentRunId, sealedRuns, loadedRunId, load
                 entry={entry}
                 current={entry.id === currentRunId}
                 sealStatus={effectiveSealStatus(sealFor(sealedRuns, entry.id), loadedRunId, loadedResultId)}
-                hasTour={tourRunIds.includes(entry.id)}
+                tourTitle={tourTitle(entry.id)}
                 onOpenRun={onOpenRun}
                 onOpenTour={onOpenTour}
               />
@@ -147,8 +147,8 @@ export function Hangar({ open, runs, currentRunId, sealedRuns, loadedRunId, load
   )
 }
 
-function HangarCard({ entry, current, sealStatus, hasTour, onOpenRun, onOpenTour }: {
-  entry: RunEntry; current: boolean; sealStatus: SealStatus; hasTour: boolean
+function HangarCard({ entry, current, sealStatus, tourTitle, onOpenRun, onOpenTour }: {
+  entry: RunEntry; current: boolean; sealStatus: SealStatus; tourTitle: string | undefined
   onOpenRun: (id: string) => void; onOpenTour: (id: string) => void
 }) {
   const verdict = cardVerdict(entry.id, sealStatus)
@@ -198,11 +198,12 @@ function HangarCard({ entry, current, sealStatus, hasTour, onOpenRun, onOpenTour
         <p className="hangar-supersedes">supersedes {entry.supersedesPlanId}</p>
       )}
 
-      {/* ACTIONS — tour is the primary action where an authored tour exists; else open the run. */}
+      {/* ACTIONS — tour is the primary action where an authored tour exists (the chip names the lens it
+          launches, sourced from the tour's own title); else open the run. */}
       <footer className="hangar-card-actions">
-        {hasTour ? (
+        {tourTitle !== undefined ? (
           <>
-            <button className="hangar-primary" onClick={() => onOpenTour(entry.id)}>▶ tour</button>
+            <button className="hangar-primary" onClick={() => onOpenTour(entry.id)}>▶ {tourTitle}</button>
             <button className="hangar-secondary" onClick={() => onOpenRun(entry.id)}>open run</button>
           </>
         ) : (

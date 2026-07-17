@@ -27,6 +27,7 @@ export class ByteReader {
   u16(): number { this.need(2); const v = this.view.getUint16(this.off, true); this.off += 2; return v }
   u32(): number { this.need(4); const v = this.view.getUint32(this.off, true); this.off += 4; return v }
   u64(): bigint { this.need(8); const v = this.view.getBigUint64(this.off, true); this.off += 8; return v }
+  i64(): bigint { this.need(8); const v = this.view.getBigInt64(this.off, true); this.off += 8; return v }
   f64(): number { this.need(8); const v = this.view.getFloat64(this.off, true); this.off += 8; return v }
   bytes(n: number): Uint8Array { this.need(n); const v = this.buf.subarray(this.off, this.off + n); this.off += n; return v }
   utf8(): string {

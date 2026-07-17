@@ -130,6 +130,16 @@ export function hasTour(runId: string): boolean {
   return Object.hasOwn(TOURS, runId)
 }
 
+// The lens title of this run's authored tour, or undefined if it has none — the OWN-property lookup idiom
+// (Object.hasOwn), the same shape as hasTour and hangar.ts cardNote. The Hangar's tour chip consumes THIS (the
+// tour's own byte-pinned title — no duplicated strings) to name the lens it launches. runId comes from the
+// UNSIGNED runs/index.json, so a plain bracket read would resolve an INHERITED member (TOURS['__proto__'] is
+// Object.prototype, TOURS['toString'] a function) into a truthy "tour" the chip would then try to render as its
+// label — and the Hangar sits OUTSIDE the run ErrorBoundary, so that must never reach a render.
+export function tourTitle(runId: string): string | undefined {
+  return Object.hasOwn(TOURS, runId) ? TOURS[runId]!.title : undefined
+}
+
 // ── THE ONE TOUR-ADMISSION PREDICATE ────────────────────────────────────────────────────────────────
 // A tour may start iff ALL of:
 //   • a model is resident (hasModel), and

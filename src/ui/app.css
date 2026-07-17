@@ -97,6 +97,10 @@ header h1 { margin: 0; text-transform: uppercase; color: var(--text-dim); white-
 .identity-plate { font-variant-numeric: tabular-nums; } /* the data-true key rides in tabular figures */
 .sensing-strip { margin-top: 0.6rem; border-top: 1px solid var(--border); padding-top: 0.5rem; }
 .sensing-strip h3 { margin: 0 0 0.4rem; font-size: var(--fs-label); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+/* The pre-first-verdict state: the playhead sits before this run's first reading. The NOT-YET voice (the
+   dim, no-verdict future-fact register — var(--text-dim) IS the notYet mark's hue token), framed like the
+   strip so the aside never goes blank. No verdict mark, no bloom — it fills in when the playhead arrives. */
+.sensing-pending { margin-top: 0.6rem; border-top: 1px solid var(--border); padding-top: 0.5rem; font-size: var(--fs-label); color: var(--text-dim); letter-spacing: 0.02em; line-height: 1.4; }
 .gate-strip { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .gate-strip td { padding: 1px 0.4rem 1px 0; vertical-align: baseline; }
 .gate-label { font-variant-caps: all-small-caps; letter-spacing: 0.06em; color: var(--text-primary); }
@@ -132,6 +136,13 @@ header h1 { margin: 0; text-transform: uppercase; color: var(--text-dim); white-
 /* Det-only confident voice: a recomputed hash with no manifest to pin it is self-verified, not unknown —
    this faint sub-line says WHY the row is pending instead of leaving a lonely marker to read as failure. */
 .prov-note { display: block; font-family: var(--type-family); font-size: var(--fs-label); color: var(--text-faint); letter-spacing: 0.01em; margin-top: 1px; }
+/* THE QUALITY REGISTER caveat treatment: a provenance-QUALITY fact (a dirty build tree today; the comms
+   link-quality states later) voices as the • attested mark + a caveat note. The note lifts from the faint
+   default to a readable "notice this" weight and gains a hairline left-rule, so a caveat is NOTICED without
+   alarm — a legibility cue, NOT a hue (both tokens are neutral text greys, no chromatic signal). Hue-free:
+   a future caution hue opts in HERE by adding a colour to this one rule, no consumer touched. Deliberately
+   NOT the integrity red — a quality fact is not a byte-verification failure. */
+.prov-note.caveat { color: var(--text-primary); border-left: 2px solid var(--text-dim); padding-left: 6px; }
 .provenance tr.verified td.prov-glyph { color: var(--verified); }
 .provenance tr.mismatch td.prov-glyph { color: var(--mismatch); }
 .provenance tr.pending td.prov-glyph { color: var(--pending); }
@@ -356,17 +367,80 @@ button.active { border-color: var(--accent); color: var(--accent); }
 /* Certification Wall header entry: the persistent front door to the byte-verification wall + tamper demo.
    Same chrome register as the hangar entry beside it (dim steel at rest, lifting to the transport accent on
    hover/focus) — one quiet header control, never a marketing shout. */
-.wall-open { border-color: var(--border-bright); color: var(--text-dim); letter-spacing: 0.04em; }
+.wall-open { border-color: var(--border-bright); color: var(--text-dim); letter-spacing: 0.04em; white-space: nowrap; }
 .wall-open:hover, .wall-open:focus-visible { border-color: var(--accent); color: var(--accent); }
-/* Label condense: the full "certification wall" at desktop widths, the compact "wall" at ≤1080px so the
-   always-on entry never pushes a tour-bearing header past the viewport (the ≤1080px narrow band, where the
-   panel-toggles also appear). The hidden span is display:none — excluded from the accessible name — so the
-   button reads "certification wall" wide and "wall" narrow, always exactly the visible text. */
-.wall-open-short { display: none; }
-@media (max-width: 1080px) {
-  .wall-open-full { display: none; }
-  .wall-open-short { display: inline; }
+/* The wall CTA's label condenses "certification wall" → "wall" through the header ladder's tier model
+   (headerModel.ts / App.tsx), not a CSS two-span display swap. The button text IS the accessible name at
+   both weights; the CTA never folds into the `⋯` overflow — only its label shrinks. (The v0.8.1 narrow-
+   width span-swap stopgap is superseded by the systematic ladder below.) */
+
+/* ── THE HEADER LADDER (v0.9) — the priority-condensation chrome. Two disclosures share one grammar: the
+   `run ▾` run picker (the switcher's narrow-width form) and the `⋯` overflow (the folded low-priority
+   chrome). Both wear the app's overlay register — bgPanel / border-bright / one soft shadow — anchored
+   beneath their trigger. DOM only, no frame path. The tier that decides WHICH form renders lives in the
+   JS model (headerModel.ts); this only styles the forms. ──────────────────────────────────────────── */
+.header-menu { position: relative; display: inline-flex; }
+/* The trigger wears the same quiet chrome register as the hangar/wall/copy entries — dim steel at rest,
+   lifting to the transport accent on hover/focus/open. white-space:nowrap keeps `run ▾` / `⋯` on one line. */
+.header-menu-trigger { border-color: var(--border-bright); color: var(--text-dim); letter-spacing: 0.04em; white-space: nowrap; }
+.header-menu-trigger:hover, .header-menu-trigger:focus-visible, .header-menu-trigger[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
+/* The popup: anchored under the trigger, in the modal panel idiom (bgPanel / border-bright / soft shadow).
+   z-index 49 floats it over the stage + tour caption (46) + thesis card (47) but under the help/hangar/wall
+   modals (50). CAVEAT: at ≤1080px the header is itself a stacking context (position:relative + z-index:45),
+   so this 49 is LOCAL to the header and the root-level thesis card (fixed, z-47) would paint over it. The
+   `header:has(.header-menu-popup)` rule below lifts the whole header context above the card while a
+   disclosure is open, so the popup wins — the app layers overlays by z-index (no portal idiom in this
+   codebase), so raising the header's own context is the house-matching fix. max-width clamps the popup to
+   the viewport. ANCHOR-AWARE WIDTH: box-sizing:border-box makes max-width cap the BORDER box (padding +
+   border included, not just content), and the cap is `min(24rem, 100vw - 4rem)`. The left-anchored PICKER's
+   own left offset varies wildly by tier — ~30px at the phone floor (the mark-only wordmark) but ~400px at
+   the condensed tier (the full wordmark) — so no single viewport-relative term covers both: the fixed 24rem
+   cap keeps a hostile-id popup within the viewport at the large-offset condensed tier (400 + 384 < the
+   961px floor), and `100vw - 4rem` clamps it on a narrow phone (a small offset there), `min()` taking
+   whichever is tighter. The right-anchored ⋯ popup carries only fixed short labels, so the cap never binds
+   it. Item containment (below) guarantees the border box never EXCEEDS this cap regardless of id length. */
+.header-menu-popup {
+  position: absolute; top: calc(100% + 0.3rem); left: 0; z-index: 49; box-sizing: border-box;
+  display: flex; flex-direction: column; gap: 0.15rem; min-width: 9rem; max-width: min(24rem, calc(100vw - 4rem)); padding: 0.35rem;
+  background: var(--bg-panel); border: 1px solid var(--border-bright); border-radius: 6px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); animation: rise var(--dur-base) var(--ease-out);
 }
+/* The ⋯ overflow is a RIGHT-side control (right-anchored via help's margin-left:auto neighbours): a
+   left-anchored popup would open rightward off a phone viewport (a fresh deep link with the tour nudge
+   still present pushes the trigger far enough right that a left-anchored 9rem popup reaches ~375px and
+   overflows 360). Right-anchor its popup to the trigger so it opens INTO the viewport, never past the edge.
+   The run picker sits at the left and keeps its natural left anchor. */
+.header-overflow .header-menu-popup { left: auto; right: 0; }
+/* While a header disclosure is open, lift the whole header into its own stacking layer ABOVE the cold-open
+   thesis card (z-47) but BELOW the help/hangar/wall modals (z-50), so the open popup is never painted under
+   the card. Keyed on `:has(.header-menu-popup)` — the header carries an open popup ONLY while a disclosure
+   is open — so the raise tracks the popup's DOM presence directly and lands in the SAME frame the popup
+   mounts (no state hop that could leave the popup one frame under the card). The `:has` selector's
+   specificity beats the ≤1080px `header { z-index: 45 }` element rule; position:relative is restated so the
+   raise holds at any width. The resting header (no popup) never sits above the stage overlays. */
+header:has(.header-menu-popup) { position: relative; z-index: 49; }
+/* Menu items: full-width, left-aligned, quiet at rest and lifting to the elevated tone on hover/focus.
+   The current run wears the accent border+text (the nav's .active voice, carried into the picker). */
+/* Item CONTAINMENT: a run id comes from the unsigned runs/index.json, so a hostile long id must never
+   extend the item's box (horizontal scroll + unreachable choices). box-sizing + min-width:0 let the flex
+   item shrink to the capped popup width instead of forcing it wider, and overflow:hidden + text-overflow
+   ellipsize the visual text — the FULL id stays the button's accessible name (its DOM text is untouched)
+   and its title tooltip carries the run title. The class fix lives on the component, so the ⋯ menu's
+   fixed-label items are contained too (symmetry; they simply never trigger the ellipsis). */
+.header-menu-item { box-sizing: border-box; width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; text-align: left; white-space: nowrap; border-color: transparent; background: transparent; color: var(--text-primary); letter-spacing: 0.02em; }
+.header-menu-item:hover, .header-menu-item:focus-visible { border-color: var(--border-bright); background: var(--bg-elevated); }
+.header-menu-item.active { border-color: var(--accent); color: var(--accent); }
+/* The `⋯` overflow trigger reads as a compact icon; the run picker keeps its word-width. */
+.header-overflow .header-menu-trigger { min-width: 2rem; text-align: center; }
+/* Copy-link's condensed (icon) form — the ⧉/✓ glyph in the same chrome register as the label form,
+   sized as a compact icon button. Its accessible name stays "copy link" (an aria-label in the JSX). */
+.header-copy-icon { min-width: 2rem; text-align: center; }
+/* THE PHONE FLOOR (the mobile tier, ≤640px). App stamps `header-mobile` from the ladder model; the
+   panel-toggles have already folded into the `⋯` menu at this tier (headerModel.ts), so the row is the
+   picker + the two brand CTAs + `⋯` + help. Tighten the gap and the button padding so those fit a 360px
+   viewport with margin — a tighter spacing at the floor, still the same one row. */
+.header-mobile { gap: 0.3rem; padding-left: 0.5rem; padding-right: 0.5rem; }
+.header-mobile button { padding-left: 7px; padding-right: 7px; }
 .hangar-backdrop { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(5, 8, 12, 0.6); z-index: 50; animation: fade-in var(--dur-base) var(--ease-out); }
 .hangar-panel {
   display: flex; flex-direction: column; gap: 1rem;

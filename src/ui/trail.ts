@@ -40,7 +40,13 @@ export const TRAIL_FADE_TICKS = 24
 // first known position, so positions[k] for k < first is a fabricated hold, not a real presence. camera.heldSubjectPose
 // reads `first` to return NULL before first appearance (suppress the directed beat) while treating every k ≥ first
 // as the subject's last-present pose (the hold-fill IS the amortized backward scan, precomputed here at load).
-export interface Trail { positions: Float32Array; index: Float32Array; count: number; first: number }
+// `heading` is the per-frame decoded heading (radians), vertex-aligned with `positions` (heading[f] is state
+// frame f's Entity.headingRad). It carries the yaw the oriented delta silhouette flies (droneDelta.ts): the
+// f2a sensing head reads heading[evaluatedFrame] to rotate its delta by makeRotationY(heading), the SAME
+// already-decoded scalar the interactive entity reads straight off the state frame. Held across absent ticks
+// and back-filled pre-spawn exactly like `positions`, so vertex f always carries frame f's heading. Empty
+// (length 0) for an empty trail, in lockstep with `positions`.
+export interface Trail { positions: Float32Array; index: Float32Array; heading: Float32Array; count: number; first: number }
 
 const scratch: [number, number, number] = [0, 0, 0]
 // Collapse signed zero (entityPosition maps y=-D, so D=0 → -0) to +0 — harmless in rendering but a
@@ -59,11 +65,14 @@ const norm0 = (v: number): number => (v === 0 ? 0 : v)
 export function buildTrail(source: BoundsSource, subjectKey?: string): Trail {
   const keys = source.entityKeys()
   const n = source.tickCount + 1
-  const empty: Trail = { positions: new Float32Array(0), index: new Float32Array(0), count: 0, first: -1 }
+  const empty: Trail = { positions: new Float32Array(0), index: new Float32Array(0), heading: new Float32Array(0), count: 0, first: -1 }
   if (keys.length === 0 || n < 2) return empty
   const subject = subjectKey ?? keys[0]!
 
   const positions = new Float32Array(n * 3)
+  // Per-frame decoded heading (radians), vertex-aligned with positions — held/back-filled the same way so the
+  // oriented delta always flies the heading of the frame it rides (droneDelta.ts / the f2a head).
+  const heading = new Float32Array(n)
   let first = -1
   let minx = Infinity, miny = Infinity, minz = Infinity
   let maxx = -Infinity, maxy = -Infinity, maxz = -Infinity
@@ -77,18 +86,23 @@ export function buildTrail(source: BoundsSource, subjectKey?: string): Trail {
       if (scratch[1] < miny) miny = scratch[1]; if (scratch[1] > maxy) maxy = scratch[1]
       if (scratch[2] < minz) minz = scratch[2]; if (scratch[2] > maxz) maxz = scratch[2]
       positions[t * 3] = norm0(scratch[0]); positions[t * 3 + 1] = norm0(scratch[1]); positions[t * 3 + 2] = norm0(scratch[2])
+      heading[t] = e.headingRad
     } else if (t > 0) {
       // Absent AFTER spawn: hold the previous vertex (a degenerate, invisible zero-length segment) so
-      // vertex i stays aligned to tick i rather than snapping the line back to the origin.
+      // vertex i stays aligned to tick i rather than snapping the line back to the origin. Hold the previous
+      // heading too — the held delta keeps facing where it last did rather than snapping to 0.
       positions[t * 3] = positions[(t - 1) * 3]!; positions[t * 3 + 1] = positions[(t - 1) * 3 + 1]!; positions[t * 3 + 2] = positions[(t - 1) * 3 + 2]!
+      heading[t] = heading[t - 1]!
     }
     // (Absent pre-spawn ticks stay [0,0,0] here and are back-filled from the first position below.)
   }
   if (first < 0) return empty
   // Back-fill pre-spawn ticks with the FIRST known position so the trail's head starts at the spawn point
-  // instead of drawing a spurious segment from the world origin.
+  // instead of drawing a spurious segment from the world origin. Back-fill the FIRST heading too, so a
+  // pre-spawn delta faces the spawn heading rather than a default 0.
   for (let t = 0; t < first; t++) {
     positions[t * 3] = positions[first * 3]!; positions[t * 3 + 1] = positions[first * 3 + 1]!; positions[t * 3 + 2] = positions[first * 3 + 2]!
+    heading[t] = heading[first]!
   }
   const extent = Math.hypot(maxx - minx, maxy - miny, maxz - minz)
   if (extent < MIN_EXTENT) return empty
@@ -97,5 +111,5 @@ export function buildTrail(source: BoundsSource, subjectKey?: string): Trail {
   // behind the revealed head) to drive the head-relative alpha fade — no per-frame per-vertex work.
   const index = new Float32Array(n)
   for (let i = 0; i < n; i++) index[i] = i
-  return { positions, index, count: n, first }
+  return { positions, index, heading, count: n, first }
 }

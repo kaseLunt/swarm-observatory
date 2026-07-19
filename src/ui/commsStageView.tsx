@@ -45,7 +45,7 @@ const COMMS = new THREE.Color(hexToThree(CATEGORY.comms.hue))
 const DIM = new THREE.Color(hexToThree(PALETTE.textDim))
 
 // ── THE STAGE CHROMA HIERARCHY (chroma = hierarchy — the anchor out-ranks the scaffolding) ──────────────────
-// The hero-check §4 finding: at rest the loss anchor wore the SAME comms violet as the two PRESENTATIONAL pads,
+// THE CHROMA-RANK CONSTRAINT (chroma tracks evidentiary rank): at rest the loss anchor wore the SAME comms violet as the two PRESENTATIONAL pads,
 // so the ONE data-true conclusion read as a third station — and, worse, carried LESS chroma than the decorative
 // endpoints (the pads' full-chroma violet vs the anchor's dimmed ×0.6). The re-weight, TOKEN-ROUTED (LAW 2 — no
 // new hue, only an EXISTING token re-assigned): the two station pads RECEDE to the neutral textDim the link
@@ -82,7 +82,7 @@ const ANCHOR_R = 1.0
 
 // ── THE ANCHOR LABEL (SDF) — reuses the entity-plate infrastructure EXACTLY (troika crisp text) ─────────────
 // The decoded "t30 · LOSS" billboard the persistent anchor wears at rest, so the resting stage names the loss on
-// its own (the hero-check §4 highest-leverage win). Same drei <Text> (troika SDF) the ▸ ALFA entity plate uses:
+// its own (the resting-legibility win — the loss is named at rest, before any scrub). Same drei <Text> (troika SDF) the ▸ ALFA entity plate uses:
 // a SUB-BLOOM neutral fill, a bgVoid outline halo for legibility, fontSize 0.5. LAW 2 / identity-is-typographic:
 // the label carries NO chroma (the ANCHOR MESH carries the comms hue); the text is the neutral primary voice.
 const LABEL_LIFT = ANCHOR_R + 0.8 // sit the label just above the octahedron's top vertex (+ANCHOR_R), clear of it
@@ -264,7 +264,7 @@ export function CommsStage({ data, maxTick }: { data: CommsData; maxTick: number
   // Motion + visibility are pure functions of these in the shader. The persistent ANCHOR (octahedron + label) stays
   // reveal-clock driven: revealed once the drop's tick is written and holding thereafter (constitution §4), the
   // whole group toggled here from dropRevealAt (exactly as the anchor did before). The label BILLBOARDS toward the
-  // camera EXACTLY as the entity plate does — a single zero-alloc quaternion copy, §8-clean (no allocation, no
+  // camera EXACTLY as the entity plate does — a single zero-alloc quaternion copy (no allocation, no
   // React, no compile), and ONLY while revealed; its string + colours are static (built once at React render /
   // module scope), never recomputed per frame.
   useFrame((state, delta) => {
@@ -286,7 +286,7 @@ export function CommsStage({ data, maxTick }: { data: CommsData; maxTick: number
   return (
     <group>
       {/* THE TWO STATION PADS — presentational placement (PADS, not decoded drone poses); RECEDED to the neutral
-          grey scaffold (was the comms violet), so the data-true anchor out-ranks them in chroma (hero-check §4). */}
+          grey scaffold (was the comms violet), so the data-true anchor out-ranks them in chroma. */}
       <mesh position={t3(COMMS_PAD_SRC)} renderOrder={2}>
         <octahedronGeometry args={[PAD_R]} />
         <meshBasicMaterial color={PAD_SCAFFOLD} wireframe transparent opacity={PAD_OPACITY} toneMapped={false} fog={false} />

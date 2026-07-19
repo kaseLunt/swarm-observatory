@@ -19,6 +19,7 @@ import { identityPlate, compactPlate } from './identityPlate'
 import { isTourActive } from '../tour/interrupt'
 import { RadialGrid } from './RadialGrid'
 import { buildTrail, type Trail } from './trail'
+import { deltaGeometry } from './droneDelta'
 import {
   focusRequest, trailFrameRequest, trailHold, orbitDragging, tourStartFrameRequest,
   requestEstablishFrame, requestRefitFrame, requestFinaleFrame, cancelEstablishFrame, shouldRefitOnFinaleClear,
@@ -164,8 +165,8 @@ const subjectLerpScratch = new THREE.Vector3()
 // Absent-slot park. `keys` is the entity set at the run's FIRST POPULATED tick; under late-spawn
 // semantics an entity in that set can be ABSENT at the current tick (before it spawns). Skipping such a slot
 // (the old `if (!a) continue`) would leave Three's DEFAULT IDENTITY matrix in the instanced slot — a false
-// unit cone at the origin WITH a live (invisible) hit target, since the hit mesh gets its own per-instance
-// setMatrixAt (no wholesale buffer copy). Parking the slot with a zero-scale matrix collapses the cone to a
+// unit delta at the origin WITH a live (invisible) hit target, since the hit mesh gets its own per-instance
+// setMatrixAt (no wholesale buffer copy). Parking the slot with a zero-scale matrix collapses the delta to a
 // degenerate point (nothing rasterised, nothing raycastable). Composed ONCE at module load → zero per-frame
 // allocation; the absent branch writes it to BOTH the visible and the hit mesh.
 const PARKED = new THREE.Matrix4().makeScale(0, 0, 0)
@@ -180,7 +181,7 @@ export const SELECTION_COLORS = { selected: PALETTE.accent, dimmed: '#141d27', n
 const SELECTED = new THREE.Color(SELECTION_COLORS.selected).multiplyScalar(2.2)
 const DIMMED = new THREE.Color(SELECTION_COLORS.dimmed)
 const NEUTRAL = new THREE.Color(SELECTION_COLORS.neutral).multiplyScalar(0.55)
-// Hover emissive lift: a hovered, non-selected cone brightens to read as interactive.
+// Hover emissive lift: a hovered, non-selected delta brightens to read as interactive.
 // InstancedMesh has no per-instance emissive, so — exactly like SELECTED — the "lift" is an HDR-ish
 // instance colour: the accent well above NEUTRAL (×0.55) yet below SELECTED (×2.2). Module scope so the
 // hover repaint (event-driven, never per frame) allocates nothing. Derived ONCE at load.
@@ -200,13 +201,32 @@ const FINALE_HEAD = new THREE.Color(SELECTION_COLORS.neutral).multiplyScalar(1.7
 const PULSE_TRUE = hexToThree(PALETTE.verdictAffirm)
 const PULSE_FALSE = hexToThree(PALETTE.verdictNegate)
 
-// Resting cone emissive: a self-lit deep-blue floor so an unselected cone reads as a solid
+// Resting delta emissive: a self-lit deep-blue floor so an unselected drone delta reads as a solid
 // object against the darkened vignette rather than a flat silhouette. A documented literal (like
 // SELECTION_COLORS.dimmed) — it is a material tone, not a palette token consumed anywhere else.
-const CONE_EMISSIVE = '#12263a'
+const DELTA_EMISSIVE = '#12263a'
+// The shared entity silhouette — the oriented drone delta (droneDelta.ts), built ONCE at module load and
+// shared across the InstancedMesh (ONE draw call for all N, exactly as the old shared coneGeometry). A flat
+// arrowhead lying in the deck plane; the per-instance matrix rotates it by makeRotationY(headingRad) — yaw
+// only — so the nose flies the decoded heading. The enlarged hit proxy is the same delta at ~2.25× footprint
+// (the old visible:hit cone-radius ratio), sized to the delta rather than a private bounds shape.
+const ENTITY_DELTA_R = 0.6
+// The geometries are NAMED so the (headless, WebGL-free) smoke scene-latch can find the entity marker by name
+// (a plain BufferGeometry has no `.type`/`.parameters` discriminator the way ConeGeometry did): 'entityDelta' is
+// the visible marker, 'entityDeltaHit' the enlarged interaction proxy.
+const entityDeltaGeometry = deltaGeometry(ENTITY_DELTA_R)
+entityDeltaGeometry.name = 'entityDelta'
+// The enlarged INVISIBLE interaction proxy — a simple bounds shape (the migration sanctions this), NOT the flat
+// delta. It deliberately keeps the VERTICAL extent the visible flat delta sheds: at the wide establishing shot
+// the camera grazes the ground plane, and a ray to a paper-thin marker's centre slips past it — the exact
+// far-corridor click the raycast smoke test guards. A squat cone (the proven pre-delta hit envelope) gives the
+// centre-click a solid body to land on at every camera angle. Invisible (colorWrite/depthWrite off), so its
+// shape is never seen — only raycast.
+const hitGeometry = new THREE.ConeGeometry(0.9, 1.8, 6)
+hitGeometry.name = 'entityDeltaHit'
 // Additive ground-ring under the SELECTED entity: the accent scaled >1.0 so it clears
 // Bloom's luminance threshold and glows — this is the deliberate, data-bound source that gives the
-// selected cone its halo (visible only while a selection exists; tracked in the frame loop).
+// selected delta its halo (visible only while a selection exists; tracked in the frame loop).
 const RING_COLOR = new THREE.Color(PALETTE.accent).multiplyScalar(2.4)
 // Unselected mid-run tracking-ring SCALE (design rulings — FLOOR + DISTANCE-TRUE). The selRing mesh
 // (outer radius 0.92u) reads correctly at the selection/finale CLOSE-UP (~11.4-25u), but the mid-run tracking
@@ -297,10 +317,10 @@ const OCCLUDER_THREE = { center: nedToThree(OCCLUDER_C), radius: Math.sqrt(OCCLU
 function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, observerFraming, corridorBounds, craneFraming, hasSensing, subjectIndex }: { model: RunModel; trail: Trail; bounds: Bounds | null; stageBounds: Bounds | null; stageOpts: FrameOpts; finaleBounds: Bounds | null; observerFraming: Framing | null; corridorBounds: Bounds | null; craneFraming: Framing | null; hasSensing: boolean; subjectIndex: number }) {
   const meshRef = useRef<THREE.InstancedMesh>(null)
   // Enlarged invisible hit target (Task v04-7): shares the visible mesh's per-instance matrices (written
-  // alongside it in the frame loop) and owns ALL cone interaction — click-to-select + hover-lift.
+  // alongside it in the frame loop) and owns ALL entity interaction — click-to-select + hover-lift.
   const hitRef = useRef<THREE.InstancedMesh>(null)
   // Hovered instance index (or null) — a plain ref: hover is a pointer event, never a frame read, and it
-  // must not trigger a render. Consumed by paintColors to lift the hovered, non-selected cone's colour.
+  // must not trigger a render. Consumed by paintColors to lift the hovered, non-selected delta's colour.
   const hoveredRef = useRef<number | null>(null)
   const pulseRef = useRef<THREE.Mesh>(null)
   // ONE SDF label at the selected entity. Its group position is written in the frame loop below from
@@ -308,7 +328,7 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
   // TEXT CONTENT (the entity key) is the only thing that needs React: a selection is a click, not a
   // frame event, so a re-render on selectedEntity change is cheap and never touches the frame path.
   const labelRef = useRef<THREE.Group>(null)
-  // Additive ground-ring under the selected cone. Positioned + shown/hidden in the frame loop from the
+  // Additive ground-ring under the selected delta. Positioned + shown/hidden in the frame loop from the
   // same interpolated scratch position the label uses (zero extra allocation, no new subscription).
   const selRingRef = useRef<THREE.Mesh>(null)
   const selected = useViewStore(s => s.selectedEntity)
@@ -444,11 +464,11 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
     for (let i = 0; i < keys.length; i++) {
       const k = keys[i]!
       // Selection lensing WINS (SELECTED / DIMMED). With nothing selected, a natural-end finale celebrates the
-      // resting head — the SUBJECT cone (subjectIndex; the sensing subject on an f2a-shape run, index 0 otherwise)
+      // resting head — the SUBJECT delta (subjectIndex; the sensing subject on an f2a-shape run, index 0 otherwise)
       // — with an HDR tone that clears the bloom threshold; otherwise NEUTRAL. (the celebrated head is the
       // entity the evidence concerns, not a hardcoded slot 0.)
       let color = sel !== null ? (k === sel ? SELECTED : DIMMED) : (finale && i === subjectIndex ? FINALE_HEAD : NEUTRAL)
-      // Hover lifts an interactive non-selected cone; it never dims the already-glowing selected cone OR the
+      // Hover lifts an interactive non-selected delta; it never dims the already-glowing selected delta OR the
       // celebrated finale head (both are brighter than HOVERED, so a hover-lift there would read as a dim).
       if (hov === i && k !== sel && !(sel === null && finale && i === subjectIndex)) color = HOVERED
       mesh.setColorAt(i, color)
@@ -473,12 +493,12 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
     // sanctioned pause-then-click window where the tracking ring must stay visible so the sub-pixel subject is
     // discoverable. Cold rest (tick 0) and the natural-end rest (tick === tickCount, finale-owned) are excluded.
     const pausedMidRun = !playing && tick > 0 && tick < model.tickCount
-    // f2a PARITY: for a sensing run the interactive drone — the cone, its enlarged raycast
+    // f2a PARITY: for a sensing run the interactive drone — the delta, its enlarged raycast
     // hit target, the SDF label, the ground ring, and the follow/focus camera targets — must ride the SAME
     // evaluated state frame the SensingStage head paints. A tick-k eligibility verdict was decided against
     // frame (k + TARGET_FRAME_OFFSET)'s pose (the excerpt's g = frame k+1), and the head rides that frame;
-    // without the offset the paused-tick cone sits one 2-m north step BEHIND it (frame k vs k+1) — two poses
-    // of one drone, and the raycast cone hit-tests the stale one. We thread the offset through the SHARED
+    // without the offset the paused-tick delta sits one 2-m north step BEHIND it (frame k vs k+1) — two poses
+    // of one drone, and the raycast delta hit-tests the stale one. We thread the offset through the SHARED
     // frame map (evaluatedFrame) rather than fork a second pose, so the two stay coincident at every paused
     // tick and the playback lerp shifts by the same constant frame (motion stays continuous — no jump at the
     // play/pause boundary). Non-sensing runs pass offset 0 ⇒ t0 === Math.min(tick, tickCount) byte-for-byte
@@ -494,13 +514,13 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
     const s1 = model.entityStatesAt(entitiesCursor.t1)
     const mesh = meshRef.current
     if (!mesh) return
-    // The invisible hit mesh mirrors the visible cones' transforms so its enlarged raycast target tracks
+    // The invisible hit mesh mirrors the visible deltas' transforms so its enlarged raycast target tracks
     // them exactly. A second setMatrixAt per instance — no allocation, and the counts are tiny (f1 = 1).
     const hit = hitRef.current
     const label = labelRef.current
     let labelPlaced = false
     let ringPlaced = false
-    // Running swarm centroid accumulated from the SAME interpolated positions the cones render at
+    // Running swarm centroid accumulated from the SAME interpolated positions the deltas render at
     // (zero extra allocation — plain number accumulators). Consumed by the auto-follow block below.
     let cx = 0, cy = 0, cz = 0, count = 0
     // The SUBJECT's own interpolated pose this frame (the i===subjectIndex sample the loop already computes),
@@ -512,7 +532,7 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
       const k = keys[i]!
       const a = s0.get(k)
       // Absent at this tick (late-spawn entity pre-spawn): park the slot invisibly on BOTH meshes rather
-      // than skip it — a skipped slot keeps Three's identity matrix and renders a false unit cone at the
+      // than skip it — a skipped slot keeps Three's identity matrix and renders a false unit delta at the
       // origin with a live hit target. Zero-scale PARKED matrix (module scope) → nothing drawn, nothing hit.
       if (!a) { mesh.setMatrixAt(i, PARKED); hit?.setMatrixAt(i, PARKED); continue }
       const b = s1.get(k) ?? a
@@ -520,16 +540,22 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
       entityPosition(scratchB, b, i)
       lerp3(scratchP, scratchA, scratchB, fraction)
       cx += scratchP[0]; cy += scratchP[1]; cz += scratchP[2]; count++
-      // Capture the SUBJECT cone's interpolated pose (subjectIndex is the sensing subject on an f2a-shape
+      // Capture the SUBJECT delta's interpolated pose (subjectIndex is the sensing subject on an f2a-shape
       // run, index 0 otherwise) so the directed camera can anchor on it. On a sensing run the sensing gate guarantees
       // subjectIndex names a real, resolvable subject; the useSubjectAnchor gate below only trusts it when hasSensing.
       if (i === subjectIndex) { sx = scratchP[0]; sy = scratchP[1]; sz = scratchP[2]; subjectSeen = true }
-      scratchMat.makeRotationY(-(a.headingRad))
+      // Yaw the delta by the decoded heading — makeRotationY(headingRad), the vertical axis ONLY (no pitch/roll:
+      // the bundle carries no attitude). The nose rests on local +Z, and makeRotationY(h)·(+Z) = (sin h, cos h),
+      // which is the decoded three-space velocity direction (vel_NED = speed·(cos h, sin h) through nedToThree's
+      // [e,−d,n] basis) — so the nose LEADS the motion. The old geometry rotated by −headingRad, which points the
+      // nose at the MIRROR (−sin h, cos h) — a wrong sign the axially-symmetric cone hid; the delta exposes it and
+      // droneDelta.test.ts's nose-leads-motion pin (f1's non-zero-heading straight segment) is the net.
+      scratchMat.makeRotationY(a.headingRad)
       scratchMat.setPosition(scratchP[0], scratchP[1], scratchP[2])
       mesh.setMatrixAt(i, scratchMat)
       hit?.setMatrixAt(i, scratchMat)
-      // SDF label rides the selected cone: reuse its just-computed interpolated position (scratchP),
-      // lift it ~1.2u above the cone tip. Zero allocation — mutates the group's own vector in place.
+      // SDF label rides the selected delta: reuse its just-computed interpolated position (scratchP),
+      // lift it ~1.2u above the delta. Zero allocation — mutates the group's own vector in place.
       // Manual billboarding (in-place quaternion copy) replaces drei's <Billboard>, which registered
       // its OWN useFrame (rotation.clone() every frame, even while the label was invisible).
       // Only runs on the branch where the label is actually placed, so an
@@ -540,8 +566,8 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
           label.quaternion.copy(state.camera.quaternion)
           labelPlaced = true
         }
-        // Ground-ring reticle: pin to the deck (y≈0.02, just above the grid plane) under the cone —
-        // an accent target pad, not a halo around the cone body. Reuses scratchP (x,z) — zero alloc.
+        // Ground-ring reticle: pin to the deck (y≈0.02, just above the grid plane) under the delta —
+        // an accent target pad, not a halo around the delta body. Reuses scratchP (x,z) — zero alloc.
         // Scale 1 INSTANTLY: selection is a user act, not a transition (no ease — a design ruling). Reset the
         // finale handoff scratch to the wide default (RING_TRACK_MIN_SCALE): this seed is LOAD-BEARING for the
         // one finale entry that has no preceding tracking frame — deselecting AT a selected
@@ -552,11 +578,11 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
         if (ring) { ring.position.set(scratchP[0], 0.02, scratchP[2]); ring.scale.setScalar(1); ring.visible = true; ringPlaced = true }
       } else if (finale && selectedEntity === null && i === subjectIndex) {
         // FINALE head ring (a design ruling): at a natural-end rest with NO selection, the celebrated
-        // head (the SUBJECT cone, subjectIndex — the entity the evidence concerns, index 0 for a non-sensing
+        // head (the SUBJECT delta, subjectIndex — the entity the evidence concerns, index 0 for a non-sensing
         // run) gets the SAME accent ground-ring the selection uses — the selRing lever,
         // its gate extended from selection-only to also cover the finale. NO label (the finale is a rest state,
         // not a selection). Selection lensing WINS: the `k === selectedEntity` branch above takes priority, so
-        // this only fires while nothing is selected. The cone's HDR tint is FINALE_HEAD via paintColors.
+        // this only fires while nothing is selected. The delta's HDR tint is FINALE_HEAD via paintColors.
         // A design ruling — RING-SCALE HANDOFF: ease finaleRingScale from the LIVE distance-true tracking scale
         // (seeded by the tracking arm on the last play frame — the seed rider, ~15 at the far natural-end distance, NOT
         // the constant floor) toward the close-up scale 1, in LOCKSTEP with the finale camera ease (same
@@ -572,7 +598,7 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
         // (else-if chain → priority selection > finale > mid-run-tracking). During unselected play (or a mid-run
         // PAUSE — a design ruling, the sanctioned pause-then-click discovery path) of a positioned, fittable run (f1) the
         // establishing shot frames the whole corridor, so the subject is sub-pixel; ride the SAME ground-ring at
-        // the live head (the SUBJECT cone, subjectIndex — index 0 for a non-sensing run) as an honest tracking
+        // the live head (the SUBJECT delta, subjectIndex — index 0 for a non-sensing run) as an honest tracking
         // marker — entity position is data. e0 (positionless → the
         // loop never runs) and f0 (null bounds) are excluded by the gate; a scrub off-frame is honest — the marker
         // sits where the entity IS (the +X bulge carries it off the right edge through ticks ~10-44).
@@ -639,7 +665,7 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
     }
 
     // Geometry-query pulse for this tick's kind-23 event — the POSITIONED ground-plane RIPPLE at the subject
-    // cone (flat rotation-x = -PI/2). If the subject is ABSENT this tick (late-spawn pre-spawn), HIDE rather
+    // delta (flat rotation-x = -PI/2). If the subject is ABSENT this tick (late-spawn pre-spawn), HIDE rather
     // than ripple at a stale/origin position (the sibling of the absent-slot park).
     //   POSITIONLESS runs (e0) no longer pulse here: the query stage (queryStageView) now WRITES THE WORLD as
     // the run plays — each probe's real geometry is the live cue (the head ray at full voice, its verdict
@@ -1043,16 +1069,16 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
         args={[undefined, undefined, keys.length]}
         frustumCulled={false}
       >
-        <coneGeometry args={[0.4, 1.2, 6]} />
-        <meshStandardMaterial color="#ffffff" emissive={CONE_EMISSIVE} />
+        <primitive object={entityDeltaGeometry} attach="geometry" dispose={null} />
+        <meshStandardMaterial color="#ffffff" emissive={DELTA_EMISSIVE} side={THREE.DoubleSide} />
       </instancedMesh>
-      {/* Enlarged INVISIBLE hit target (Task v04-7): an instanced cone ~2× the visible one, sharing the
-          per-instance matrices (written alongside the visible mesh in the frame loop). It owns ALL cone
-          interaction — click to select, hover to lift — so a small cone is easy to hit. colorWrite +
-          depthWrite off → it raycasts but paints nothing. ONLY this mesh carries handlers, so the visible
-          cone stays out of r3f's interaction raycast and no click/hover ever double-fires. onPointerMove
-          (not onPointerOver) keeps the hovered index current even when sliding between instances; repaint
-          only fires on an actual index change (hoveredRef guard) — zero churn while hovering one cone. */}
+      {/* Enlarged INVISIBLE hit target (Task v04-7): an instanced bounds cone ~2× the visible delta, sharing the
+          per-instance matrices (written alongside the visible mesh in the frame loop). It owns ALL entity
+          interaction — click to select, hover to lift — so a small, flat marker stays easy to hit at every
+          camera angle. colorWrite + depthWrite off → it raycasts but paints nothing. ONLY this mesh carries
+          handlers, so the visible delta stays out of r3f's interaction raycast and no click/hover ever
+          double-fires. onPointerMove (not onPointerOver) keeps the hovered index current even when sliding
+          between instances; repaint only fires on an actual index change (hoveredRef guard) — zero churn. */}
       <instancedMesh
         ref={hitRef}
         args={[undefined, undefined, keys.length]}
@@ -1061,14 +1087,14 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
         onPointerMove={(e) => { const idx = e.instanceId ?? null; if (hoveredRef.current !== idx) { hoveredRef.current = idx; paintColors() } }}
         onPointerOut={() => { if (hoveredRef.current !== null) { hoveredRef.current = null; paintColors() } }}
       >
-        <coneGeometry args={[0.9, 1.8, 6]} />
+        <primitive object={hitGeometry} attach="geometry" dispose={null} />
         <meshBasicMaterial colorWrite={false} depthWrite={false} />
       </instancedMesh>
       <mesh ref={pulseRef} visible={false} rotation-x={-Math.PI / 2}>
         <ringGeometry args={[0.9, 1, 48]} />
         <meshBasicMaterial transparent depthWrite={false} />
       </mesh>
-      {/* Selection ground-ring: additive HDR accent on the deck under the selected cone. depthWrite off +
+      {/* Selection ground-ring: additive HDR accent on the deck under the selected delta. depthWrite off +
           additive blend so it reads as emitted light; the HDR color (accent×2.4) is the bloom source that
           makes the selection glow. Placement/visibility driven entirely by the frame loop via selRingRef. */}
       <mesh ref={selRingRef} visible={false} rotation-x={-Math.PI / 2} renderOrder={1}>
@@ -1095,10 +1121,10 @@ function Entities({ model, trail, bounds, stageBounds, stageOpts, finaleBounds, 
 
 export function Scene({ model }: { model: RunModel }) {
   // HDR-correct bloom pipeline: the renderer's tone mapping is OFF (NoToneMapping) so the scene renders
-  // into the composer's buffer in un-clamped linear HDR (selected cone = accent×2.2, query pulse = ×1.8
+  // into the composer's buffer in un-clamped linear HDR (selected delta = accent×2.2, query pulse = ×1.8
   // stay >1.0). ACES is re-applied as the FINAL composer effect (see EffectComposer below) — Bloom then
   // sees the true HDR headroom and the whites still land warm/non-washed. Browser-verified: ACES on the
-  // renderer instead clamps every value to ≤1 BEFORE the composer, visibly starving the cone's glow.
+  // renderer instead clamps every value to ≤1 BEFORE the composer, visibly starving the delta's glow.
   // Unmount cleanup for the module-scoped orbitDragging flag (mirrors the focusRequest module-channel
   // convention: the flag lives outside React, so React has to be told explicitly to reset it). Without
   // this, a scene unmount mid-drag (e.g. a run-switch while the user is actively orbiting) means
@@ -1292,8 +1318,8 @@ export function Scene({ model }: { model: RunModel }) {
     >
       {import.meta.env.DEV && <Perf position="bottom-right" />}
       {/* Depth-cued atmosphere: linear fog 30 → 400 world units, coloured to the vignette centre so distant
-          cones melt into the backdrop instead of popping against it (distances unchanged from the
-          browser-verified far=400 that keeps f1's cone visible across tick 0 → 64; only the colour tracks
+          deltas melt into the backdrop instead of popping against it (distances unchanged from the
+          browser-verified far=400 that keeps f1's delta visible across tick 0 → 64; only the colour tracks
           the new vignette). No <color attach="background"> — the CSS vignette is the backdrop now. */}
       <fog attach="fog" args={[PALETTE.vignetteCenter, 30, 400]} />
       <ambientLight intensity={0.4} />
@@ -1334,7 +1360,7 @@ export function Scene({ model }: { model: RunModel }) {
         onStart={() => { orbitDragging.current = true }}
         onEnd={() => { orbitDragging.current = false }}
       />
-      {/* Data-bound glow, then tone map LAST. Only HDR pixels (selected cone accent×2.2, active query
+      {/* Data-bound glow, then tone map LAST. Only HDR pixels (selected delta accent×2.2, active query
           pulse ×1.8) clear the luminance threshold and bloom — the glow is earned by selection/query
           state, not decoration. ToneMapping (ACES) runs after Bloom so it compresses the bloomed HDR
           image for display; ordering decided by browser evidence. */}
@@ -1343,7 +1369,7 @@ export function Scene({ model }: { model: RunModel }) {
           manual dispose is needed. If the Canvas ever persists across runs, add explicit cleanup. */}
       <EffectComposer>
         {/* Retuned for perceptible presence: threshold 0.4 lets the selection ground-ring
-            (accent×2.4) and selected cone (accent×2.2) clear it and glow; intensity 1.0 gives a visible
+            (accent×2.4) and selected delta (accent×2.2) clear it and glow; intensity 1.0 gives a visible
             halo without washing the frame. ACES stays LAST so it compresses the bloomed HDR for display. */}
         <Bloom intensity={1.0} luminanceThreshold={BLOOM_LUMINANCE_THRESHOLD} luminanceSmoothing={0.2} mipmapBlur />
         <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />

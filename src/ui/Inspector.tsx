@@ -101,11 +101,13 @@ export function Inspector({ model, open = false, tourActive = false }: { model: 
     (n: number) => { useViewStore.getState().select(model.subjectOf(n) ?? sel, n); syncUrl(true) },
     [model, sel],
   )
-  // Empty-state voice, THREE-way (v0.6 — honest empty state, constitution LAW 4):
-  //   • positioned run (f0/f1/f2a/f3a) → a cone IS on the stage → "click the cone, or the timeline".
-  //   • positionless WITH a query stage (e0) → no cone, but the timeline drives the stage → "click the timeline".
-  //   • positionless with NO stage lens (f4 — its event kinds carry no kind-23 draws, so the stage stays a
-  //     grid) → must NOT invite a click on geometry that isn't there; name the real surfaces instead.
+  // Empty-state voice, THREE-way — the branch chosen when NO strip owns the aside (the guard below already
+  // peeled the sensing/comms/belief runs off to their live strips) AND nothing is selected (constitution LAW 4):
+  //   • positioned run (f0/f1) → a drone IS on the stage → "click the drone, or the timeline".
+  //   • positionless WITH a query stage (e0) → no drone, but the timeline drives the stage → "click the timeline".
+  //   • positionless with NO stage lens → must NOT invite a click on geometry that isn't there; name the real
+  //     surfaces instead. UNREACHED by the shipped catalog at HEAD: e0 satisfies the query lens and f4 the comms
+  //     lens (hasComms), so both positionless runs clear this branch — reserved for a FUTURE positionless, lensless run.
   // hasStageContent reuses the ONE complete applicability predicate (queryStageApplies — positionless AND kind-23
   // draws; the same gate Scene's mount and the honesty chip route through), so all sites agree on "does
   // the stage apply here". Its `&&` short-circuit builds draws only for a positionless run; memoised per model,
@@ -153,10 +155,11 @@ export function Inspector({ model, open = false, tourActive = false }: { model: 
   // app's one missing empty state (every other surface already has an honest empty posture). Below the
   // 1080px breakpoint the aside is an off-canvas overlay (position: fixed), so the drawer mechanics are
   // unchanged — the toggle now simply shows this hint instead of a blank slide-in.
-  // The idle empty rail — no selection AND no live register to show. A sensing run with verdicts falls through
-  // to the main aside below (which renders the live strip even with nothing selected), so its strip is live on
-  // free playback. Every non-sensing run keeps this exact centred empty rail (byte-identical): f4's "no stage
-  // lens" voice, f0/f1/f2a-free's hints.
+  // The idle empty rail — no selection AND no strip to show. A run with a LIVE strip (sensing verdicts, comms,
+  // or belief) falls through to the main aside below (which renders its strip even with nothing selected), so
+  // f2a/f3a/f4 are live on free playback and never reach here. The runs that DO keep this exact centred empty
+  // rail (byte-identical) are the strip-less ones: f0/f1 → "click the drone", e0 → "click the timeline". (The
+  // third "no stage lens" branch is unreached by the shipped catalog — reserved for a future lensless run.)
   if (!sel && ev === null && sensingReg.ordered.length === 0 && !hasComms && !hasBelief) return (
     <aside className={open ? 'inspector inspector-idle open' : 'inspector inspector-idle'}>
       <p className="inspector-empty">

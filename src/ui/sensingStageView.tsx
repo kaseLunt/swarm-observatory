@@ -10,6 +10,7 @@ import {
   SENSOR_O, R_MAX, FOV_HALF_RAD, OCCLUDER_C, OCCLUDER_R2,
 } from './sensingScenario'
 import { nedToThree } from './placement'
+import { deltaGeometry } from './droneDelta'
 
 // The sensing head's frame-loop cursor: reused every fraction-rate write (the load budget). lerpHeadPosition runs
 // synchronously to completion, so a single module-scope cursor is reentrancy-safe.
@@ -41,10 +42,10 @@ const headCursor: FrameCursor = { t0: 0 as StateFrame, t1: 0 as StateFrame }
 // scene, so even the O(revealed) detection/head updates are trivially bounded. ONE exception:
 // the head's POSITION follows the store fraction — a fraction-rate subscription write (frame-
 // rate during play, silent while paused), one zero-alloc lerp, so the head rides the same continuous
-// curve Entities' interactive cone does. Reveal / tint / marks stay per-tick.
+// curve Entities' interactive delta does. Reveal / tint / marks stay per-tick.
 
 // NED (n,e,d) → three [x=east, y=up=−down, z=north] — the ONE app-wide basis-A conversion (placement.nedToThree),
-// the SAME transform the flight trail (entityPosition), the interactive drone/cone (Scene.Entities) and the
+// the SAME transform the flight trail (entityPosition), the interactive drone delta (Scene.Entities) and the
 // tour-camera anchors (Scene.SENSOR_THREE/OCCLUDER_THREE) draw through. The apparatus (FOV cone, range ring,
 // sensor, occluder, detection marks) MUST share it: the basis-drift defect was this file drifting to a private, MIRRORED
 // [n,−d,e] basis (x↔z), so the FOV cone opened +x perpendicular to the +z flight it judged — a drone dead-centre
@@ -59,15 +60,20 @@ const NEGATE = new THREE.Color(hexToThree(PALETTE.verdictNegate)) // ineligible 
 const STEEL = new THREE.Color(hexToThree(CATEGORY.query.hue))     // ambient scenario geometry (constants)
 const DIM = new THREE.Color(hexToThree(PALETTE.textDim))          // the NOT-YET hollow outline / apparatus
 
-// The drone's live-pose marker radius. EXPORTED (v0.7 fixwave): Scene threads it into the authored
-// 'conjunction' shot so the fit bounds the marker's VISUAL extent, not just its centre — a narrow-aspect frame
-// no longer crops the marker's rightmost vertex off-screen. One source of truth: the cone geometry below uses it.
+// The drone's live-pose marker BOUNDING RADIUS — now the oriented drone delta (droneDelta.ts), not the former
+// apex-up cone. EXPORTED (v0.7 fixwave): Scene threads it into the authored 'conjunction' shot so the fit
+// bounds the marker's VISUAL extent, not just its centre — a narrow-aspect frame no longer crops the marker's
+// rightmost vertex off-screen. The delta below is built at this radius, and deltaBoundingRadius(HEAD_DELTA_GEO)
+// re-derives EXACTLY this value from the drawn buffer (the drift-twin the crop oracle binds), so the declared
+// extent can never drift from the drawn shape. Value unchanged from the cone era, so every conjunction fit is
+// byte-stable — only the shape under the radius changed (cone → flat delta).
 export const HEAD_R = 7
-// The head cone's HEIGHT (a squat 4-sided pyramid, apex up). EXPORTED (v0.7 closure) so the camera-fit
-// crop test derives the base-rim plane (y − HEAD_CONE_H/2 — ConeGeometry is y-centred) from the SAME height the
-// renderer builds the marker at, instead of a private 2.4/1.2 derivation that would drift if the proportions move.
-// One source of truth: the coneGeometry below consumes it.
-export const HEAD_CONE_H = HEAD_R * 2.4
+// The head delta silhouette, built ONCE at module load (shared across the fixed f2a scene's single head mesh —
+// mounted via <primitive>, so it is app-owned, never r3f-disposed). It lies FLAT in the deck plane and is
+// yawed by the decoded heading at the render site (makeRotationY(heading) — see the head mesh below); the
+// bundle carries no attitude, so no pitch/roll is ever applied. Replaces the former coneGeometry
+// [HEAD_R, HEAD_CONE_H, 4] (a squat apex-up pyramid that WASTED the heading — a cone is yaw-symmetric).
+export const HEAD_DELTA_GEO = deltaGeometry(HEAD_R)
 // The sensor apparatus (octahedron) radius. EXPORTED alongside HEAD_R for the same conjunction fit. A named
 // const so the octahedron geometry and the camera fit share ONE value (was an inline literal 9).
 export const SENSOR_MARKER_R = 9
@@ -213,15 +219,15 @@ export function tintedTrailGeometry(trail: Trail, byFrame: readonly (SensingDraw
 }
 
 // The head's FRACTIONAL pose — the SAME (t0, t1, fraction) sample Scene.Entities lerps
-// the interactive cone with: t0 = the evaluated frame of the current tick (evaluatedFrame — the ONE
+// the interactive delta with: t0 = the evaluated frame of the current tick (evaluatedFrame — the ONE
 // tick→frame map), t1 = the next frame clamped to the terminal vertex, lerped by the store fraction. A
 // pause does NOT clear the fraction (only setTick does), so a head snapped at the integer frame sat up to
-// one 2-m step behind the mid-motion cone — the fractional half of the two-pose finding. The verdict TINT
+// one 2-m step behind the mid-motion delta — the fractional half of the two-pose finding. The verdict TINT
 // and the drawRange REVEAL stay integer-frame (a kind-22 verdict is a per-tick fact; it does not
 // interpolate) — ONLY the pose follows the fraction. Pure (no WebGL), zero allocation: writes into the
 // caller's vector (the view passes head.position directly). Exported for the bundle-level parity test.
 export function lerpHeadPosition(out: THREE.Vector3, trail: Trail, tick: EventTick, fraction: number): void {
-  // The head rides the SAME cursor Scene's interactive cone and ChainLinks resolve — resolveCursor is the ONE
+  // The head rides the SAME cursor Scene's interactive delta and ChainLinks resolve — resolveCursor is the ONE
   // home of the (t0, t1) offset/clamp shape (it composes evaluatedFrame). `tick` arrives ALREADY in the event
   // domain: every caller brands the plain store playhead at ITS OWN ingestion (eventTickOf), so this
   // wrapper never re-brands a bare number — a StateFrame (an already-offset frame) is now a compile error here,
@@ -294,11 +300,17 @@ export function SensingStage({ trail, data }: { trail: Trail; data: SensingStage
       // The drone's live head wears the NOW voice, TINTED by the verdict the committed frame was evaluated
       // against (byFrame[headFrame] — this tick's decision, on the pose it decided on). The tint is integer-
       // frame by design (a verdict does not interpolate); the head's POSITION is written by place() below,
-      // which follows the store fraction so the head and Entities' interactive cone never split mid-tick.
+      // which follows the store fraction so the head and Entities' interactive delta never split mid-tick.
       if (head) {
         const d = data.byFrame[headFrame] ?? null
         ;(head.material as THREE.MeshBasicMaterial).color.copy(d === null ? DIM : d.eligible ? AFFIRM : NEGATE)
-        head.visible = true // born hidden in JSX; shown once the first sync has placed + tinted it
+        // Orient the delta by the committed frame's decoded heading — YAW ONLY (rotation.y = makeRotationY(heading);
+        // no pitch/roll, the bundle carries no attitude). The SAME +heading convention and per-tick (integer-frame)
+        // heading the interactive delta uses (Scene reads a.headingRad at the evaluated frame), so the two never
+        // split. The former head cone did not rotate at all — it was yaw-symmetric; the delta flies the heading the
+        // trail already carries (trail.heading is vertex-aligned with the positions the head rides).
+        head.rotation.y = trail.heading[headFrame] ?? 0
+        head.visible = true // born hidden in JSX; shown once the first sync has placed + oriented + tinted it
       }
 
       // Detection marks materialise as the playhead reaches their tick (persist thereafter). GRADE (a design ruling):
@@ -317,11 +329,11 @@ export function SensingStage({ trail, data }: { trail: Trail; data: SensingStage
       }
     }
     // The head POSE follows the store fraction: the same evaluated (t0, t1, fraction)
-    // lerp Entities renders the interactive cone with, so a mid-motion pause (fraction ≠ 0 — a pause never
-    // clears it) shows ONE drone, not a cone up to a full 2-m step ahead of a tick-snapped head. This is a
+    // lerp Entities renders the interactive delta with, so a mid-motion pause (fraction ≠ 0 — a pause never
+    // clears it) shows ONE drone, not a delta up to a full 2-m step ahead of a tick-snapped head. This is a
     // fraction-RATE write (frame-rate during play, silent while paused — Timeline's draw loop is the only
     // fraction writer): one lerp into the head's own vector, zero allocation — the same load-budget class of work
-    // Entities' per-frame cone lerp already does. Everything else in build() stays event-rate (per tick).
+    // Entities' per-frame delta lerp already does. Everything else in build() stays event-rate (per tick).
     const place = () => {
       const head = headRef.current
       if (!head) return
@@ -382,12 +394,16 @@ export function SensingStage({ trail, data }: { trail: Trail; data: SensingStage
       </instancedMesh>
 
       {/* The drone's live pose — the NOW voice (▸ the vehicle), riding the evaluated frame lerped by the
-          store fraction (the SAME continuous curve Entities' interactive cone renders) and tinted by the
-          committed frame's eligibility verdict. Born hidden (visible=false); the first layout-effect
-          sync places + tints + reveals it pre-paint, so no green cone flashes at the origin on mount. */}
+          store fraction (the SAME continuous curve Entities' interactive delta renders) and tinted by the
+          committed frame's eligibility verdict. The oriented drone delta (droneDelta.ts): a flat arrowhead
+          yawed by the decoded heading (build() sets rotation.y = heading — YAW ONLY, no pitch/roll). The cone
+          it replaces was yaw-symmetric so it never NEEDED to orient; the delta shows the heading the trail
+          already flies. Born hidden (visible=false); the first layout-effect sync places + orients + tints +
+          reveals it pre-paint, so no delta flashes at the origin on mount. The geometry is app-owned (module
+          const via <primitive>), never r3f-disposed. */}
       <mesh ref={headRef} renderOrder={4} visible={false}>
-        <coneGeometry args={[HEAD_R, HEAD_CONE_H, 4]} />
-        <meshBasicMaterial color={AFFIRM} toneMapped={false} fog={false} />
+        <primitive object={HEAD_DELTA_GEO} attach="geometry" dispose={null} />
+        <meshBasicMaterial color={AFFIRM} toneMapped={false} fog={false} side={THREE.DoubleSide} />
       </mesh>
     </group>
   )

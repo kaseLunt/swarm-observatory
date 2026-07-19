@@ -1,5 +1,5 @@
 // ChainLinks (extracted MOVE-ONLY from Scene.tsx): cross-entity causal-link segments
-// for the selected event's chain, interpolated to track the moving cones exactly.
+// for the selected event's chain, interpolated to track the moving deltas exactly.
 import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import type * as THREE from 'three'
@@ -72,14 +72,14 @@ export function ChainLinks({ model }: { model: RunModel }) {
     const chain = chainRef.current
     const pos = geo.getAttribute('position') as THREE.BufferAttribute
     if (!chain || chain.a.length === 0) { geo.setDrawRange(0, 0); return }
-    // Interpolate link endpoints identically to the cones (same t0→t1 by the same `fraction`) so the
-    // links track moving cones exactly rather than snapping to tick-exact positions a fraction behind.
+    // Interpolate link endpoints identically to the deltas (same t0→t1 by the same `fraction`) so the
+    // links track moving deltas exactly rather than snapping to tick-exact positions a fraction behind.
     // Reuses this file's OWN module scratch vectors (see top of file) — zero alloc, no cross-component ordering.
     const vs = useViewStore.getState()
     const fraction = vs.fraction
     // The accessor boundary: brand the store playhead (a plain TransportTick) into the event domain, then resolve the
     // cursor. ChainLinks tracks cross-entity links at the raw tick's committed frame — offset 0 (no sensing
-    // evaluation shift; the links follow the SAME poses the non-sensing cone renders). This retires the second
+    // evaluation shift; the links follow the SAME poses the non-sensing delta renders). This retires the second
     // copy of the hand-rolled successor-clamp cursor idiom (now owned solely by resolveCursor).
     const tick = eventTickOf(vs.tick as TransportTick)
     resolveCursorInto(linkCursor, tick, 0, model.tickCount as StateFrame)
@@ -102,7 +102,7 @@ export function ChainLinks({ model }: { model: RunModel }) {
     geo.setDrawRange(0, n * 2)
   })
   return (
-    // renderOrder 1 (with the selection ring) so the transparent chain composites AFTER the opaque cones
+    // renderOrder 1 (with the selection ring) so the transparent chain composites AFTER the opaque deltas
     // and the depth-writing scene; depthWrite:false so a half-opaque link never punches a hole in the
     // depth buffer that pops the trail / selection ring / grid drawn behind it.
     <lineSegments frustumCulled={false} renderOrder={1}>

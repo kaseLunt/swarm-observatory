@@ -30,9 +30,9 @@ const CAPTURE_SCENE = `(() => {
     const orig = renderer.render.bind(renderer)
     renderer.render = (scene, camera) => {
       if (scene && scene.isScene && !window.__sceneLocked) {
-        let hasCone = false
-        scene.traverse((o) => { if (o.isInstancedMesh && o.geometry && o.geometry.type === 'ConeGeometry') hasCone = true })
-        if (hasCone) { window.__scene = scene; window.__camera = camera; window.__sceneLocked = true }
+        let hasDelta = false
+        scene.traverse((o) => { if (o.isInstancedMesh && o.geometry && typeof o.geometry.name === 'string' && o.geometry.name.indexOf('entityDelta') === 0) hasDelta = true })
+        if (hasDelta) { window.__scene = scene; window.__camera = camera; window.__sceneLocked = true }
       }
       window.__frames = (window.__frames || 0) + 1 // a live-render heartbeat settle() checks for stalls
       return orig(scene, camera)
@@ -42,17 +42,17 @@ const CAPTURE_SCENE = `(() => {
 // The latched camera position + the live-frame heartbeat, read together so settle() can tell a converged camera
 // (frames advancing, position steady) from a STALLED render (frames frozen, position steady).
 const CAMERA_SAMPLE = `(() => { const c = window.__camera; return { p: c ? [c.position.x, c.position.y, c.position.z] : null, f: window.__frames || 0 } })()`
-// The subject cone's instance-0 world origin (the drone head) via the latched scene — the anchor the authored
-// compose-around-head / conjunction shots frame. The radius<0.6 filter selects the INTERACTIVE cone (r=0.4), not
-// the sensing-stage head marker (r=7) or the enlarged hit target (r=0.9). Returns null until the scene is latched.
+// The subject delta's instance-0 world origin (the drone head) via the latched scene — the anchor the authored
+// compose-around-head / conjunction shots frame. The 'entityDelta' name selects the VISIBLE interactive marker,
+// not the enlarged 'entityDeltaHit' proxy or the sensing-stage head. Returns null until the scene is latched.
 const HEAD_POS = `(() => {
   const scene = window.__scene
   if (!scene) return null
-  let cone = null
-  scene.traverse((o) => { if (o.isInstancedMesh && o.geometry && o.geometry.type === 'ConeGeometry' && o.geometry.parameters.radius < 0.6) cone = o })
-  if (!cone) return null
-  const Matrix4 = cone.matrix.constructor, Vector3 = scene.position.constructor
-  const m = new Matrix4(); cone.getMatrixAt(0, m)
+  let delta = null
+  scene.traverse((o) => { if (o.isInstancedMesh && o.geometry && o.geometry.name === 'entityDelta') delta = o })
+  if (!delta) return null
+  const Matrix4 = delta.matrix.constructor, Vector3 = scene.position.constructor
+  const m = new Matrix4(); delta.getMatrixAt(0, m)
   const p = new Vector3().setFromMatrixPosition(m)
   return [p.x, p.y, p.z]
 })()`
@@ -245,9 +245,9 @@ test('f2a sensing tour: opens and closes on the stage bookend, with authored con
 })
 
 // ── v0.8: THE e0 QUERY-STAGE TOUR — the three authored arrives (corridor / crane / stage bookend) ─────────
-// e0 is POSITIONLESS (no drone cone to compose around), so this proves the arrives by the CAMERA MOVE alone —
-// no HEAD_POS. The scene still latches (Entities mounts a count-0 cone InstancedMesh, so the CAPTURE_SCENE hook
-// finds a ConeGeometry and locks __scene/__camera). The minimal beats-advance contract the design ruling fixed:
+// e0 is POSITIONLESS (no drone delta to compose around), so this proves the arrives by the CAMERA MOVE alone —
+// no HEAD_POS. The scene still latches (Entities mounts a count-0 entity-delta InstancedMesh, so the CAPTURE_SCENE
+// hook finds the named 'entityDelta' geometry and locks __scene/__camera). The minimal beats-advance contract the design ruling fixed:
 // beats 0-1 hold the composed stage frame (un-authored → no displacement); beat 2 'corridor' cranes IN to the
 // first block; beat 4 'crane' moves to the observer-crane vantage; beat 5 'stage' returns to the SAME bookend
 // the load vantage sits on (rest-state parity). The exact per-shot math is unit-pinned (camera.test.ts

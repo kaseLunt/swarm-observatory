@@ -107,7 +107,14 @@ as full-manifest bundles (the same honesty tier as `f0`); `e0` and `f1` remain d
 six are vendored and hash-verified under `contract/fixtures/`. The **query stage** now renders
 e0's spatial queries as a geometric replay, with the browser re-computing the engine's
 *decisions* and not just its bytes. **Show the Math** puts those recomputations on screen and
-agrees with the engine on all 75 to the bit. **The Hangar** is the run-library front door — a
+agrees with the engine on all 75 to the bit. Three further lenses decode the v9 runs the same
+way: the **contested-link stage** replays f4's comms link and names its one lost packet —
+message 14, dropped at tick 30, read from the bytes rather than annotated; the **belief lens**
+draws f3a's tracker against the truth it was estimating, where the reported 1σ uncertainty
+*shrinks* as the actual error *grows* (a filter confident and wrong, shown as a decoded
+comparison); and the **raw evidence table** lists every decoded event of the loaded run, each
+f64 one hover from its exact round-trippable value, so any rendered claim can be checked against
+the byte it came from. **The Hangar** is the run-library front door — a
 card per run family that earns its verification seal only after you open it and its hashes
 re-fold in your browser this session. Multi-entity content arrives with the engine's C1
 milestone — and the causal-chain grammar here is deliberately designed as the single-entity
@@ -128,8 +135,8 @@ mine. If the commit density looks unusual, that's why — the interesting artifa
 just the app, it's the process that let it ship this fast while staying provable.
 
 Every task runs the same loop: a committed plan
-([`docs/superpowers/plans/`](./docs/superpowers/plans/) — thirteen cycles so far, v0.1 through
-v0.8), a written brief, implementation, and then **two independent reviews per task** — a
+([`docs/superpowers/plans/`](./docs/superpowers/plans/) — fourteen cycles so far, v0.1 through
+v0.9), a written brief, implementation, and then **two independent reviews per task** — a
 line-level code review, and a separate adversarial pass that must produce *executable
 evidence* for its findings, not opinions. The two disagree regularly; findings are
 adjudicated (fix now / defer with a trigger / reject with reasons), and both reviewers have
@@ -150,8 +157,8 @@ questions a viewer can ask, one selection grammar, four laws, and a strict gramm
 the past may be drawn into the present frame — is ratified and binding: every new surface
 is judged against it before it ships.
 <!-- CUT-POINT C -->
-Current state of the gates: **1656 unit tests** (including the 205-test byte-exact conformance
-subset) and **34 Playwright end-to-end checks** (as of v0.8); CI runs typecheck, lint, the
+Current state of the gates: **1981 unit tests** (including the 205-test byte-exact conformance
+subset) and **49 Playwright end-to-end checks** (as of v0.9); CI runs typecheck, lint, the
 full test suite, a production build, and the browser smoke pass on every push, and has been
 green on GitHub runners since the first push. The test suite re-derives every pinned hash
 from the vendored bundles on every run.

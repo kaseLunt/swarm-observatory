@@ -414,7 +414,7 @@ test('unknown run: honest error retained + escape hatch to the default run', asy
 // The pick/hover hit InstancedMesh's boundingSphere froze at the drone's first-picked position: three.js
 // computes it ONCE (only when null) and never after setMatrixAt, so every ray early-returned once the
 // subject travelled away and clicks selected nothing (diag symptom A). These are the suite's FIRST
-// 3D-cone-click tests. The subject is sub-pixel-small at the establish distance, so we click its EXACT
+// 3D-delta-click tests. The subject is sub-pixel-small at the establish distance, so we click its EXACT
 // projected screen centre computed from the app's OWN three.js camera — captured in-browser via the
 // standard __THREE_DEVTOOLS__ 'observe' hook (same technique as the diagnosis probes). The browser
 // source is passed as STRINGS on purpose: the e2e
@@ -423,8 +423,10 @@ test('unknown run: honest error retained + escape hatch to the default run', asy
 type HeadProj = { x: number; y: number; onScreen: boolean; world: [number, number, number] }
 
 // Wrap three's WebGLRenderer.render (via the devtools observe hook, installed before the app boots) to
-// latch the live scene + camera the first time a cone InstancedMesh is present. The same object instances
-// live for the whole session, so their matrices are read fresh at projection time.
+// latch the live scene + camera the first time an entity-delta InstancedMesh is present. The same object
+// instances live for the whole session, so their matrices are read fresh at projection time. The entity marker
+// is now the oriented drone delta (a plain BufferGeometry named 'entityDelta*'), not the old ConeGeometry, so
+// the latch keys on the geometry NAME.
 const CAPTURE_SCENE = `(() => {
   const dt = new EventTarget()
   window.__THREE_DEVTOOLS__ = dt
@@ -436,24 +438,24 @@ const CAPTURE_SCENE = `(() => {
     const orig = renderer.render.bind(renderer)
     renderer.render = (scene, camera) => {
       if (scene && scene.isScene && !window.__sceneLocked) {
-        let hasCone = false
-        scene.traverse((o) => { if (o.isInstancedMesh && o.geometry && o.geometry.type === 'ConeGeometry') hasCone = true })
-        if (hasCone) { window.__scene = scene; window.__camera = camera; window.__sceneLocked = true }
+        let hasDelta = false
+        scene.traverse((o) => { if (o.isInstancedMesh && o.geometry && typeof o.geometry.name === 'string' && o.geometry.name.indexOf('entityDelta') === 0) hasDelta = true })
+        if (hasDelta) { window.__scene = scene; window.__camera = camera; window.__sceneLocked = true }
       }
       return orig(scene, camera)
     }
   })
 })()`
 
-// Project the hit mesh's instance-0 origin (the cone's geometric centre — the ideal ray target) through
+// Project the hit mesh's instance-0 origin (the delta's geometric centre — the ideal ray target) through
 // the live camera to CSS pixel coordinates for page.mouse.click. onScreen guards against a framing
-// regression silently clicking empty canvas. Returns null until the scene is latched. hitRadius >= 0.6
-// disambiguates the enlarged INVISIBLE hit mesh (0.9) from the visible cone (0.4).
+// regression silently clicking empty canvas. Returns null until the scene is latched. The enlarged INVISIBLE
+// interaction proxy is the geometry named 'entityDeltaHit' (the visible marker is 'entityDelta').
 const PROJECT_HEAD = `(() => {
   const scene = window.__scene, camera = window.__camera, renderer = window.__renderer
   if (!scene || !camera || !renderer) return null
   let hit = null
-  scene.traverse((o) => { if (o.isInstancedMesh && o.geometry && o.geometry.type === 'ConeGeometry' && o.geometry.parameters.radius >= 0.6) hit = o })
+  scene.traverse((o) => { if (o.isInstancedMesh && o.geometry && o.geometry.name === 'entityDeltaHit') hit = o })
   if (!hit) return null
   const Matrix4 = hit.matrix.constructor
   const Vector3 = camera.position.constructor
@@ -501,7 +503,7 @@ async function seatEarlySphere(page: Page): Promise<void> {
   // and (2) a ▶ click in that window fires the play-rising-edge establish request BEFORE Entities
   // mounts, where the channel's deliberate mount-seed consumes it without acting (camera stays on the
   // load vantage). The earlier canvas was wide enough to mask (2) geometrically; the reserved-column
-  // canvas is not. Waiting for the CAPTURE_SCENE latch (the first rendered cone frame) restores the
+  // canvas is not. Waiting for the CAPTURE_SCENE latch (the first rendered entity-delta frame) restores the
   // scenario the tests describe: a user acting on a visibly-live stage. The swallowed-establish
   // mount window itself is flagged for endgame adjudication (app behavior, not test).
   await page.waitForFunction('!!window.__scene', undefined, { timeout: 15000 }) // string: e2e tsconfig has no DOM lib
@@ -1482,7 +1484,7 @@ test('the Wall tamper demo: flip one byte → the side-by-side refusal (event_ha
 })
 
 // Latch the live COMMS scene the first time an OctahedronGeometry mesh is present (the pads/anchor). The
-// CAPTURE_SCENE cone latch never fires for positionless f4 (no cones), so the comms hero needs its own
+// CAPTURE_SCENE entity-delta latch never fires for positionless f4 (no deltas), so the comms hero needs its own
 // structural latch. Same __THREE_DEVTOOLS__ observe hook; browser source as a STRING (the e2e tsconfig has no
 // DOM lib — the house pattern).
 const CAPTURE_COMMS_SCENE = `(() => {
@@ -1564,7 +1566,7 @@ test('f4 the contested link: the ledger is written by the scrub, the t30 loss an
   await expect(strip).not.toContainText('✓')                       // …NEVER the manifest-grade ✓
   await expect(strip).not.toContainText('✗')                       // …and never the integrity alarm
 
-  // THE ANCHOR NAMES THE LOSS (hero-check §4): at rest after the run end the persistent anchor wears its DECODED
+  // THE ANCHOR NAMES THE LOSS (resting legibility): at rest after the run end the persistent anchor wears its DECODED
   // "t30 · LOSS" SDF label — the resting stage points at the loss on its own, not only in the strip text. The
   // label is troika WebGL text (read through the scene-graph hook); the exact string is derived + pinned in the unit test.
   await page.waitForFunction(`(() => { const s = ${ANCHOR_LABEL_STATE}; return !!(s && s.found && s.visible); })()`, undefined, { timeout: 15000 })

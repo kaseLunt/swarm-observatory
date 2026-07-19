@@ -28,7 +28,8 @@ function fakeTrail(n: number): Trail {
   for (let i = 0; i < n; i++) positions[i * 3 + 2] = i * 2 // z = frame·2, mirroring the real N-lattice step
   const index = new Float32Array(n)
   for (let i = 0; i < n; i++) index[i] = i
-  return { positions, index, count: n, first: n > 0 ? 0 : -1 } // present from frame 0 (the first-appearance frame)
+  const heading = new Float32Array(n) // heading 0 (due north) — the head delta rests its nose on +Z
+  return { positions, index, heading, count: n, first: n > 0 ? 0 : -1 } // present from frame 0 (the first-appearance frame)
 }
 const draw = (tick: number, eligible: boolean): SensingDraw => ({
   seq: tick, tick, subject: '1:0', sensor: '0', inRange: true, inFov: true, losClear: eligible, eligible, tiebreak: false, g: [0, 0, 0],
@@ -194,10 +195,11 @@ describe('the apparatus transform chain is BOUND to its defect class (a displace
     return found[0]!
   }
   // Each apparatus element, anchored STRUCTURALLY — independent of the transform we then assert on it: the sensor/
-  // occluder/head by their CHILD geometry, the fov/edges by their geometry prop, the marks/group by their unique tag.
+  // occluder by their CHILD geometry, the head by its ref (its geometry is now the shared drone-delta <primitive>,
+  // not a child <coneGeometry>), the fov/edges by their geometry prop, the marks/group by their unique tag.
   const sensorMesh = only(e => e.tag === 'mesh' && childTags(e.node).includes('octahedronGeometry'), 'sensor octahedron <mesh>')
   const occluderMesh = only(e => e.tag === 'mesh' && childTags(e.node).includes('sphereGeometry'), 'occluder sphere <mesh>')
-  const headMesh = only(e => e.tag === 'mesh' && childTags(e.node).includes('coneGeometry'), 'head cone <mesh>')
+  const headMesh = only(e => e.tag === 'mesh' && e.attrs.some(a => a.name === 'ref' && a.expr === 'headRef'), 'head delta <mesh ref={headRef}>')
   const fovMesh = only(e => e.tag === 'mesh' && e.attrs.some(a => a.name === 'geometry' && a.expr === 'fovGeo'), 'fov sector <mesh geometry={fovGeo}>')
   const edgesSeg = only(e => e.tag === 'lineSegments' && e.attrs.some(a => a.name === 'geometry' && a.expr === 'edgesGeo'), 'edges <lineSegments geometry={edgesGeo}>')
   const marksMesh = only(e => e.tag === 'instancedMesh', 'marks <instancedMesh>')
@@ -294,11 +296,15 @@ describe('the apparatus transform chain is BOUND to its defect class (a displace
     assertIdentity(marksMesh, 'marks instancedMesh')
   })
 
-  test('the head cone: rides the tested lerpHeadPosition AND the mesh element carries no transform', () => {
-    // The pose SOURCE — bound to the pinned lerp fn, not a literal: a runtime call-site (the conceded position-only residual).
+  test('the head delta: rides lerpHeadPosition for pose AND head.rotation.y = the decoded heading — both runtime setters, the mesh carries no STATIC transform', () => {
+    // The POSE source — bound to the pinned lerp fn, not a literal: a runtime call-site (the conceded position residual).
     expect(src).toMatch(/lerpHeadPosition\(head\.position/)
-    // …AND no element-level scale/rotation hides or reorients the head the setter placed (the setter-only hole).
-    assertIdentity(headMesh, 'head cone mesh')
+    // The ORIENTATION source — the delta newly YAWS by the decoded heading (the cone it replaced was symmetric and
+    // never oriented). head.rotation.y (Y axis ONLY — no pitch/roll, the bundle carries no attitude) reads the
+    // frame-aligned trail.heading buffer; the +heading convention is pinned in droneDelta.test (nose-leads-motion).
+    expect(src).toMatch(/head\.rotation\.y\s*=\s*trail\.heading\[/)
+    // …AND no element-level STATIC scale/rotation/position hides or fights the head the two runtime setters place.
+    assertIdentity(headMesh, 'head delta mesh')
   })
 
   test('the parent <group> that WRAPS the apparatus carries no transform — anchored to the apparatus group, not any bare <group>', () => {

@@ -246,7 +246,7 @@ describe('the shader mirror — exact-current visibility + the drop collapse', (
   })
 })
 
-// ── THE ANCHOR NAMES THE LOSS — the decoded "t30 · LOSS" label (hero-check §4 highest-leverage win) ──────────
+// ── THE ANCHOR NAMES THE LOSS — the decoded "t30 · LOSS" label (the resting-legibility win: the loss is named at rest) ──
 // The persistent conclusion must NAME itself. The label text is DECODED off the hero pair (its outcome tick + its
 // reason WORD via dropReasonName — the ONE source the strip shares), never a hardcoded string, so a re-decode
 // moves the label. A vitest cannot see into the troika SDF text, so it pins the pure string derivation the view

@@ -15,7 +15,8 @@ import {
 } from './frameChannels'
 import { FOLLOW_BIAS_MAX } from './Scene'
 // the marker sizing comes from the RENDERER, not a local literal — the crop test moves if production sizing moves.
-import { HEAD_R, SENSOR_MARKER_R, HEAD_CONE_H, lerpHeadPosition } from './sensingStageView'
+import { HEAD_R, SENSOR_MARKER_R, HEAD_DELTA_GEO, lerpHeadPosition } from './sensingStageView'
+import { deltaBoundingRadius } from './droneDelta'
 import { asEventTick, asStateFrame } from '../lib/brand'
 
 const ent = (pos: number[]): EntityV2 => ({ value: 0n, alive: true, pos, vel: [], headingRad: 0, speedMps: 0, turnRateRadps: 0, fuel: 0, setpoint: [] })
@@ -134,8 +135,8 @@ describe('heldSubjectPose — the sensing camera anchors on the EVIDENCE subject
   // head's sensingTrail; Scene's t0/t1 === lerpHeadPosition's own f0/f1 because poseFrameOffset === TARGET_FRAME_OFFSET
   // and model.tickCount === trail.count−1). So a fractional RECOVERY (absent at t0, PRESENT at t1) anchors on the
   // drone's live mid-motion pose. Trail here satisfies BOTH TrailView (heldSubjectPose) and Trail (lerpHeadPosition).
-  const trail4 = (positions: number[], first: number): TrailView & { index: Float32Array } =>
-    ({ positions: new Float32Array(positions), index: new Float32Array(positions.length / 3), first, count: positions.length / 3 })
+  const trail4 = (positions: number[], first: number): TrailView & { index: Float32Array; heading: Float32Array } =>
+    ({ positions: new Float32Array(positions), index: new Float32Array(positions.length / 3), heading: new Float32Array(positions.length / 3), first, count: positions.length / 3 })
 
   test('a dropout RECOVERY anchors on the head lerp (54.5), NOT the integer held pose (10) the old path used', () => {
     // frame0 present x=10; frame1 ABSENT → buildTrail held x=10; frame2 present (recovery) x=99; frame3 present x=99.
@@ -1417,10 +1418,13 @@ describe('fitDistanceForAspect (aspect-aware fit distance)', () => {
 describe('shotFraming conjunction — the marker stays in frame at a narrow aspect', () => {
   const OPTS: ShotOpts = { fit: { fov: DEFAULT_FOV, margin: 1.15, lift: 1, maxDistanceFactor: Infinity }, lift: 1, headMedium: HEAD_MEDIUM_DISTANCE, headClose: 25 }
   // The marker VISUAL extents, imported from the renderer (closure — no local 7/9/derivation drift-twin): HEAD_R
-  // is the drone-marker cone base radius, SENSOR_MARKER_R the sensor octahedron radius. The cone is height HEAD_CONE_H
-  // with the apex up (ConeGeometry is y-centred), so its base rim — the widest horizontal ring, the "rightmost
-  // vertex" the finding measures — sits at y − HEAD_CONE_H/2. All three move if the renderer's marker sizing moves.
-  const SENSOR_R = SENSOR_MARKER_R, BASE_DY = -HEAD_CONE_H / 2
+  // is the drone-marker BOUNDING RADIUS, SENSOR_MARKER_R the sensor octahedron radius. The marker is now the
+  // oriented drone delta (droneDelta.ts) — a FLAT arrowhead lying in the deck plane — not the former apex-up
+  // cone, so its widest horizontal points (nose / wingtips) sit IN the head's own y plane: the base-rim vertical
+  // offset is 0 (was −HEAD_CONE_H/2 for the y-centred cone). deltaBoundingRadius binds the ACTUAL geometry buffer
+  // and MUST equal HEAD_R — the drift-twin that keeps the declared marker extent tied to the drawn shape.
+  const SENSOR_R = SENSOR_MARKER_R, BASE_DY = 0
+  const MARKER_R = deltaBoundingRadius(HEAD_DELTA_GEO)
   // f2a's FIRST conjunction beat (b1, tick 48), three-space (entityPosition maps NED[n,e,d] → [e,-d,n]): sensor at
   // O, drone at east 48, north 22. This SOUTH-of-the-cone approach is where the pre-fix crop is worst (the drone
   // sits toward the frame's right edge before it enters the northward FOV) — the beat Sol measured (~1.2 NDC).
@@ -1456,6 +1460,12 @@ describe('shotFraming conjunction — the marker stays in frame at a narrow aspe
     }
     return mx
   }
+
+  test('the declared marker radius HEAD_R IS the delta geometry\'s real bounding radius (the drift-twin)', () => {
+    // The camera fit threads HEAD_R as the marker extent; deltaBoundingRadius derives it from the ACTUAL drawn
+    // buffer. They must be equal, so the declared extent can never drift from the delta the renderer draws.
+    expect(MARKER_R).toBeCloseTo(HEAD_R, 6)
+  })
 
   test('PRE-FIX (centre-only bounds, vertical-only fit) CROPS the marker off-frame at aspect 0.78 (NDC |x| > 1)', () => {
     // The pre-fix conjunction: sensor+head CENTRE points, frameFor vertical-only, displayed at 0.78.

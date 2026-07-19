@@ -2,9 +2,15 @@ import type { DecodedRun } from '../decode/decodeBundle'
 import type { RunManifest } from '../decode/manifest'
 import type { EventTick, StateFrame } from '../lib/brand'
 import {
-  GEOMETRY_QUERY_RESOLVED, ELIGIBILITY_EVALUATED, DETECTION_MADE, decodeEvent, decodeEntityV2,
+  GEOMETRY_QUERY_RESOLVED, ELIGIBILITY_EVALUATED, DETECTION_MADE,
+  MESSAGE_SENT, MESSAGE_DELIVERED, MESSAGE_DROPPED,
+  TRACK_CONFIRMED, TRACK_UPDATED, TRACK_DROPPED, decodeEvent, decodeEntityV2,
   decodeGeometryQuery, decodeEligibility, decodeDetection, decodeStateTick,
+  decodeMessageSent, decodeMessageDelivered, decodeMessageDropped,
+  decodeTrackConfirmed, decodeTrackUpdated, decodeTrackDropped,
   type EntityV2, type EventEnvelope, type GeometryQuery, type Eligibility, type Detection,
+  type MessageSent, type MessageDelivered, type MessageDropped,
+  type TrackConfirmed, type TrackUpdated, type TrackDropped,
 } from '../decode/payloads'
 
 const EMPTY: readonly number[] = []
@@ -143,6 +149,35 @@ export class RunModel {
   detectionAt(seq: number): Detection | null {
     return this.run.kind[seq] !== DETECTION_MADE ? null : decodeDetection(this.eventAt(seq).payload)
   }
+  /** The decoded comms-kind payloads (kinds 5/6/7), each null for any other kind — the siblings of
+   *  eligibilityAt / detectionAt, keyed off the same load-time per-event kind array (no re-decode when the
+   *  kind does not match). Load/interaction rate only; the comms model layer (commsStage) builds off these. */
+  messageSentAt(seq: number): MessageSent | null {
+    return this.run.kind[seq] !== MESSAGE_SENT ? null : decodeMessageSent(this.eventAt(seq).payload)
+  }
+  messageDeliveredAt(seq: number): MessageDelivered | null {
+    return this.run.kind[seq] !== MESSAGE_DELIVERED ? null : decodeMessageDelivered(this.eventAt(seq).payload)
+  }
+  messageDroppedAt(seq: number): MessageDropped | null {
+    return this.run.kind[seq] !== MESSAGE_DROPPED ? null : decodeMessageDropped(this.eventAt(seq).payload)
+  }
+  /** The decoded track-lifecycle payloads (kinds 2/3/4), each null for any other kind — the siblings of the
+   *  comms accessors, keyed off the same load-time per-event kind array (no re-decode when the kind does not
+   *  match). Load/interaction rate only; the belief model layer (trackBelief) drives the disc off trackUpdatedAt. */
+  trackConfirmedAt(seq: number): TrackConfirmed | null {
+    return this.run.kind[seq] !== TRACK_CONFIRMED ? null : decodeTrackConfirmed(this.eventAt(seq).payload)
+  }
+  trackUpdatedAt(seq: number): TrackUpdated | null {
+    return this.run.kind[seq] !== TRACK_UPDATED ? null : decodeTrackUpdated(this.eventAt(seq).payload)
+  }
+  trackDroppedAt(seq: number): TrackDropped | null {
+    return this.run.kind[seq] !== TRACK_DROPPED ? null : decodeTrackDropped(this.eventAt(seq).payload)
+  }
+  /** The recorded tick period (µs) from the run's manifest, or null when the run carries no manifest (det-only).
+   *  The comms pulse clock reads THIS instead of a baked constant, so a run recorded with a different period
+   *  animates latency on ITS clock. The manifest's dtUs is already a validated number (manifest.ts parseManifest);
+   *  the comms model re-validates finite+positive at the seam and falls back to a declared default otherwise. */
+  manifestDtUs(): number | null { return this.manifest?.dtUs ?? null }
   /** The FULL, UNBOUNDED causal chain of a seq — every ancestor (nearest-first) and every transitive descendant.
    *  EXPORT-TIER (v0.8): kept for tests/tools that genuinely need the whole chain (the causalHops oracle,
    *  runModel's own pins). The RENDER PLANE must NOT call this — it uses chain.ts `causalNeighborhood` (the bounded,

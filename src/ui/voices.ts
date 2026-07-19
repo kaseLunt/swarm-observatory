@@ -175,11 +175,13 @@ export const basisNote = (b: Basis): string => BASIS_NOTE[b]
 //
 // The register's ONE voice — the • attested mark. Never a verdict ✓/✗, never the no-verdict ·.
 export const QUALITY_MARK: MarkKey = 'attested'
-// The caveat kinds. `dirty` (a build-hygiene disclosure) is the first citizen; comms link-quality states land
-// here as further kinds when their lens is built.
-export type QualityCaveat = 'dirty'
+// The caveat kinds. `dirty` (a build-hygiene disclosure) is the first citizen; `link-loss` is the comms lens's
+// first link-quality state — a dropped message is a QUALITY fact about the link (it was sent and
+// never arrived), never a byte-integrity failure, so it wears this register's • + caveat, never the alarm ✗.
+export type QualityCaveat = 'dirty' | 'link-loss'
 export const CAVEAT_NOTE: Record<QualityCaveat, string> = {
   dirty: 'manifest self-declares an unclean build tree at generation — a build-hygiene disclosure, not a byte-verification failure (the hashes above are checked independently); a dirty run is non-citable under the publication contract',
+  'link-loss': 'a decoded channel loss — the message left the source but never arrived; a link-quality outcome on record (reason LOSS, jam inactive), not a byte-integrity verdict — the loss is decoded, and the bundle\'s integrity is adjudicated independently (the ProvenancePanel), never claimed by this row',
 }
 export const caveatNote = (c: QualityCaveat): string => CAVEAT_NOTE[c]
 // The caution TREATMENT — the ONE class token a quality note wears so a caveat is NOTICED without alarm. It is

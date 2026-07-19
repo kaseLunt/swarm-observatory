@@ -120,6 +120,68 @@ header h1 { margin: 0; text-transform: uppercase; color: var(--text-dim); white-
 .gate-tiebreak { margin: 0.4rem 0 0; font-size: var(--fs-label); color: var(--text-dim); letter-spacing: 0.02em; }
 .gate-note { margin: 0.4rem 0 0; font-size: var(--fs-label); color: var(--text-faint); letter-spacing: 0.01em; line-height: 1.4; }
 .gate-note .attested { color: var(--pending); } /* the in-fov claim word, in the canonical attested slate */
+
+/* ── THE CONTESTED-LINK STRIP (f4) — the latency lane + the ledger-by-scrub + the two-voice grammar. Mirrors
+   the sensing-strip chrome; the mark colours reuse the module tokens (self/attested → --pending slate), the
+   caveat treatment reuses the quality register's left-rule (never the integrity red). No new hue: the lens
+   identity rides the comms category token (--cat-comms). */
+.comms-strip { margin-top: 0.6rem; border-top: 1px solid var(--border); padding-top: 0.5rem; font-variant-numeric: tabular-nums; }
+.comms-strip h3 { margin: 0 0 0.5rem; font-size: var(--fs-label); letter-spacing: 0.08em; text-transform: uppercase; color: var(--cat-comms); font-weight: 600; }
+/* THE LEDGER-BY-SCRUB — the running tally; large, tabular, written by the playhead. */
+.comms-ledger { display: flex; gap: 0.9rem; margin: 0 0 0.6rem; font-size: var(--fs-label); color: var(--text-dim); letter-spacing: 0.04em; }
+.comms-count b { font-size: 1.15rem; color: var(--text-primary); margin-right: 0.2rem; }
+/* The ONE loss reads without alarm — the quality register's "notice this" treatment (weight + rule), never red. */
+.comms-count-lost b { color: var(--text-primary); }
+.comms-count-lost { color: var(--text-primary); border-left: 2px solid var(--text-dim); padding-left: 6px; }
+/* THE SCOPE LABEL — names each surface's TIME SCOPE so the two tallies coexist without contradiction: the playhead-
+   scoped "so far" ledger vs the run-scoped "whole run" pairing receipt. Quiet (faint + uppercased), never louder
+   than the numbers it qualifies. */
+.comms-scope { color: var(--text-faint); font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.08em; }
+/* THE LATENCY LANE — a fixed-height plot; marks positioned by tick (x) and latency (y) on the FIXED 0–400µs axis. */
+.comms-lane { position: relative; height: 68px; margin: 0.2rem 0; border-left: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.comms-lane-mark { position: absolute; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: var(--cat-comms); opacity: 0.75; }
+/* The flagged gap — the drop at the lane floor, quality register (• + caveat treatment), never the integrity red. */
+.comms-lane-drop { position: absolute; bottom: -0.6em; transform: translateX(-50%); font-weight: 700; color: var(--pending); }
+.comms-lane-drop.caveat { color: var(--text-primary); }
+.comms-lane-notyet { position: absolute; left: 6px; bottom: 4px; font-size: var(--fs-label); color: var(--text-dim); letter-spacing: 0.02em; }
+.comms-lane-axis { margin: 0.1rem 0 0.5rem; font-size: var(--fs-label); color: var(--text-faint); font-family: var(--type-mono); letter-spacing: 0.01em; }
+.comms-snr { margin: 0.3rem 0; font-size: var(--fs-label); color: var(--text-dim); font-family: var(--type-mono); letter-spacing: 0.02em; }
+/* THE PAIRING RECEIPT + THE DROP CAVEAT — the two-voice grammar in prose. */
+.comms-pairing, .comms-drop { margin: 0.4rem 0 0; font-size: var(--fs-label); color: var(--text-faint); letter-spacing: 0.01em; line-height: 1.4; }
+.comms-mark { font-weight: 700; margin-right: 0.15rem; }
+.comms-mark.self { color: var(--pending); }     /* ○ self-consistent — the ring, never the ✓ */
+.comms-mark.attested { color: var(--pending); }  /* • attested — the quality register's mark */
+.comms-mark.mismatch { color: var(--mismatch); } /* ✗ — only ever if the pairing self-check DISAGREED (it does not on f4) */
+.comms-caveat-note { display: block; margin-top: 1px; }
+.comms-caveat-note.caveat { color: var(--text-primary); border-left: 2px solid var(--text-dim); padding-left: 6px; }
+/* FAIL CLOSED — a drop shape the lens does not describe (no such certified bundle exists): the unverifiable ?
+   in the dim no-verdict register, an honest refusal, never a fabricated loss claim. */
+.comms-lane-drop-refused.unverifiable { color: var(--text-dim); }
+.comms-drop-refused { color: var(--text-dim); }
+/* ≥2 drops — no single lost packet to headline; the copy degrades to counts (honest, no hero language). */
+.comms-drop-degraded { color: var(--text-dim); }
+/* FAIL CLOSED — a non-renderable mapping (inconsistent / incomplete / multi-link): the definitive visuals are
+   withheld, only a counts + failure-mode disclosure remains. The caveat-style treatment (weight + left rule)
+   marks it "notice this", never the integrity red. */
+.comms-disclosure { margin: 0.4rem 0; font-size: var(--fs-label); color: var(--text-primary); border-left: 2px solid var(--text-dim); padding-left: 6px; line-height: 1.4; }
+.comms-degenerate { margin: 0.5rem 0 0; font-size: var(--fs-label); color: var(--text-faint); letter-spacing: 0.01em; }
+/* THE BELIEF STRIP (f3a) — the tracker's 1σ readout + the shrink + the update tally. The lens identity rides the
+   mutating category token (--cat-mutating — track kinds 2/3/4). No verdict marks (the disc is a derivation, not an
+   adjudication); the scope labels + disclosure mirror the comms strip so the two instrument voices read as one system. */
+.track-strip { margin-top: 0.6rem; border-top: 1px solid var(--border); padding-top: 0.5rem; font-variant-numeric: tabular-nums; }
+.track-strip h3 { margin: 0 0 0.5rem; font-size: var(--fs-label); letter-spacing: 0.08em; text-transform: uppercase; color: var(--cat-mutating); font-weight: 600; }
+.track-sigma { margin: 0 0 0.4rem; font-size: var(--fs-label); color: var(--text-primary); font-family: var(--type-mono); letter-spacing: 0.02em; }
+.track-sigma b { color: var(--cat-mutating); }
+.track-error { margin: 0 0 0.4rem; font-size: var(--fs-label); color: var(--text-dim); font-family: var(--type-mono); letter-spacing: 0.02em; }
+.track-error b { color: var(--text-primary); }
+.track-tally { margin: 0 0 0.4rem; font-size: var(--fs-label); color: var(--text-dim); letter-spacing: 0.04em; }
+.track-shrink { margin: 0.3rem 0; font-size: var(--fs-label); color: var(--text-dim); font-family: var(--type-mono); letter-spacing: 0.02em; }
+.track-lifecycle { margin: 0.3rem 0; font-size: var(--fs-label); color: var(--text-faint); font-family: var(--type-mono); }
+.track-scope { color: var(--text-faint); font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.08em; }
+.track-notyet { margin: 0 0 0.4rem; font-size: var(--fs-label); letter-spacing: 0.02em; }
+.track-mechanism { margin: 0.4rem 0; font-size: var(--fs-label); color: var(--text-primary); border-left: 2px solid var(--text-dim); padding-left: 6px; line-height: 1.4; }
+.track-disclosure { margin: 0.4rem 0; font-size: var(--fs-label); color: var(--text-primary); border-left: 2px solid var(--text-dim); padding-left: 6px; line-height: 1.4; }
+.track-degenerate { margin: 0.5rem 0 0; font-size: var(--fs-label); color: var(--text-faint); letter-spacing: 0.01em; line-height: 1.4; }
 /* Provenance information architecture: a flex column so the row clusters scroll in the middle while the
    counts + trailer verdict pin as a footer — the summary is always in view, never scrolled past. */
 .provenance { grid-area: panel; display: flex; flex-direction: column; overflow: hidden; border-left: 1px solid var(--border); padding: 1rem; font-size: 0.8rem; }
@@ -682,3 +744,74 @@ header:has(.header-menu-popup) { position: relative; z-index: 49; }
 .hangar-campaign-verdict .hangar-glyph { color: var(--pending); }
 .hangar-campaign-open { border-color: var(--border-bright); color: var(--accent); letter-spacing: 0.03em; white-space: nowrap; }
 .hangar-campaign-open:hover, .hangar-campaign-open:focus-visible { border-color: var(--accent); background: var(--bg-elevated); }
+
+/* ── THE RAW EVIDENCE TABLE — the byte-X-ray modal. Reuses the Hangar/Wall modal idiom
+   (backdrop + risen panel, one integrity-free instrument register). DOM only, no frame path. The header
+   entry rides the low-priority chrome register (dim steel at rest, transport accent on hover/focus),
+   matching the hangar/copy-link entries beside it. ───────────────────────────────────────────────────── */
+.evidence-open { border-color: var(--border-bright); color: var(--text-dim); letter-spacing: 0.04em; white-space: nowrap; }
+.evidence-open:hover, .evidence-open:focus-visible { border-color: var(--accent); color: var(--accent); }
+
+.evidence-backdrop { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(5, 8, 12, 0.6); z-index: 50; animation: fade-in var(--dur-base) var(--ease-out); }
+.evidence-panel {
+  display: flex; flex-direction: column; gap: 0.8rem;
+  width: min(80rem, 94vw); max-height: 90vh;
+  background: var(--bg-panel); border: 1px solid var(--border-bright); border-radius: 8px;
+  padding: 1.2rem 1.4rem; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  animation: rise var(--dur-base) var(--ease-out);
+}
+.evidence-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex: none; }
+.evidence-title { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.evidence-head h2 { margin: 0; font-size: var(--fs-h2); letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); }
+/* Provenance line — names the mechanism (decoded rendering); the table claims nothing, it shows. */
+.evidence-provenance { margin: 0; font-size: var(--fs-label); color: var(--text-faint); letter-spacing: 0.02em; }
+.evidence-close { flex: none; }
+
+.evidence-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; flex: none; }
+/* Scope toggle — a two-state segmented control; each option NAMES its own population. The active option
+   wears the accent border (button.active precedent). aria-pressed carries the state to assistive tech. */
+.evidence-scope { display: inline-flex; gap: 0; }
+.evidence-scope-btn { border-radius: 0; font-variant-numeric: tabular-nums; color: var(--text-dim); }
+.evidence-scope-btn:first-child { border-top-left-radius: 4px; border-bottom-left-radius: 4px; }
+.evidence-scope-btn:last-child { border-top-right-radius: 4px; border-bottom-right-radius: 4px; border-left: none; }
+.evidence-scope-btn.active { border-color: var(--accent); color: var(--accent); background: var(--bg-elevated); }
+.evidence-search { min-width: 12rem; flex: 1 1 12rem; background: var(--bg-void); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 3px 8px; font-family: var(--type-mono); font-size: var(--fs-label); }
+.evidence-search:focus-visible { border-color: var(--accent); outline: none; }
+.evidence-kinds { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.evidence-kind-chip { font-size: var(--fs-label); color: var(--text-dim); letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+.evidence-kind-chip.active { border-color: var(--accent); color: var(--accent); background: var(--bg-elevated); }
+
+.evidence-count { margin: 0; flex: none; font-size: var(--fs-label); color: var(--text-dim); letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
+
+/* The table scrolls inside its own container (both axes), so the modal panel never itself scrolls
+   horizontally and a wide cov row never blows out the layout. */
+.evidence-scroll { flex: 1 1 auto; min-height: 8rem; overflow: auto; border: 1px solid var(--border); border-radius: 6px; }
+.evidence-table { width: 100%; border-collapse: collapse; font-size: var(--fs-label); }
+.evidence-table thead th { position: sticky; top: 0; z-index: 1; text-align: left; background: var(--bg-elevated); border-bottom: 1px solid var(--border-bright); padding: 0; white-space: nowrap; }
+.evidence-sort { width: 100%; border: none; border-radius: 0; background: transparent; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; font-size: var(--fs-label); padding: 0.4rem 0.6rem; }
+.evidence-sort:hover, .evidence-sort:focus-visible { color: var(--accent); background: transparent; border: none; }
+/* Sort-direction affordance: a CSS caret (border triangle) on the active column — a UI mark, not a text
+   glyph. aria-sort on the <th> carries the state to assistive tech. */
+.evidence-sort.asc::after, .evidence-sort.desc::after { content: ''; display: inline-block; margin-left: 0.4rem; width: 0; height: 0; border-left: 3px solid transparent; border-right: 3px solid transparent; vertical-align: middle; }
+.evidence-sort.asc::after { border-bottom: 4px solid var(--accent); }
+.evidence-sort.desc::after { border-top: 4px solid var(--accent); }
+.evidence-row { border-bottom: 1px solid var(--border); cursor: pointer; }
+.evidence-row:hover { background: var(--bg-elevated); }
+.evidence-row.active { background: var(--bg-elevated); box-shadow: inset 2px 0 0 var(--accent); }
+.evidence-table td { padding: 0.25rem 0.6rem; vertical-align: top; }
+.evidence-num { font-variant-numeric: tabular-nums; text-align: right; color: var(--text-dim); white-space: nowrap; }
+/* The seq cell is a real button (keyboard-selectable), styled flat so it reads as the cell value. */
+.evidence-rowbtn { border: none; background: transparent; color: var(--text-primary); padding: 0; font-variant-numeric: tabular-nums; }
+.evidence-rowbtn:hover, .evidence-rowbtn:focus-visible { border: none; background: transparent; color: var(--accent); }
+.evidence-kind { color: var(--text-primary); white-space: nowrap; }
+.evidence-kindnum { color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.evidence-payload { font-family: var(--type-mono); color: var(--text-dim); }
+.evidence-field { display: inline-block; margin-right: 0.9rem; white-space: nowrap; }
+.evidence-field-key { color: var(--text-faint); }
+/* A lossy field's disclosure: a flat, focusable button that reads as the field text but carries a dotted
+   underline hint; activating it reveals the exact value inline. Keyboard- and touch-operable (a native button). */
+.evidence-field-btn { border: none; border-radius: 0; background: transparent; padding: 0; margin: 0; font: inherit; color: var(--text-dim); cursor: pointer; text-decoration: underline dotted var(--text-faint); text-underline-offset: 2px; }
+.evidence-field-btn:hover, .evidence-field-btn:focus-visible { border: none; background: transparent; color: var(--accent); text-decoration-color: var(--accent); }
+/* The revealed exact value: brighter than the rounded inline so the full-precision figure stands out. */
+.evidence-field-full { color: var(--text-primary); }
+.evidence-empty { margin: 0.8rem; text-align: center; color: var(--text-dim); font-size: var(--fs-body); }

@@ -20,9 +20,12 @@ import {
 } from './lensContract'
 import { E0_REGISTRATION } from './queryStage'
 import { F2A_REGISTRATION } from './sensingStage'
+import { F4_COMMS_REGISTRATION } from './commsStage'
+import { F3A_TRACK_REGISTRATION } from './trackBelief'
 import { VOICE_MARK, VOICE_GLYPHS, markGlyph, noVerdictHuesAreDim } from './voices'
 import { SHOWMATH_AGREE_CAPABILITY } from './showMath'
 import { SENSING_AGREE_CAPABILITY } from './sensingMath'
+import { COMMS_AGREE_CAPABILITY } from './commsMath'
 import type { AgreeCapability } from './agreeSource'
 
 function fail(msg: string): never { throw new Error(`lensRegistry: ${msg}`) }
@@ -61,6 +64,7 @@ function assertVoiceAlphabetSingleSourced(): void {
 const EXECUTOR_CAPABILITY: Readonly<Record<string, AgreeCapability>> = {
   'e0-query': SHOWMATH_AGREE_CAPABILITY,
   'f2a-sensing': SENSING_AGREE_CAPABILITY,
+  'f4-comms': COMMS_AGREE_CAPABILITY,
 }
 
 // Two token collections name the SAME set (order-independent, duplicate-safe) — the equality the per-form
@@ -96,10 +100,12 @@ export function assertAgreeSourcesBacked(reg: LensRegistration, cap: AgreeCapabi
   }
 }
 
-// The two live citizens (query stage + sensing gauntlet) — the registry is extracted FROM them, per the plan.
-// A third lens joins by adding its registration here (and nowhere else): the load-time gate below then holds
-// it to the same contract as these two. e0 first (the front door), f2a second, matching the ladder order.
-const CITIZENS: readonly LensRegistration[] = [E0_REGISTRATION, F2A_REGISTRATION]
+// The live citizens — the registry is extracted FROM them, per the plan. A lens joins by adding its
+// registration here (and nowhere else): the load-time gate below then holds it to the same contract as the
+// others. e0 first (the front door), f2a second, f4 comms third (the contested link), f3a track belief fourth
+// (the shrinking disc) — matching the wave ladder order (W5 comms before W6 belief). f3a-track paints NO recomputed
+// class, so assertAgreeSourcesBacked returns early for it (no executor capability needed — it derives, never adjudicates).
+const CITIZENS: readonly LensRegistration[] = [E0_REGISTRATION, F2A_REGISTRATION, F4_COMMS_REGISTRATION, F3A_TRACK_REGISTRATION]
 
 // Build the by-id index at module load, enforcing the cross-citizen invariants FAIL-LOUD (the queryStage
 // precedent, at the registry tier). A duplicate lens id or a duplicate pixel-class id within a lens is not a
@@ -154,5 +160,11 @@ export function askPixel(lensId: string, classId: string): PixelClass | undefine
 // the seam a hover surface would consume; no such UI is wired here (the mechanism, not a new surface).
 export function pixelVoice(lensId: string, classId: string, sealedThisSession: boolean): Voice | undefined {
   const p = askPixel(lensId, classId)
-  return p ? voiceFor(p.tier, sealedThisSession) : undefined
+  if (!p) return undefined
+  // A QUALITY-caveat class wears the quality register — the • attested mark, NEVER the decoded seal's ✓/○.
+  // This is what makes the registry's ask-any-pixel authority AGREE with the render (CommsStrip resolves the
+  // SAME caveat through qualityPresentation), closing the split-source class: a plain `decoded` drop-anchor
+  // resolved the sealed ✓ path here while the strip painted •; the caveat declaration gives it ONE voice.
+  if (p.caveat !== undefined) return 'attested'
+  return voiceFor(p.tier, sealedThisSession)
 }

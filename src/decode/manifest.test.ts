@@ -62,6 +62,46 @@ describe('provenance.dirty is a strict JSON boolean (fail-closed at the parse bo
   })
 })
 
+// inputs.config.dt_us is a spec i64 µs tick period (integral, >0), JSON-encoded as a CANONICAL DECIMAL STRING (the
+// u64/i64 stringification the schema uses for seed/sim_time — the fixtures carry "dt_us":"1000"/"125000"). It drives
+// the Hangar sim-clock partition AND the comms pulse clock, so admission validates the SHAPE and never COERCES: the
+// old Number(v) gate let true→1, [1]→1, 0.5, and the subnormal 5e-324 (→ 375×300/dt = Infinity) through. Same
+// fail-closed idiom as dirty — only the spec shape is admitted.
+describe('inputs.config.dt_us is a canonical positive-integer STRING (spec i64 µs, shape-validated, never coerced)', () => {
+  const withDt = (v: unknown): string => {
+    const j = JSON.parse(text)
+    if (v === undefined) delete j.inputs.config.dt_us
+    else j.inputs.config.dt_us = v
+    return JSON.stringify(j)
+  }
+  test('the golden fixture already carries dt_us as a canonical string, and it round-trips', () => {
+    expect(JSON.parse(text).inputs.config.dt_us).toBe('1000') // the shape the spec i64 convention writes
+    expect(parseManifest(withDt('125000')).dtUs).toBe(125000)  // a canonical positive-integer string is admitted
+  })
+  // HOSTILE ADMISSION — every value that is NOT a canonical positive-integer string is refused, INCLUDING a JSON
+  // number (no coercion): true→1, [1]→1, 0.5, and the subnormal 5e-324 (the Infinity trap) all slipped past the old
+  // Number(v) gate; '1e5' is a string but exponent form (not canonical); '0'/'01'/'-1' are non-canonical/≤0.
+  test.each([
+    ['a bare JSON number (no coercion — the shape is a string)', 125000],
+    ['a boolean true (Number(true)===1 must NOT be admitted)', true],
+    ['an array [1] (Number([1])===1 must NOT be admitted)', [1]],
+    ['an object {}', {}],
+    ['a fraction 0.5', 0.5],
+    ['the positive subnormal 5e-324 (→ 375×300/dt = Infinity)', 5e-324],
+    ['exponent-form string 1e5', '1e5'],
+    ['zero string 0', '0'],
+    ['leading-zero string 01', '01'],
+    ['signed string -1', '-1'],
+    ['non-numeric string abc', 'abc'],
+    ['empty string', ''],
+  ] as const)('an invalid dt_us (%s) is refused as malformed at admission', (_label, bad) => {
+    expect(() => parseManifest(withDt(bad))).toThrow(/dt_us is not a canonical positive-integer string/)
+  })
+  test('a MISSING dt_us names the field (the required-field path, before the shape gate)', () => {
+    expect(() => parseManifest(withDt(undefined))).toThrow(/dt_us/)
+  })
+})
+
 // run_complete carries a VALUE contract, not just a type: the publication contract (spec-3a §4.5) requires
 // run_complete:true for a Published run. Driven from RAW manifest JSON exactly as useRun does — parseManifest(text)
 // → gateManifest → the `if (!gate.ok) return` that short-circuits BEFORE stageDecode, so a

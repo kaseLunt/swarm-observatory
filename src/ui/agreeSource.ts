@@ -51,6 +51,7 @@ export type ComparandToken =
 export type DecodedToken =
   | 'sensing:eligibility-vs-decoded-legs'  // decoded eligible vs the AND of its own decoded component bits (the OLD echo, made honest as a self-check)
   | 'query:los-vs-decoded-components'      // decoded los_clear vs its decoded component verdicts
+  | 'comms:pairing-vs-causation-vs-endpoints' // the decoded msg-id send↔outcome pairing cross-checked against BOTH the decoded causation edges AND the delivered receipt's own src/dst endpoints — three independent readings of the bytes agree (the ○ ring), never an external oracle (never a ✓)
 
 // ── WitnessInputs — an OPAQUE, INVARIANT input collection minted ONLY by makeWitnessInputs ─
 // A `readonly InputToken[]` is not safe as a declaration field: TypeScript arrays are COVARIANT, so a mutable

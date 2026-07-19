@@ -32,6 +32,10 @@ import { povFraming, blockedCorridorBounds, observerCraneFraming } from './query
 import { TrajectoryTrail } from './trajectoryTrail'
 import { SensingStage, HEAD_R as HEAD_MARKER_R, SENSOR_MARKER_R, lerpHeadPosition } from './sensingStageView'
 import { buildSensingStage, sensingStageApplies, sensingSubjectRef, TARGET_FRAME_OFFSET } from './sensingStage'
+import { CommsStage } from './commsStageView'
+import { buildCommsStage, commsStageApplies, COMMS_PAD_SRC, COMMS_PAD_DST } from './commsStage'
+import { TrackBeliefStage } from './trackBeliefView'
+import { buildTrackBelief, trackBeliefApplies } from './trackBelief'
 import { resolveCursorInto, eventTickOf, type FrameCursor } from './cursor'
 import { R_MAX, SENSOR_O, OCCLUDER_C, OCCLUDER_R2 } from './sensingScenario'
 import type { StateFrame, TransportTick } from '../lib/brand'
@@ -1215,16 +1219,42 @@ export function Scene({ model }: { model: RunModel }) {
     return boundsFromPositions(pts, pts.length / 3)
   }, [hasSensing, sensingTrail])
 
+  // THE CONTESTED-LINK stage (f4) — a POSITIONLESS-run lens (like the query stage), gated on the ONE complete
+  // predicate commsStageApplies: positionless AND comms events AND no kind-23 draws (the last conjunct arbitrates
+  // against the query stage, which is also positionless). Built once per model (the sibling of buildQueryDraws /
+  // buildSensingStage); empty-cheap for a non-comms run. hasComms is the ONE value the mount + activeStageBounds
+  // + the App chip + the Inspector strip all share — no consumer re-derives the gate.
+  const hasComms = useMemo(() => commsStageApplies(model), [model])
+  // Built ONLY when the comms lens applies (commsStageApplies short-circuits on a positioned run before it
+  // decodes anything), so a non-comms run never pays the build.
+  const commsData = useMemo(() => (hasComms ? buildCommsStage(model) : null), [hasComms, model])
+  // The comms lens's DEFAULT load vantage: frame the two presentational station pads so the duet is legible on
+  // load (placement is presentational, so this bounds is over the pad extent, not decoded flight). Three-space;
+  // the pads live in the comms stage's own presentational space.
+  const commsStageBounds = useMemo(() => {
+    if (!hasComms) return null
+    return boundsFromPositions(new Float32Array([...COMMS_PAD_SRC, ...COMMS_PAD_DST]), 2)
+  }, [hasComms])
+
+  // THE BELIEF stage (f3a) — a POSITIONED-run lens (like sensing), gated on the ONE complete predicate
+  // trackBeliefApplies (POSITIONED AND track updates AND no kind-22). Unlike the sensing lens it does NOT replace the
+  // trajectory trail: the belief disc rides ALONGSIDE the existing positioned scene (the drone + its plain flight
+  // trail), because the disc is the tracker's uncertainty ABOUT that flight, and the lens overlays no reality of its
+  // own — so it needs no stage-bounds override (the default trail bounds already frame the flight the disc rides in).
+  // Built once per model; empty-cheap for a non-track run. hasBelief is the ONE value the mount + the App chip + the
+  // Inspector strip all share.
+  const hasBelief = useMemo(() => trackBeliefApplies(model), [model])
+  const beliefData = useMemo(() => (hasBelief ? buildTrackBelief(model) : null), [hasBelief, model])
+
   // ONE stage-bounds value threaded to BOTH the CameraRig load write AND Entities' tour-start reset: the
-  // query core theatre for a positionless query run (e0), the sensing scope for f2a, null otherwise. Before
-  // this, CameraRig got the sensing bounds but Entities still consumed the query-only stageBounds (null for
-  // f2a), so f2a's tour start cut to plain trajectory bounds — away from the sensing frame step 0 was authored
-  // around. e0 is byte-identical (hasSensing false ⇒ activeStageBounds === stageBounds, its value unchanged).
-  const activeStageBounds = hasSensing ? sensingStageBounds : stageBounds
-  // …and the matching STAGE opts, picked by the SAME hasSensing gate so it can never drift from the bounds:
-  // the sensing scope frames at the RAISED vantage (SENSING_STAGE_FRAME_OPTS — its ground-plane apparatus self-
-  // occludes at the house angle), the query core theatre (e0) keeps STAGE_FRAME_OPTS. Threaded to BOTH the CameraRig
-  // load write and Entities (its tour-start reset + the 'stage' bookend shot) so all three agree on where f2a rests.
+  // query core theatre for a positionless query run (e0), the sensing scope for f2a, the duet for f4, null
+  // otherwise (f3a keeps the default trail bounds — the belief disc rides the flight, no override). e0 is
+  // byte-identical (hasSensing/hasComms false ⇒ activeStageBounds === stageBounds).
+  const activeStageBounds = hasComms ? commsStageBounds : hasSensing ? sensingStageBounds : stageBounds
+  // …and the matching STAGE opts, picked by the SAME gates so they can never drift from the bounds: the sensing
+  // scope frames at the RAISED vantage (SENSING_STAGE_FRAME_OPTS — its ground-plane apparatus self-occludes at
+  // the house angle); the query core theatre (e0) and the comms duet keep STAGE_FRAME_OPTS. Threaded to BOTH the
+  // CameraRig load write and Entities (its tour-start reset + the 'stage' bookend shot).
   const activeStageOpts: FrameOpts = hasSensing ? SENSING_STAGE_FRAME_OPTS : STAGE_FRAME_OPTS
   // Entities consumes the SUBJECT's trail + trajectory bounds on a sensing run (else the head's default),
   // so the establishing frame, the arrival-fit default and the follow-aim bias all track the subject the stage
@@ -1253,10 +1283,11 @@ export function Scene({ model }: { model: RunModel }) {
       onPointerMissed={() => { useViewStore.getState().select(null, null); syncUrl(true) }}
       // Shader warmup: the Canvas mounts AFTER the ceremony (model publish), so first-frame shader
       // compilation would otherwise land exactly at the ceremony dissolve — the worst moment to hitch.
-      // gl.compile precompiles the materials PRESENT AT MOUNT (grid, spine/trail, entities). SCOPE: the
-      // postprocessing composer (Bloom/ToneMapping) compiles its OWN passes on the first composite and is
-      // NOT covered here — those still warm on frame 1. gl.compile is synchronous but runs once at create,
-      // before the first painted frame, so it front-loads the compile cost rather than adding to it.
+      // gl.compile precompiles the materials PRESENT AT MOUNT (grid, spine/trail, entities, the comms pulse
+      // ShaderMaterial with its instanced attributes bound). SCOPE: the postprocessing composer (Bloom/ToneMapping)
+      // compiles its OWN passes on the first composite and is NOT covered here — those still warm on frame 1.
+      // gl.compile is synchronous but runs once at create, before the first painted frame, so it front-loads the
+      // compile cost rather than adding to it.
       onCreated={({ gl, scene, camera }) => { gl.compile(scene, camera) }}
     >
       {import.meta.env.DEV && <Perf position="bottom-right" />}
@@ -1283,7 +1314,18 @@ export function Scene({ model }: { model: RunModel }) {
           sensingStageApplies (positioned AND kind-22), so this mount and the query mount above are mutually
           exclusive by construction — never two stages (two bases) in one scene. */}
       {hasSensing && <SensingStage trail={sensingTrail} data={sensingData} />}
-      {!hasSensing && <TrajectoryTrail trail={trail} />}
+      {/* THE CONTESTED-LINK stage (f4): the src/dst duet, message pulses crossing the link, and the t30 fizzle
+          — the run's ONE bloom and its persistent anchor. Positionless AND comms-kinds AND no kind-23, so it is
+          mutually exclusive with the query stage (both positionless) by the commsStageApplies arbitration. */}
+      {hasComms && commsData && <CommsStage data={commsData} maxTick={model.tickCount} />}
+      {/* THE BELIEF stage (f3a): the tracker's shrinking uncertainty DISC at its decoded mean + a gap-line to the
+          decoded true pose, following the playhead. It rides ALONGSIDE the plain trajectory trail — the trail (the
+          real flight) IS the reality half the belief is compared against, so it is NOT suppressed (unlike the sensing
+          lens's tinted-trail replacement); the gap between the disc and the drone is the tracker's actual error. It is
+          a POSITIONED lens, so it is mutually exclusive with the positionless comms/query stages by construction, and
+          yields to the sensing stage (no-kind-22). */}
+      {hasBelief && beliefData && <TrackBeliefStage data={beliefData} />}
+      {!hasSensing && !hasComms && <TrajectoryTrail trail={trail} />}
       {/* onStart/onEnd flip orbitDragging so playback auto-follow pauses while the user is dragging the
           camera and resumes on release (never fights a live orbit). */}
       <OrbitControls

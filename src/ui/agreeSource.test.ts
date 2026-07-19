@@ -92,15 +92,15 @@ describe('the AgreementResult brand is minted ONLY by the executor — fabricati
   })
 })
 
-// ── THE MINT LOCK: `as AgreementResult` may appear ONLY in the two executors ───────────────────────────
-describe('the AgreementResult mint is LOCKED to the two executors (sweep)', () => {
+// ── THE MINT LOCK: `as AgreementResult` may appear ONLY in the sanctioned executors ───────────────────────────
+describe('the AgreementResult mint is LOCKED to the sanctioned executors (sweep)', () => {
   // SCOPE, honestly stated: this sweep targets DRIFT — a future edit reaching for `as AgreementResult` at a new
   // site to file agreement it never computed. It is NOT a defense against a hostile author (a split-string
   // cast, eval, or the Function constructor defeats ANY lexical scan); runtime-opaque values are out of scope.
   // The mint's LOAD-BEARING half — the brand rides MathCard.agree / GateLine.agree to the mark resolvers, which
   // DEMAND it (recomputedVerdict) — is what makes deleting a mint a COMPILE error (proven by tsc, not here);
   // this pins WHERE mints may live so a third one cannot appear unnoticed.
-  const SANCTIONED = ['ui/showMath.ts', 'ui/sensingMath.ts']
+  const SANCTIONED = ['ui/showMath.ts', 'ui/sensingMath.ts', 'ui/commsMath.ts']
   const stripComments = (src: string): string =>
     src.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n')
   const walk = (dir: string): string[] =>
@@ -122,10 +122,11 @@ describe('the AgreementResult mint is LOCKED to the two executors (sweep)', () =
       })
     }
     const unsanctioned = mints.filter(m => !SANCTIONED.some(s => m.startsWith(s + ':')))
-    expect(unsanctioned, `AgreementResult mint outside the two executors:\n${unsanctioned.join('\n')}`).toEqual([])
-    // LOAD-BEARING: the sweep actually reached BOTH executors' mints (guards against a walk that matched nothing).
+    expect(unsanctioned, `AgreementResult mint outside the sanctioned executors:\n${unsanctioned.join('\n')}`).toEqual([])
+    // LOAD-BEARING: the sweep actually reached EVERY executor's mints (guards against a walk that matched nothing).
     expect(mints.some(m => m.startsWith('ui/showMath.ts:'))).toBe(true)
     expect(mints.some(m => m.startsWith('ui/sensingMath.ts:'))).toBe(true)
+    expect(mints.some(m => m.startsWith('ui/commsMath.ts:'))).toBe(true)
   })
 
   test('the detector matches the mint form it hunts, and NOT a bare type annotation (a third mint WOULD be caught)', () => {
@@ -199,12 +200,16 @@ describe('the AgreementResult mint SITES are pinned by enclosing function, not j
   test('sensingMath.ts mints ONLY in agrees + recomputeAllSensing', () => {
     expect(mintSitesIn('sensingMath.ts', read('ui/sensingMath.ts'))).toEqual(['agrees', 'recomputeAllSensing'])
   })
-  test('across both executors there are EXACTLY four sanctioned mint sites', () => {
+  test('commsMath.ts mints ONLY in checkPairing (the pairing self-consistency executor)', () => {
+    expect(mintSitesIn('commsMath.ts', read('ui/commsMath.ts'))).toEqual(['checkPairing'])
+  })
+  test('across ALL executors there are EXACTLY five sanctioned mint sites', () => {
     const all = [
       ...mintSitesIn('showMath.ts', read('ui/showMath.ts')),
       ...mintSitesIn('sensingMath.ts', read('ui/sensingMath.ts')),
+      ...mintSitesIn('commsMath.ts', read('ui/commsMath.ts')),
     ]
-    expect(all).toHaveLength(4)
+    expect(all).toHaveLength(5)
   })
   test('PREMISE-DEFEAT — an EXTRA cast (a direct mint of an uncomputed boolean) in a new function is CAUGHT', () => {
     // the file-level mint-lock sweep waves this through (it is "inside showMath.ts"); the site pin does not.
@@ -237,14 +242,16 @@ describe('the AgreementResult mint SITES are pinned by enclosing function, not j
     expect(mintSitesIn('showMath.ts', aliased)).toEqual([])
   })
 
-  test('the FOUR legitimate mint sites still pass unchanged under the hardened detector', () => {
+  test('the FIVE legitimate mint sites still pass unchanged under the hardened detector', () => {
     // Regression guard for part (a): normalizing the asserted type and admitting the angle-bracket form must not
     // add or drop any real site. (The per-file exact-set tests above already assert this against the live source;
     // this states the invariant explicitly next to the premise-defeat cases.)
     const show = mintSitesIn('showMath.ts', read('ui/showMath.ts'))
     const sensing = mintSitesIn('sensingMath.ts', read('ui/sensingMath.ts'))
+    const comms = mintSitesIn('commsMath.ts', read('ui/commsMath.ts'))
     expect(show).toEqual(['agrees', 'recomputeAll'])
     expect(sensing).toEqual(['agrees', 'recomputeAllSensing'])
+    expect(comms).toEqual(['checkPairing'])
   })
 })
 

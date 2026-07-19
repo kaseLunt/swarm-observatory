@@ -58,6 +58,43 @@ test('a forced write cancels a pending trailing flush (exactly two writes, not t
   vi.unstubAllGlobals(); vi.useRealTimers()
 })
 
+// PLAYBACK-ADVANCE PROVENANCE. advanceSeq is the transport-driven-advance marker the comms pulse pool
+// reads to tell a PLAYED advance apart from a user SCRUB/DRAG — because `playing` alone misclassifies a forward
+// drag (preserves playing), a terminal advance (playing flips false on the final played frame), and a pause.
+// ONLY the Timeline playback write increments it; everything else leaves it. These pin that contract.
+describe('advanceSeq — the playback-advance provenance', () => {
+  const reset = () => useViewStore.setState({ tick: 0, fraction: 0, playing: false, advanceSeq: 0 })
+  test('starts at 0 and a SCRUB (setTick) never bumps it — a drag is not a played advance', () => {
+    reset()
+    expect(useViewStore.getState().advanceSeq).toBe(0)
+    // a forward DRAG while playing: setTick preserves playing but must NOT read as a played advance
+    useViewStore.setState({ playing: true })
+    useViewStore.getState().setTick(40)
+    expect(useViewStore.getState().advanceSeq).toBe(0) // unchanged → the pulse pool uses exact-current, no replay
+  })
+  test('applyLink (a deep-link) never bumps it — a jump is not a played advance', () => {
+    reset()
+    useViewStore.getState().applyLink({ tick: 30 })
+    expect(useViewStore.getState().advanceSeq).toBe(0)
+  })
+  test('the Timeline playback write bumps it — even on the TERMINAL frame that stops playback (playing → false)', () => {
+    reset()
+    useViewStore.setState({ playing: true })
+    // a mid-run played advance (the Timeline write, verbatim shape): advanceSeq++ , playing stays true
+    let s = useViewStore.getState()
+    useViewStore.setState({ tick: 10, fraction: 0.2, playing: true, advanceSeq: s.advanceSeq + 1 })
+    expect(useViewStore.getState().advanceSeq).toBe(1)
+    // the TERMINAL played frame: advancePlayhead returns done → playing:false ATOMICALLY, but it is STILL a
+    // played advance, so advanceSeq bumps — the final interval (which may cross the hero's window) is processed
+    // before playback stops.
+    s = useViewStore.getState()
+    useViewStore.setState({ tick: 64, fraction: 0, playing: false, advanceSeq: s.advanceSeq + 1 })
+    const now = useViewStore.getState()
+    expect(now.advanceSeq).toBe(2)   // bumped despite playing → false (the hero fires on a natural ending)
+    expect(now.playing).toBe(false)
+  })
+})
+
 // FINALE flag grammar. The finale is ephemeral display state — true only at a NATURAL play-to-end
 // rest (the Timeline transport batch writes it; simulated here by a raw setState({finale:true}), which is
 // EXACTLY the natural-end edge's write). It is cleared by any playhead MOVE and by a run-switch; it survives a

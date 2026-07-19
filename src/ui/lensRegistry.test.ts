@@ -4,7 +4,10 @@ import {
 } from './lensRegistry'
 import { E0_REGISTRATION, QUERY_STAGE_HONESTY } from './queryStage'
 import { F2A_REGISTRATION, SENSING_HONESTY } from './sensingStage'
-import { validateRegistration, voiceFor, type LensRegistration, type PixelClass } from './lensContract'
+import { F4_COMMS_REGISTRATION, COMMS_HONESTY, deliveredPulseClassId } from './commsStage'
+import { F3A_TRACK_REGISTRATION, TRACK_BELIEF_HONESTY } from './trackBelief'
+import { validateRegistration, voiceFor, voiceGlyph, type LensRegistration, type PixelClass } from './lensContract'
+import { requireGlyph } from './voices'
 import { SHOWMATH_AGREE_CAPABILITY } from './showMath'
 import { SENSING_AGREE_CAPABILITY, ELIGIBLE_CONJUNCTION_INPUTS } from './sensingMath'
 import { makeWitnessInputs, type AgreeCapability, type WitnessInputs, type FormToken } from './agreeSource'
@@ -15,13 +18,15 @@ import { makeWitnessInputs, type AgreeCapability, type WitnessInputs, type FormT
 // contract's tier→voice map; and the cross-citizen invariants (unique ids, unique class ids) are proven to
 // FAIL LOUD — the registry refuses an ambiguous ask-any-pixel key rather than filing it best-effort.
 
-describe('the registry holds exactly the two live citizens, reachable by id', () => {
-  test('LENSES carries e0 + f2a in ladder order', () => {
-    expect(LENSES.map(l => l.id)).toEqual(['e0-query', 'f2a-sensing'])
+describe('the registry holds exactly the four live citizens, reachable by id', () => {
+  test('LENSES carries e0 + f2a + f4-comms + f3a-track in wave-ladder order', () => {
+    expect(LENSES.map(l => l.id)).toEqual(['e0-query', 'f2a-sensing', 'f4-comms', 'f3a-track'])
   })
   test('lensById returns the whole registration; an unknown id is undefined (the honest miss)', () => {
     expect(lensById('e0-query')).toBe(E0_REGISTRATION)
     expect(lensById('f2a-sensing')).toBe(F2A_REGISTRATION)
+    expect(lensById('f4-comms')).toBe(F4_COMMS_REGISTRATION)
+    expect(lensById('f3a-track')).toBe(F3A_TRACK_REGISTRATION)
     expect(lensById('nope')).toBeUndefined()
   })
 })
@@ -30,9 +35,31 @@ describe('honestyChipFor — the chip is the registration projection (one source
   test('each lens returns its own honesty line, byte-identical to the exported const App used to import', () => {
     expect(honestyChipFor('e0-query')).toBe(QUERY_STAGE_HONESTY)
     expect(honestyChipFor('f2a-sensing')).toBe(SENSING_HONESTY)
+    expect(honestyChipFor('f4-comms')).toBe(COMMS_HONESTY)
+    expect(honestyChipFor('f3a-track')).toBe(TRACK_BELIEF_HONESTY)
   })
   test('an unknown id fails LOUD (a chip for a non-existent lens is a wiring bug, not a blank)', () => {
     expect(() => honestyChipFor('nope')).toThrow(/no such registered lens/)
+  })
+})
+
+// ── THE BELIEF LENS is a DERIVED-DISPLAY citizen — reachable, glyphless, and needing NO executor ──────────────
+describe('f3a-track — the fourth citizen paints a derivation, never an adjudication', () => {
+  test('askPixel resolves the covariance-disc class as derived-display, and its voice wears NO glyph', () => {
+    const disc = askPixel('f3a-track', 'covariance-disc')!
+    expect(disc.tier).toBe('derived-display')
+    expect(disc.source).toMatch(/^contract\//)
+    // a derived-display class voices as `derivation`, which maps to NO glyph (never ○, never ✓) — the house law.
+    expect(pixelVoice('f3a-track', 'covariance-disc', true)).toBe('derivation')
+    expect(voiceGlyph('derivation')).toBeNull()
+    // the decoded mean inherits the session seal like any decoded fact.
+    expect(pixelVoice('f3a-track', 'track-mean', true)).toBe('sealed')
+    expect(pixelVoice('f3a-track', 'track-mean', false)).toBe('unsealed')
+  })
+  test('the belief lens declares NO recomputed class — assertAgreeSourcesBacked returns early with NO executor', () => {
+    expect(F3A_TRACK_REGISTRATION.provenance.some(p => p.tier === 'recomputed')).toBe(false)
+    // no executor capability is registered for it, and the guard must NOT throw (it returns early on zero recomputed).
+    expect(() => assertAgreeSourcesBacked(F3A_TRACK_REGISTRATION, undefined)).not.toThrow()
   })
 })
 
@@ -56,6 +83,43 @@ describe('askPixel + pixelVoice — the ask-any-pixel lookup the registry exists
     expect(pixelVoice('e0-query', 'probe-geometry', false)).toBe('unsealed')
     expect(pixelVoice('e0-query', 'bearing-claim', false)).toBe('attested')
     expect(pixelVoice('nope', 'x', true)).toBeUndefined()
+  })
+
+  // The registry and the render AGREE on the drop's voice. The drop-anchor pixel declares a quality caveat,
+  // so its registry authority is the • attested mark (NEVER the decoded seal's ✓/○) — the SAME voice CommsStrip
+  // paints via qualityPresentation. This closes the split-source class: a plain `decoded` drop-anchor would
+  // resolve the sealed ✓ path here while the strip painted •.
+  test('the drop-anchor declares its quality caveat, and pixelVoice resolves it to the • attested mark, sealed OR unsealed', () => {
+    const drop = askPixel('f4-comms', 'drop-anchor')!
+    expect(drop.tier).toBe('decoded')      // a decoded FACT on record…
+    expect(drop.caveat).toBe('link-loss')  // …that declares its quality caveat machine-readably
+    // sealed AND unsealed both resolve the quality register's mark — never the decoded seal's sealed/unsealed voice.
+    expect(pixelVoice('f4-comms', 'drop-anchor', true)).toBe('attested')
+    expect(pixelVoice('f4-comms', 'drop-anchor', false)).toBe('attested')
+    expect(pixelVoice('f4-comms', 'drop-anchor', true)).not.toBe('sealed')
+    // voiceGlyph confirms the • mark, never the ✓ — the same glyph the strip renders.
+    expect(voiceGlyph('attested')).toBe(requireGlyph('attested'))
+    expect(voiceGlyph('attested')).not.toBe(requireGlyph('verified'))
+  })
+
+  // the delivered-pulse MISSING arm is REACHABLE through the context-free askPixel lookup. Both
+  // clock-state ids are registered; the CALLER picks by dtKnown (deliveredPulseClassId). Before this, only the
+  // RECORDED class was registered, so a manifestless run answered decoded-latency for a purely-presentational flight.
+  test('BOTH delivered-pulse clock-state classes resolve through askPixel/pixelVoice — the MISSING arm is reachable', () => {
+    const recorded = askPixel('f4-comms', deliveredPulseClassId(true))!
+    expect(recorded.tier).toBe('derived-display')          // decoded latency ×300 (RECORDED)
+    expect(recorded.answer).toContain('decoded')
+    // THE FIX — the MISSING id resolves (it is registered), and it answers PRESENTATIONAL, not decoded-timing.
+    const missing = askPixel('f4-comms', deliveredPulseClassId(false))
+    expect(missing, 'the MISSING arm is registered and reachable').toBeDefined()
+    expect(missing!.tier).toBe('presentational')
+    expect(missing!.source).toBeNull()                     // no decoded source to cite
+    expect(missing!.answer).toContain('withheld')          // the decoded-timing claim is withheld
+    // pixelVoice resolves the MISSING class's voice, seal-INDEPENDENT (a presentational class inherits no session seal).
+    const missingId = deliveredPulseClassId(false)
+    expect(pixelVoice('f4-comms', missingId, true)).toBeDefined()
+    expect(pixelVoice('f4-comms', missingId, true)).toBe(pixelVoice('f4-comms', missingId, false))
+    expect(pixelVoice('f4-comms', missingId, true)).toBe(voiceFor('presentational', true))
   })
 })
 

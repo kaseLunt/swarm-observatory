@@ -11,9 +11,9 @@
 //                 full "certification wall".
 //   • condensed — the run switcher collapses to a `run ▾` picker (the largest offender, and the picker
 //                 scales past six runs the button row cannot); the low-priority chrome (hangar, copy-
-//                 link) sheds its labels to icons; the wall label condenses to "wall".
-//   • overflow  — the low-priority chrome (hangar, copy-link) folds into a single `⋯` menu; the wordmark
-//                 word recedes to just the radar mark; the panel-toggles shed their labels to icons.
+//                 link, evidence table) sheds its labels to icons; the wall label condenses to "wall".
+//   • overflow  — the low-priority chrome (hangar, copy-link, evidence table) folds into a single `⋯`
+//                 menu; the wordmark word recedes to just the radar mark; the panel-toggles shed labels.
 //   • mobile    — the phone floor (≤640px): the panel-toggles ALSO fold into the `⋯` menu and the row
 //                 tightens its gaps/padding, so the picker + the two brand CTAs + the `⋯` + help still
 //                 fit a 360px viewport.
@@ -46,9 +46,11 @@ export function headerTier(width: number): HeaderTier {
 // The per-tier layout — the whole ladder in one table, so the header JSX branches on named intents
 // (never on the tier string or a raw width). Each field is one condensation axis:
 //   • runSwitcher  — 'buttons' (the six-run row) vs 'picker' (the `run ▾` disclosure). Always reachable.
-//   • chrome       — how the LOW-PRIORITY controls (hangar, copy-link) present: 'labels' → 'icons' →
-//                    'overflow' (folded into the `⋯` menu). This is the only axis that ever hides a
-//                    control from the row; it hides ONLY the low-priority chrome.
+//   • chrome       — how the LOW-PRIORITY controls (hangar, copy-link, evidence table) present: 'labels' →
+//                    'icons' → 'overflow' (folded into the `⋯` menu). This is the only axis that ever hides a
+//                    control from the row; it hides ONLY the low-priority chrome. The evidence-table entry
+//                    is a new occupant of this axis — an instrument front door, not a brand CTA, so it folds
+//                    with the hangar/copy-link and never with the two protected CTAs (the tour + wall).
 //   • wallLabel    — the certification-wall CTA's visible+accessible label. Condenses but never folds.
 //   • wordmark     — 'full' (mark + word) vs 'mark' (the word recedes; the mark keeps its accent cyan).
 //   • chip         — the cold-open verdict chip (a real header occupant on a bare cold open). It is

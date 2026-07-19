@@ -17,7 +17,7 @@
 // behind the contract. Compile-time hue membership rides the type-only edge (LAW 2); the seven-mark glyphs
 // ride the voices leaf so this module never re-mints a voice literal (the single-source law, v0.8).
 import type { PaletteKey, CategoryKey } from './theme'
-import { requireGlyph, VOICE_MARK, basisNote, type MarkKey } from './voices'
+import { requireGlyph, VOICE_MARK, basisNote, type MarkKey, type QualityCaveat } from './voices'
 import type { AgreeSource, AgreementResult } from './agreeSource'
 
 // ── The six authority tiers (pinned NOW, per the standing rule) ────────────────────────────────────────
@@ -55,6 +55,14 @@ export interface PixelClass {
   // AgreeSource on any other tier is a category error) — validateRegistration enforces both. The declared
   // arm's tokens are resolved against the executor's capability at boot (lensRegistry), fail-loud.
   readonly agree?: AgreeSource
+  // A pixel that is a decoded FACT on record but carries a provenance-QUALITY caveat about its FITNESS (a
+  // dropped link, a dirty build tree) declares that caveat kind HERE, machine-readably. It makes the QUALITY
+  // register the pixel's ONE voice source: pixelVoice resolves such a class to the • attested mark (never the
+  // sealed ✓), and a render (CommsStrip) resolves qualityPresentation from THIS same declaration — so registry
+  // and render can never split on the drop's voice (the same split-source class the dirty-flag work retired). Only a
+  // FACT-tier class may carry one (never presentational — encodes no data; never recomputed — has an agree
+  // witness instead); validateRegistration enforces that.
+  readonly caveat?: QualityCaveat
 }
 
 // ── The registration: a lens's LAW-4 declaration, whole, as data ───────────────────────────────────────
@@ -183,6 +191,10 @@ export function validateRegistration(reg: LensRegistration): LensRegistration {
     } else if (p.agree !== undefined) {
       fail(`${reg.id}: pixel-class '${p.id}' (${p.tier}) declares an AgreeSource — only the recomputed tier witnesses agreement (an AgreeSource off the recomputed tier is a category error)`)
     }
+    // A QUALITY caveat belongs only on a decoded/pinned FACT — never on a presentational class (it encodes no
+    // data, so there is no fact to qualify) and never on a recomputed class (it witnesses agreement instead).
+    if (p.caveat !== undefined && (p.tier === 'presentational' || p.tier === 'recomputed'))
+      fail(`${reg.id}: pixel-class '${p.id}' (${p.tier}) declares a quality caveat — a caveat qualifies a decoded FACT on record, never a presentational or recomputed class`)
   }
   if (reg.honestyChip.trim() === '') fail(`${reg.id} registers an empty honesty chip`)
   if (!chipAgreesWithLedger(reg)) fail(`${reg.id}: the honesty chip disagrees with the ledger — the chip must name scenario constants iff the ledger has them, and claim decoded-real iff the ledger has decoded classes`)

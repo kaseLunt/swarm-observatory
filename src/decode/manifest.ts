@@ -24,6 +24,20 @@ const bool = (v: unknown, path: string): boolean => {
   if (v !== true && v !== false) throw new Error(`manifest: ${path} is not a boolean`)
   return v
 }
+// SHAPE gate for dt_us — validate the spec type, never coerce (fail-closed, same rejection idiom as bool/req).
+// dt_us is a spec i64 microsecond tick period, integral and > 0 (spec-3a §3: `DT_UNIT: i64 µs (integral; dt_us>0)`;
+// §6.5.4 `Config { dt_us:i64 }`). In the manifest JSON it is encoded as a CANONICAL DECIMAL STRING — the same
+// u64/i64 stringification the schema uses for seed and sim_time (the f0/f4 fixtures carry `"dt_us":"1000"` /
+// `"125000"`). The old gate COERCED (Number(v)) before validating, so `true`→1, `[1]`→1, `0.5`, and the subnormal
+// `5e-324` (→ later 375×300/dt = Infinity) all slipped through. Admit ONLY the spec shape: a canonical positive-
+// integer string (no sign, no leading zero, no fraction, no exponent), whose value is a positive safe integer.
+// Anything else — a JSON number, a boolean, an array/object, `'1e5'`, `'0'`, `'01'` — is a malformed manifest and
+// takes the existing rejection path, so a mis-shaped recorded clock can never reach the comms/provenance surfaces.
+const i64Us = (v: unknown, path: string): number => {
+  if (typeof v !== 'string' || !/^[1-9][0-9]*$/.test(v) || !Number.isSafeInteger(Number(v)))
+    throw new Error(`manifest: ${path} is not a canonical positive-integer string (spec i64 µs, dt_us>0)`)
+  return Number(v)
+}
 
 export function parseManifest(jsonText: string): RunManifest {
   const j = JSON.parse(jsonText)
@@ -38,7 +52,7 @@ export function parseManifest(jsonText: string): RunManifest {
     stateRegistryHash: hex64(req(inputs.state_registry_hash, 'inputs.state_registry_hash'), 'state_registry_hash'),
     scenarioId: req(inputs.scenario_id, 'inputs.scenario_id'),
     seed: String(req(inputs.seed, 'inputs.seed')),
-    dtUs: Number(req(inputs.config?.dt_us, 'inputs.config.dt_us')),
+    dtUs: i64Us(req(inputs.config?.dt_us, 'inputs.config.dt_us'), 'inputs.config.dt_us'),
     eventHash: hex64(req(hashes.event_hash?.value, 'outputs.hashes.event_hash.value'), 'event_hash'),
     stateTrajectoryHash: hex64(req(hashes.state_trajectory_hash?.value, 'outputs.hashes.state_trajectory_hash.value'), 'state_trajectory_hash'),
     resultId: hex64(req(hashes.result_id?.value, 'outputs.hashes.result_id.value'), 'result_id'),

@@ -193,7 +193,10 @@ export function Timeline({ model }: { model: RunModel }) {
         // write (keystroke, tour witnessSpeed) is display-only and can never scale the fixed delta —
         // see captureClock.ts. advancePlayhead is otherwise untouched.
         const a = advancePlayhead(s.tick, s.fraction, frameDeltaMs(now - last), captureSpeed(s.speed), model.tickCount)
-        useViewStore.setState({ tick: a.tick, fraction: a.fraction, playing: !a.done && s.playing })
+        // advanceSeq++ marks this write as a TRANSPORT-DRIVEN advance (the playback provenance the comms pulse
+        // pool reads) — the terminal frame (a.done → playing:false) still bumps it, so the final played interval
+        // is processed BEFORE playback stops (the hero fires on a natural ending), and a scrub/drag never bumps it.
+        useViewStore.setState({ tick: a.tick, fraction: a.fraction, playing: !a.done && s.playing, advanceSeq: s.advanceSeq + 1 })
         // End-of-run auto-sync deep-links the resting tick when playback reaches maxTick. SKIP while a
         // tour is active: a tour play step reaches maxTick with the OFF-LADDER witness speed still in
         // the store (the tour listener pauses on arrival, but finish() has not yet restored the ladder

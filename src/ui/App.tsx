@@ -16,6 +16,7 @@ import { GateScreen } from './GateScreen'
 import { TourOverlay } from './TourOverlay'
 import { Hangar } from './hangarView'
 import { CertificationWall, type CertificationWallHandle } from './wallView'
+import { EvidenceTable } from './evidenceTableView'
 import { HeaderMenu } from './HeaderMenu'
 import { useHeaderTier } from './useHeaderTier'
 import { headerLayout } from './headerModel'
@@ -33,6 +34,8 @@ import { buildShareUrl } from '../state/url'
 import { readyAnnouncementText } from './ceremonyFormat'
 import { queryStageApplies } from './queryStage'
 import { sensingStageApplies } from './sensingStage'
+import { commsStageApplies, buildCommsStage, commsChipCopy } from './commsStage'
+import { trackBeliefApplies, buildTrackBelief, trackBeliefChipCopy } from './trackBelief'
 import { honestyChipFor } from './lensRegistry'
 import './app.css'
 
@@ -121,6 +124,35 @@ function SensingChip({ model, tourActive }: { model: RunModel; tourActive: boole
   return <div className={tourActive ? 'scene-chip scene-chip-tour' : 'scene-chip'}>{honestyChipFor('f2a-sensing')}</div>
 }
 
+// The CONTESTED-LINK honesty chip (f4) — the third sibling. Self-gates on the ONE complete comms predicate
+// (commsStageApplies — positionless AND comms-kinds AND no kind-23), the same arbitrated gate Scene's mount and
+// the Inspector strip route through, so it appears iff the comms stage draws. The INVARIANT honesty claim is the
+// registration's projection (COMMS_HONESTY, read through the registry): decoded-real, presentational placement,
+// sent-vs-arrived. The RUN-SPECIFIC summary (the counts, the "steady link · SNR constant" clause, the "one lost
+// packet" language) is DERIVED per-run from the decoded content (commsChipCopy) so it can never over-claim on
+// other data — a send-only source reads its own honest 1/0/0, never the f4 story.
+function CommsChip({ model, tourActive }: { model: RunModel; tourActive: boolean }) {
+  const hasComms = useMemo(() => commsStageApplies(model), [model])
+  const copy = useMemo(() => (hasComms ? commsChipCopy(buildCommsStage(model)) : null), [hasComms, model])
+  if (!hasComms || copy === null) return null
+  return <div className={tourActive ? 'scene-chip scene-chip-tour' : 'scene-chip'}>{honestyChipFor('f4-comms')} · {copy}</div>
+}
+
+// The BELIEF honesty chip (f3a) — the fourth sibling. Self-gates on the ONE complete belief predicate
+// (trackBeliefApplies — POSITIONED AND track updates AND no kind-22), the same arbitrated gate Scene's mount and the
+// Inspector strip route through, so it appears iff the belief stage draws. The INVARIANT honesty claim is the
+// registration's projection (TRACK_BELIEF_HONESTY, read through the registry): the ring is the tracker's own decoded
+// estimate and the drone flies the decoded state truth, so the gap between them is the tracker's actual error — a real
+// belief-vs-reality comparison, both halves decoded. The RUN-SPECIFIC summary (the shrink + the actual-error growth,
+// or the fail-closed degradation) is DERIVED per-run from the decoded content (trackBeliefChipCopy) so it can never
+// over-claim on other data.
+function BeliefChip({ model, tourActive }: { model: RunModel; tourActive: boolean }) {
+  const hasBelief = useMemo(() => trackBeliefApplies(model), [model])
+  const copy = useMemo(() => (hasBelief ? trackBeliefChipCopy(buildTrackBelief(model)) : null), [hasBelief, model])
+  if (!hasBelief || copy === null) return null
+  return <div className={tourActive ? 'scene-chip scene-chip-tour' : 'scene-chip'}>{honestyChipFor('f3a-track')} · {copy}</div>
+}
+
 // COPY-LINK PERMANENT HOME (v0.7, LAW-4). The cold-open card's share weapon was card-only; this
 // gives it a permanent home in the app chrome (the header) so the shareable-URL affordance is reachable at all
 // times — not just during the transient cold-open card. A new ANSWER in an existing surface (LAW-4), never new
@@ -179,6 +211,10 @@ export default function App() {
   // each session — its component-local state (the gauge load, the verifying flag) starts fresh, so the first paint
   // after a reopen can never show a prior session's gauges or a stale cancel button.
   const [wallGen, setWallGen] = useState(0)
+  // The Raw Evidence Table: a modal byte-X-ray, peer to the Hangar/Wall (the same overlay idiom).
+  // DOM/React only — no WebGL, no frame loop. Mounted only while open, so each open is a fresh mount whose
+  // filters/sort/scope start at rest.
+  const [tableOpen, setTableOpen] = useState(false)
   // A handle to the mounted Wall's synchronous stop routine (abort the fetch, fence the queue, reset the store),
   // so the Esc close path can invoke the SAME teardown the close button + backdrop use — before `open` flips.
   const wallRef = useRef<CertificationWallHandle>(null)
@@ -228,6 +264,9 @@ export default function App() {
   // …and for the Wall (v0.8): while it is open the transport keyboard is inert beneath it and Esc closes it.
   const wallOpenRef = useRef(false)
   useEffect(() => { wallOpenRef.current = wallOpen }, [wallOpen])
+  // …and for the evidence table: while it is open the transport keyboard is inert beneath it and Esc closes it.
+  const tableOpenRef = useRef(false)
+  useEffect(() => { tableOpenRef.current = tableOpen }, [tableOpen])
   // The unified Wall CLOSE (Esc + any programmatic close): run the mounted Wall's synchronous stop routine FIRST
   // (abort the in-flight fetch, fence the verify queue, reset the store), THEN flip `open`. Doing the teardown
   // synchronously — rather than leaning on the unmount cleanup alone — closes the window in which a late verify
@@ -348,6 +387,15 @@ export default function App() {
   // the authored tour auto-starts once the switched-to run is ready (see the effect below).
   const openRunFromHangar = (id: string) => { setHangarOpen(false); selectRun(id) }
   const openTourFromHangar = (id: string) => { setHangarOpen(false); selectRun(id); setPendingTour(id) }
+
+  // Evidence-table row select → the ONE existing select path (deep-links ?ev=), then close the modal so the
+  // table is a navigation surface INTO the stages (one code path for selection, never a second). The subject (when the kind names
+  // one) rides along via the SAME subjectOfEvent the Inspector's pick uses — own-property-safe over unsigned ids.
+  const selectFromTable = (seq: number) => {
+    useViewStore.getState().select(model?.subjectOfEvent(seq) ?? null, seq)
+    syncUrl(true)
+    setTableOpen(false)
+  }
 
   // SESSION-SEAL RECONCILIATION (the checkmark economy; the seal-race fix + the identity-join guard): when THIS
   // run's own bytes have finished verifying (loadedRunId === runId — identity carried with the data, the
@@ -481,6 +529,13 @@ export default function App() {
       // passive unmount cleanup alone. The next open remounts a fresh Wall (the wallGen key).
       if (wallOpenRef.current) {
         if (e.key === 'Escape') { e.preventDefault(); closeWall() }
+        return
+      }
+      // Evidence-table modal capture: the byte-X-ray is a modal too — the transport is inert beneath it and
+      // Esc closes it (symmetric with the Hangar/Wall). Non-Esc keys return WITHOUT preventDefault, so typing
+      // reaches the table's search input natively.
+      if (tableOpenRef.current) {
+        if (e.key === 'Escape') { e.preventDefault(); setTableOpen(false) }
         return
       }
       // Header-disclosure capture: the run picker / the ⋯ overflow own the keyboard while open, exactly
@@ -644,6 +699,20 @@ export default function App() {
             onClick={() => setHangarOpen(true)}
           >{layout.chrome === 'icons' ? '⌂' : 'hangar'}</button>
         )}
+        {/* THE RAW EVIDENCE TABLE front door (low-priority chrome — rides the SAME `chrome` axis as the hangar
+            + copy-link): opens the byte-X-ray modal. A full label at the full tier, a ▦ table mark at the
+            condensed tier (a UI affordance mark in the ⌂/⧉/☰ chrome family, NOT an evidence-alphabet glyph),
+            folded into the `⋯` overflow at the narrowest tiers. It is an INSTRUMENT surface, not a brand CTA,
+            so it folds like the hangar — never competing with the two protected CTAs (tour + wall). NOT gated
+            on the run index: it reads the LOADED run's model (always present in the ready tree), so it is
+            reachable on every run — the whole point of the table is that it is universal across all six runs. */}
+        {layout.chrome !== 'overflow' && (
+          <button
+            className="evidence-open"
+            aria-label={layout.chrome === 'icons' ? 'evidence table' : undefined}
+            onClick={() => setTableOpen(true)}
+          >{layout.chrome === 'icons' ? '▦' : 'evidence table'}</button>
+        )}
         {/* Certification Wall front door (priority-(c), a BRAND CTA): the app's hero surface — the
             byte-verification wall and, inside it, the "test the seal" tamper demo — reachable directly from
             the persistent chrome, not three interactions deep behind the Hangar. Routes through the SAME
@@ -690,9 +759,9 @@ export default function App() {
             folds — the two brand CTAs and the run picker above NEVER fold in here. A keyboard-operable
             disclosure. At the overflow tier it holds the hangar + copy-link; at the mobile floor it ALSO
             absorbs the two panel-toggles (the last inline chrome to fold, per the ladder's priority order).
-            Rendered when there is anything to fold: runs present (hangar/copy need the index) OR the phone
-            floor (the panel-toggles fold regardless of the index). */}
-        {layout.chrome === 'overflow' && (runs.length > 0 || layout.panelToggles === 'overflow') && (
+            At the overflow tier the ⋯ always has content to fold — the evidence table folds here on every run
+            (it is not run-index-gated) — so the menu renders whenever chrome is at the overflow tier. */}
+        {layout.chrome === 'overflow' && (
           <HeaderMenu menuId="overflow" label="⋯" ariaLabel="more actions" className="header-overflow" onOwnership={onMenuOwnership}>
             {(close) => (
               <>
@@ -701,6 +770,9 @@ export default function App() {
                 {runs.length > 0 && (
                   <button role="menuitem" className="header-menu-item" onClick={() => { close(); setHangarOpen(true) }}>hangar</button>
                 )}
+                {/* the evidence table folds here at the narrowest tiers (it rides the `chrome` axis with the
+                    hangar + copy-link); not run-gated — it reads the loaded run's model. */}
+                <button role="menuitem" className="header-menu-item" onClick={() => { close(); setTableOpen(true) }}>evidence table</button>
                 {/* the copy item keeps the menu OPEN so its "link copied ✓" feedback is seen — Esc or an
                     outside press closes it. */}
                 {runs.length > 0 && <HeaderCopyLink onCopyLink={copyShareLink} variant="menuitem" />}
@@ -762,6 +834,12 @@ export default function App() {
           {/* The sensing chip is the honesty contract for f2a (a POSITIONED-run lens); it self-gates on
               sensingStageApplies and lifts above the tour caption exactly as the query chip does. */}
           <SensingChip model={model} tourActive={tour.active?.runId === runId} />
+          {/* The comms chip is the honesty contract for f4 (the contested link); it self-gates on
+              commsStageApplies and lifts above the tour caption exactly as the other two chips do. */}
+          <CommsChip model={model} tourActive={tour.active?.runId === runId} />
+          {/* The belief chip is the honesty contract for f3a (the shrinking disc); it self-gates on
+              trackBeliefApplies and lifts above the tour caption exactly as the other three chips do. */}
+          <BeliefChip model={model} tourActive={tour.active?.runId === runId} />
         </main>
         <ProvenancePanel model={model} open={panelOpen === 'provenance'} />
         <Timeline model={model} />
@@ -788,6 +866,11 @@ export default function App() {
           CTA, never a prior session's gauges or cancel button. Esc/close route through closeWall (synchronous
           stop); the Wall's own button + backdrop stop it directly, so every close path fences the queue. */}
       {wallOpen && <CertificationWall key={wallGen} ref={wallRef} onClose={() => setWallOpen(false)} />}
+      {/* The Raw Evidence Table: a modal byte-X-ray, peer to the Hangar/Wall. DOM/React only — no WebGL, no
+          frame loop. Mounted ONLY while open, so each open is a fresh mount (its filters/sort/scope start at
+          rest). model is non-null here (past the readyTree gate). Row-select routes through selectFromTable —
+          the ONE select path (deep-link ?ev= + close). */}
+      {tableOpen && <EvidenceTable open model={model} onSelect={selectFromTable} onClose={() => setTableOpen(false)} />}
       {/* Run-scoped guard: runId flips synchronously on selectRun, but useTour's dispose effect is
           keyed on `model` (not runId), so it only tears the old driver down one effect-pass later —
           when useRun's runId-keyed effect re-fires and nulls model IMMEDIATELY (at decode START, before

@@ -6,6 +6,14 @@ import { breakSeal, recordSeal, type SealRecord } from '../ui/hangar'
 interface ViewState {
   runId: string; tick: number; fraction: number; playing: boolean; speed: number
   selectedEntity: string | null; selectedEvent: number | null; finale: boolean
+  // PLAYBACK-ADVANCE PROVENANCE (never inference). The transport's rAF loop (Timeline) is the ONLY writer that
+  // increments this — on each played tick advance — so a consumer can tell a TRANSPORT-DRIVEN advance (advanceSeq
+  // bumped this transition) apart from a user SCRUB/DRAG (setTick, applyLink: advanceSeq untouched), even though a
+  // forward drag preserves `playing`. The comms pulse pool reads (s.advanceSeq !== prev.advanceSeq) to decide
+  // interval-vs-exact-current: inferring it from `playing && curr > prev` misclassifies a forward drag (a scrub
+  // that preserves playing), a terminal advance (playing flips false atomically on the final played frame), and a
+  // play/pause edge. A monotonic counter needs only the ONE advance path to touch it; everything else leaves it.
+  advanceSeq: number
   // SESSION-SEAL (the checkmark economy): the runs whose ceremony sealed green THIS session (opened
   // + trailer matched). Each record names the run AND the exact bytes its ✓ vouches for (resultId);
   // `broken` marks a seal later CONTRADICTED by a mismatched re-load of the same run (rendered in
@@ -35,7 +43,7 @@ export const useViewStore = create<ViewState>((set) => ({
   // only demoted from the default. A ?run= deep link still overrides this (applyLink falls back to it only
   // when run is absent).
   runId: DEFAULT_RUN, tick: 0, fraction: 0, playing: false, speed: 1,
-  selectedEntity: null, selectedEvent: null, sealedRuns: [],
+  selectedEntity: null, selectedEvent: null, sealedRuns: [], advanceSeq: 0,
   // FINALE (v0.5b): ephemeral stage-dressing state — true only at a NATURAL play-to-end rest (the Timeline
   // transport batch writes it at the natural-end edge). It drives the finale display (lit journey,
   // composed close-up, celebrated head / full spine). CLEARED here by any playhead MOVE — a scrub or arrow-key

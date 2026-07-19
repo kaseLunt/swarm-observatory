@@ -9,6 +9,10 @@ import { buildQueryDraws, losComponents, queryStageApplies, E0_REGISTRATION, typ
 import { showMath, recomputeAll, type MathCard } from './showMath'
 import { buildSensingStage, sensingRegister } from './sensingStage'
 import { SensingStrip, SensingLiveStrip } from './sensingStrip'
+import { buildCommsStage, commsStageApplies } from './commsStage'
+import { CommsStrip } from './commsStrip'
+import { buildTrackBelief, trackBeliefApplies } from './trackBelief'
+import { TrackBeliefStrip } from './trackBeliefStrip'
 import { recomputedVerdict } from './lensContract'
 import type { AgreeSource } from './agreeSource'
 import { identityPlate, fullPlate } from './identityPlate'
@@ -114,6 +118,21 @@ export function Inspector({ model, open = false, tourActive = false }: { model: 
   // tour's flight. Built for EVERY model but empty (ordered.length 0) for a non-sensing run, so those runs keep
   // the exact idle empty rail below. Memoised per model (the ShowTheMath / stage precedent — a small pure pass).
   const sensingReg = useMemo(() => sensingRegister(buildSensingStage(model)), [model])
+  // THE CONTESTED-LINK strip (f4): the latency lane + the ledger-by-scrub + the two-voice grammar. Gated on the
+  // ONE complete comms predicate (commsStageApplies), so it appears iff the comms stage draws — the same gate
+  // Scene's mount and the App chip route through. Built once per model; empty-cheap for a non-comms run. On f4
+  // the strip OWNS the aside (no per-event detail mode — the strip is a live playhead instrument), so the idle
+  // rail below is suppressed the way it is for a sensing run.
+  const hasComms = useMemo(() => commsStageApplies(model), [model])
+  // Built ONLY when the comms lens applies — commsStageApplies short-circuits on a positioned run before it
+  // decodes anything, so a non-comms run (or a minimal test mock lacking the comms accessors) never builds.
+  const commsData = useMemo(() => (hasComms ? buildCommsStage(model) : null), [hasComms, model])
+  // THE BELIEF strip (f3a): the 1σ readout + the shrink + the update tally-by-scrub. Gated on the ONE complete belief
+  // predicate (trackBeliefApplies), so it appears iff the belief stage draws — the same gate Scene's mount and the App
+  // chip route through. Built once per model; null-cheap for a non-track run. On f3a the strip is a LIVE playhead
+  // instrument (like the sensing live / comms strips), so it owns the aside even with nothing selected.
+  const hasBelief = useMemo(() => trackBeliefApplies(model), [model])
+  const beliefData = useMemo(() => (hasBelief ? buildTrackBelief(model) : null), [hasBelief, model])
   // Is the SELECTED event itself a sensing verdict? Then the detail path (EventDetail's SensingStrip) pins that
   // ONE verdict's full form and the live register stands down — the two modes are mutually exclusive. Memoised
   // on [model, ev] so the 8Hz playback sampling never re-decodes the selected payload to re-answer this.
@@ -138,7 +157,7 @@ export function Inspector({ model, open = false, tourActive = false }: { model: 
   // to the main aside below (which renders the live strip even with nothing selected), so its strip is live on
   // free playback. Every non-sensing run keeps this exact centred empty rail (byte-identical): f4's "no stage
   // lens" voice, f0/f1/f2a-free's hints.
-  if (!sel && ev === null && sensingReg.ordered.length === 0) return (
+  if (!sel && ev === null && sensingReg.ordered.length === 0 && !hasComms && !hasBelief) return (
     <aside className={open ? 'inspector inspector-idle open' : 'inspector inspector-idle'}>
       <p className="inspector-empty">
         no selection
@@ -199,6 +218,14 @@ export function Inspector({ model, open = false, tourActive = false }: { model: 
           then — and EventDetail suppresses ITS strip whenever a tour is active), and absent on non-sensing runs;
           the two modes never both draw. Fed the same 8Hz playhead sample the state panel reads. */}
       {showLiveStrip && <SensingLiveStrip reg={sensingReg} tick={tick} />}
+      {/* THE CONTESTED-LINK strip (f4) — the latency lane + the ledger-by-scrub, driven by the playhead (the
+          reveal clock), so it writes itself as the viewer scrubs. It owns the aside on a comms run the way the
+          sensing live strip owns it on a sensing run; the two lenses are mutually exclusive by their gates. */}
+      {hasComms && commsData && <CommsStrip data={commsData} tick={tick} />}
+      {/* THE BELIEF strip (f3a) — the 1σ readout + the shrink + the update tally, driven by the playhead (the reveal
+          clock), so it writes itself as the viewer scrubs. It owns the aside on a track run the way the sensing/comms
+          live strips own it on theirs; the four lenses are mutually exclusive by their gates. */}
+      {hasBelief && beliefData && <TrackBeliefStrip data={beliefData} tick={tick} />}
     </aside>
   )
 }

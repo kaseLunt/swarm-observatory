@@ -975,31 +975,34 @@ test('the readout shows real dt_us sim time on f3a and keeps the assumed tick re
 
 // ── the query stage / honesty chip / origin anchor gate on kind-23 content ──
 // buildQueryDraws never returns null (a run with no geometry queries yields an all-null seq-indexed array), so
-// the old `positionless`-ALONE gate mounted the stage — its origin-anchor octahedron + scenario solids — AND
-// painted the "occluder & region bodies are scenario constants" honesty chip on f4, a positionless run whose
+// the old `positionless`-ALONE gate mounted the query stage — its origin-anchor octahedron + scenario solids —
+// AND painted the "occluder & region bodies are scenario constants" honesty chip on f4, a positionless run whose
 // event kinds carry NO kind-23 draws: the app's one FALSE claim, over phantom furniture. All three now gate on
-// hasQueryDraws. This pins the fix end-to-end: f4 wears NO honesty chip and speaks the honest empty-stage rail
-// voice; e0 (a real query stage) still wears the chip — so a regression that drops the chip everywhere (or
-// restores it everywhere) is caught by the contrast, not just its absence on one run.
-test('f4 (positionless, no kind-23) wears NO honesty chip and speaks the honest empty-stage voice; e0 keeps the chip', async ({ page }) => {
+// hasQueryDraws. THE COMMS-LENS UPDATE: f4 is no longer an empty stage — it is the CONTESTED-LINK lens (comms kinds
+// 5/6/7). So the load-bearing invariant this test defends is now stated as a CONTRAST between two chips: f4
+// wears the COMMS chip (its real lens) and NEVER the QUERY chip's false "scenario constants" claim; e0 wears
+// the QUERY chip and never the comms one. A regression that lets the query chip paint f4's non-query stage — or
+// that drops a chip wholesale — is caught by the contrast, not just a bare absence.
+test('f4 (positionless, comms) wears the COMMS chip and never the query chip; e0 keeps the query chip', async ({ page }) => {
   const errors: string[] = []
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()) })
 
   await page.goto('/?run=f4')
   await expect(page.locator('.provenance')).toContainText('trailer consistent ✓', { timeout: 15000 })
-  // NO honesty chip — the "scenario constants" claim would be false for a run whose stage draws nothing.
-  await expect(page.locator('.scene-chip')).toHaveCount(0)
+  // f4 wears its OWN lens chip (the contested link) — sent & arrived decoded-real, sent-vs-arrived only…
+  await expect(page.locator('.scene-chip')).toContainText('sent & arrived')
+  // …and NEVER the query stage's "scenario constants" claim (the false-over-a-void claim this gate refuses).
   await expect(page.locator('#viewport')).not.toContainText('scenario constants')
-  // The no-selection rail speaks the honest empty-stage voice (names the real surfaces), never inviting a
-  // click on a cone that isn't the point here (the positioned "click the cone" copy must not appear).
-  await expect(page.locator('.inspector-empty')).toContainText('no stage lens')
-  await expect(page.locator('.inspector-empty')).not.toContainText('click the cone')
+  // The empty-stage rail is GONE — f4 now has a lens surface (the comms strip), not the "no stage lens" voice.
+  await expect(page.locator('.comms-strip')).toBeVisible()
+  await expect(page.locator('.inspector-empty')).toHaveCount(0)
 
-  // CONTRAST — e0 IS a real query stage: the honesty chip is present with its exact wording, proving the gate
-  // NARROWS the chip to runs that actually draw those bodies rather than removing it wholesale.
+  // CONTRAST — e0 IS a real query stage: the QUERY honesty chip is present with its exact wording, and it does
+  // NOT wear the comms chip — proving each lens's chip is narrowed to the run it actually draws.
   await page.goto('/?run=e0')
   await expect(page.locator('.provenance')).toContainText('trailer self-consistent ○', { timeout: 15000 })
   await expect(page.locator('.scene-chip')).toContainText('occluder & region bodies are scenario constants')
+  await expect(page.locator('.scene-chip')).not.toContainText('sent & arrived')
 
   expect(errors, `no console errors: ${errors.join(' | ')}`).toEqual([])
 })
@@ -1124,6 +1127,7 @@ test('the header ladder: one row with zero overflow at every tier; the run switc
   await expect(page.getByRole('button', { name: '▶ tour', exact: true })).toBeVisible()       // BRAND CTA: tour launcher (f2a has a tour)
   await expect(page.getByRole('button', { name: 'dismiss tour nudge' })).toBeVisible()        // the first-visit nudge ×
   await expect(page.getByRole('button', { name: 'certification wall', exact: true })).toBeVisible() // BRAND CTA: wall, FULL label
+  await expect(page.locator('.evidence-open')).toHaveText('evidence table')                  // evidence table, labeled (low-priority chrome, rides the `chrome` axis)
   await expect.poll(noOverflow, { timeout: 5000, message: 'no horizontal overflow at the full tier (1280px)' }).toBe(true)
 
   // ── CONDENSED TIER (1080px, the picker threshold) — the switcher collapses to `run ▾`, low-priority chrome
@@ -1135,6 +1139,7 @@ test('the header ladder: one row with zero overflow at every tier; the run switc
   await expect(page.getByRole('button', { name: 'wall', exact: true })).toBeVisible()         // BRAND CTA survives; label condensed to "wall"
   await expect(page.getByRole('button', { name: 'certification wall', exact: true })).toHaveCount(0) // …the full label is gone at this tier
   await expect(page.getByRole('button', { name: 'copy link' })).toBeVisible()                 // copy-link sheds to its icon, accessible name kept
+  await expect(page.locator('.evidence-open')).toHaveText('▦')                                // …evidence table sheds to its ▦ table mark (accessible name kept)
   await expect.poll(noOverflow, { timeout: 5000, message: 'no horizontal overflow at the condensed tier (1080px)' }).toBe(true)
 
   // ── OVERFLOW TIER (960px, the ⋯ threshold) — the low-priority chrome folds into `⋯`; the wordmark word
@@ -1142,6 +1147,7 @@ test('the header ladder: one row with zero overflow at every tier; the run switc
   await page.setViewportSize({ width: 960, height: 720 })
   await expect(page.getByRole('button', { name: 'more actions' })).toBeVisible()              // the `⋯` overflow menu appears
   await expect(page.getByRole('button', { name: 'hangar', exact: true })).toHaveCount(0)      // hangar folded away (into ⋯, closed)
+  await expect(page.locator('.evidence-open')).toHaveCount(0)                                 // evidence table folded away too (into ⋯, closed)
   await expect(page.getByRole('button', { name: 'switch run' })).toBeVisible()                // the picker still reachable
   await expect(page.getByRole('button', { name: '▶ tour', exact: true })).toBeVisible()       // BRAND CTA survives
   await expect(page.getByRole('button', { name: 'wall', exact: true })).toBeVisible()         // BRAND CTA survives (never folds into ⋯)
@@ -1473,4 +1479,240 @@ test('the Wall tamper demo: flip one byte → the side-by-side refusal (event_ha
   await page.keyboard.press('Escape')
   await expect(page.locator('.wall-panel')).toHaveCount(0)
   expect(errors, `no console errors: ${errors.join(' | ')}`).toEqual([])
+})
+
+// Latch the live COMMS scene the first time an OctahedronGeometry mesh is present (the pads/anchor). The
+// CAPTURE_SCENE cone latch never fires for positionless f4 (no cones), so the comms hero needs its own
+// structural latch. Same __THREE_DEVTOOLS__ observe hook; browser source as a STRING (the e2e tsconfig has no
+// DOM lib — the house pattern).
+const CAPTURE_COMMS_SCENE = `(() => {
+  const dt = new EventTarget()
+  window.__THREE_DEVTOOLS__ = dt
+  dt.addEventListener('observe', (e) => {
+    const renderer = e.detail
+    if (!renderer || typeof renderer.render !== 'function' || renderer.__wrapped) return
+    renderer.__wrapped = true
+    const orig = renderer.render.bind(renderer)
+    renderer.render = (scene, camera) => {
+      if (scene && scene.isScene && !window.__sceneLocked) {
+        let hasOcta = false
+        scene.traverse((o) => { if (o.isMesh && o.geometry && o.geometry.type === 'OctahedronGeometry') hasOcta = true })
+        if (hasOcta) { window.__scene = scene; window.__sceneLocked = true }
+      }
+      return orig(scene, camera)
+    }
+  })
+})()`
+
+// Read the anchor's SDF label off the live scene: find the troika Text (a mesh carrying a NON-EMPTY .text — the
+// empty entity-plate Text, if any, is skipped) and report its text + its EFFECTIVE visibility (visible only if it
+// and every ancestor up to the scene root are visible — the anchor group toggles the whole subtree). Null until latched.
+const ANCHOR_LABEL_STATE = `(() => {
+  const scene = window.__scene
+  if (!scene) return null
+  let label = null
+  scene.traverse((o) => { if (o.isMesh && typeof o.text === 'string' && o.text.length > 0) label = o })
+  if (!label) return { found: false, visible: false, text: '' }
+  let visible = true
+  for (let n = label; n && n !== scene; n = n.parent) { if (!n.visible) { visible = false; break } }
+  return { found: true, visible: visible, text: label.text }
+})()`
+
+// ── THE CONTESTED LINK (f4) — the one lost packet: the ledger-by-scrub, the t30 anchor, the cold entry ─────
+// The hero beat of the v0.9 cycle: a steady link, proven honest, and the ONE packet you can point at. This
+// drives the EVIDENTIARY hero end-to-end (the ledger written by the scrub, the flagged gap that appears at
+// t30 and persists, a cold deep-link that lands on the anchor). The 3D bloom itself is the stage's visual
+// emphasis (proven sub-/super-threshold in commsStageView.test.ts); here we assert the DOM-observable truth
+// PLUS the anchor's decoded SDF label at rest (read through the scene-graph hook, since troika text is WebGL).
+test('f4 the contested link: the ledger is written by the scrub, the t30 loss anchors, and a cold deep-link shows it', async ({ page }) => {
+  await page.addInitScript(CAPTURE_COMMS_SCENE) // latch the comms scene so the anchor's SDF label is readable at the end
+  // Open f4 at rest — the comms strip mounts, the honesty chip is up, the ledger starts empty.
+  await page.goto('/?run=f4&tick=0')
+  const strip = page.locator('.comms-strip')
+  await expect(strip).toBeVisible({ timeout: 15000 })
+  await expect(page.locator('.comms-ledger')).toHaveAttribute('data-comms-ledger', '0/0/0')
+  // The honesty chip names the lens honestly: sent & arrived decoded-real, placement presentational, sent-vs-arrived.
+  await expect(page.locator('.scene-chip')).toContainText('sent & arrived')
+
+  // JUST BEFORE the loss (tick 29): 14 sent · 14 delivered · 0 lost — the drop is NOT-YET (no gap mark yet).
+  await page.goto('/?run=f4&tick=29')
+  await expect(page.locator('.comms-ledger')).toHaveAttribute('data-comms-ledger', '14/14/0', { timeout: 15000 })
+  await expect(page.locator('.comms-lane-drop')).toHaveCount(0)
+  await expect(page.locator('.comms-lane-notyet')).toBeVisible()
+
+  // Scrub to t30 with a real gesture (ArrowRight): the ledger ticks 1 lost, and the flagged gap appears.
+  await page.keyboard.press('ArrowRight')
+  await expect(page.locator('.comms-ledger')).toHaveAttribute('data-comms-ledger', '15/14/1')
+  const drop = page.locator('.comms-lane-drop')
+  await expect(drop).toBeVisible()
+  await expect(drop).toHaveClass(/caveat/)        // the quality register treatment…
+  await expect(drop).not.toHaveClass(/mismatch/)  // …NEVER the integrity alarm
+
+  // The anchor PERSISTS as the viewer scrubs past it (the viewer can always find the loss again).
+  await page.keyboard.press('ArrowRight')
+  await expect(page.locator('.comms-lane-drop')).toBeVisible()
+
+  // COLD ENTRY: a deep-link straight to t30 lands on the anchor with no scrubbing.
+  await page.goto('/?run=f4&tick=30')
+  await expect(page.locator('.comms-lane-drop')).toBeVisible({ timeout: 15000 })
+  await expect(page.locator('.comms-ledger')).toHaveAttribute('data-comms-ledger', '15/14/1')
+
+  // FULL REVEAL (tick 64 — past the last send): the run's final tally, and the pairing wears the ○ ring.
+  await page.goto('/?run=f4&tick=64')
+  await expect(page.locator('.comms-ledger')).toHaveAttribute('data-comms-ledger', '32/31/1', { timeout: 15000 })
+  await expect(page.locator('.comms-pairing')).toContainText('○')  // ○ decoded-consistency ring…
+  await expect(strip).not.toContainText('✓')                       // …NEVER the manifest-grade ✓
+  await expect(strip).not.toContainText('✗')                       // …and never the integrity alarm
+
+  // THE ANCHOR NAMES THE LOSS (hero-check §4): at rest after the run end the persistent anchor wears its DECODED
+  // "t30 · LOSS" SDF label — the resting stage points at the loss on its own, not only in the strip text. The
+  // label is troika WebGL text (read through the scene-graph hook); the exact string is derived + pinned in the unit test.
+  await page.waitForFunction(`(() => { const s = ${ANCHOR_LABEL_STATE}; return !!(s && s.found && s.visible); })()`, undefined, { timeout: 15000 })
+  const labelState = await page.evaluate(ANCHOR_LABEL_STATE) as { found: boolean; visible: boolean; text: string } | null
+  expect(labelState?.text, 'the anchor names the loss with the DECODED tick · reason, shown at rest after the run end').toBe('t30 · LOSS')
+})
+
+// THE BINDING GPU RULE — the pulses are PRECOMPILED (instanced attributes) and UNIFORM-DRIVEN (the playhead), so
+// NO shader program compiles during playback. The old InstancedMesh + setColorAt path allocated instanceColor on
+// the FIRST active pulse and compiled the instancing-COLOUR shader variant right then — a compile hitch at the t2
+// crossing. This probes it at the strongest browser level available: renderer.info.programs.length (the WebGL
+// program cache, read through the app's OWN renderer via the __THREE_DEVTOOLS__ observe hook — the CAPTURE_SCENE
+// house pattern) must be STABLE across a play-from-0 sweep past the first pulse. A lazy compile would grow it; the
+// precompiled ShaderMaterial (warmed at gl.compile) does not. Browser source is passed as STRINGS (the e2e
+// tsconfig excludes the DOM lib — the same reason PROJECT_HEAD et al. are strings).
+test('f4 warmup: no shader program compiles during a play-from-0 sweep past the first pulse (precompiled + uniform-driven)', async ({ page }) => {
+  await page.addInitScript(CAPTURE_SCENE) // installs the devtools observe hook → window.__renderer on renderer create
+  await page.goto('/?run=f4&tick=0')
+  await expect(page.locator('.comms-strip')).toBeVisible({ timeout: 15000 })
+  // Wait for the app's renderer AND a settle, so the composer's own Bloom/ToneMapping passes — which warm on the
+  // first COMPOSITE, not gl.compile — are already compiled and counted in the baseline (not what this probe measures).
+  await page.waitForFunction('window.__renderer && window.__renderer.info', { timeout: 15000 })
+  await page.waitForTimeout(700)
+  const programsAt = async () => (await page.evaluate('window.__renderer.info.programs.length')) as number
+  const before = await programsAt()
+  expect(before, 'the pulse ShaderMaterial + composer passes compiled at warmup (a non-empty program cache)').toBeGreaterThan(0)
+  // PLAY FROM 0 — clicking the transport's play button starts the sweep; the playhead crosses t2 (the first
+  // delivered pulse's window). The ledger advancing off 0/0/0 proves the sweep is underway (the first send revealed).
+  await page.locator('.timeline button').first().click()
+  await expect(page.locator('.comms-ledger')).not.toHaveAttribute('data-comms-ledger', '0/0/0', { timeout: 15000 })
+  await page.waitForTimeout(700) // let a few more pulse windows open/close during live playback
+  const after = await programsAt()
+  expect(after, 'NO new program compiled during playback — the pulses are precompiled + uniform-driven').toBe(before)
+})
+
+// ── THE RAW EVIDENCE TABLE (the byte-X-ray): the interrogation surface, universal across all six runs ──
+test('the raw evidence table: opens from the header, filters to the ONE dropped packet, and a row-click deep-links the selection', async ({ page }) => {
+  await page.goto('/?run=f4&tick=64') // full reveal — whole-run and revealed agree on the final tally
+  await expect(page.locator('.comms-strip')).toBeVisible({ timeout: 15000 })
+  // the header entry (full tier) opens the modal — a peer to the Hangar/Wall (the same overlay idiom)
+  await page.getByRole('button', { name: 'evidence table', exact: true }).click()
+  const panel = page.locator('.evidence-panel')
+  await expect(panel).toBeVisible()
+  // provenance: the table names its mechanism (decoded rendering) — it claims nothing, it SHOWS
+  await expect(panel.locator('.evidence-provenance')).toHaveText('every row decoded from the bundle in your browser')
+  // whole-run scope by default: 64 comms events, one row each, the population named
+  await expect(panel.locator('[data-evidence-count]')).toHaveText('64 events')
+  await expect(panel.locator('tbody tr.evidence-row')).toHaveCount(64)
+  // filter to kind 7 (MessageDropped): the ONE drop row remains; the readout names the filtered population
+  await panel.locator('.evidence-kind-chip[data-kind="7"]').click()
+  await expect(panel.locator('tbody tr.evidence-row')).toHaveCount(1)
+  await expect(panel.locator('[data-evidence-count]')).toHaveText('64 events · 1 shown')
+  // the drop row shows its true decoded fields (msg 14, reason 3 LOSS, jam_state 0) — decoded bytes, no verdict
+  const drop = panel.locator('tbody tr.evidence-row').first()
+  await expect(drop.locator('.evidence-payload')).toContainText('msg=14')
+  await expect(drop.locator('.evidence-payload')).toContainText('reason=3')
+  await expect(drop.locator('.evidence-payload')).toContainText('jam_state=0')
+  // the rounded snr_db is reachable by KEYBOARD: focus its disclosure and activate it → the exact f64 appears
+  // in accessible DOM (not a mouse-only title). This inspects the value; it does NOT select or close the modal.
+  const snr = drop.locator('.evidence-field-btn') // the ONE lossy field on the drop row (snr_db=12.0412)
+  await snr.focus()
+  await page.keyboard.press('Enter')
+  await expect(drop.locator('.evidence-field-full')).toHaveText('(12.041199826559248)')
+  await expect(panel).toBeVisible() // inspecting the value did not close the modal
+  // clicking the row's seq button routes through the ONE select path: it deep-links (?ev=) and closes the table
+  await drop.locator('.evidence-rowbtn').click()
+  await expect(page.locator('.evidence-panel')).toHaveCount(0)
+  await expect(page).toHaveURL(/ev=/)
+})
+
+test('the raw evidence table: scope is labeled and honest — whole run vs revealed-so-far at a mid playhead', async ({ page }) => {
+  await page.goto('/?run=f4&tick=30') // the playhead at the loss: the ledger reads 15/14/1 → 30 of 64 events revealed
+  await expect(page.locator('.comms-ledger')).toHaveAttribute('data-comms-ledger', '15/14/1', { timeout: 15000 })
+  await page.getByRole('button', { name: 'evidence table', exact: true }).click()
+  const panel = page.locator('.evidence-panel')
+  await expect(panel).toBeVisible()
+  // whole run (default): the labeled scope names the full population; all 64 rows present
+  await expect(panel.locator('.evidence-scope-btn').first()).toHaveText('whole run · 64 events')
+  await expect(panel.locator('[data-evidence-count]')).toHaveText('64 events')
+  await expect(panel.locator('tbody tr.evidence-row')).toHaveCount(64)
+  // the revealed-so-far option names its OWN population (30 of 64), driven by the shared reveal clock
+  const revealed = panel.locator('.evidence-scope-btn').nth(1)
+  await expect(revealed).toHaveText('revealed so far · 30 of 64')
+  await revealed.click()
+  await expect(panel.locator('tbody tr.evidence-row')).toHaveCount(30) // truncated to the tick ≤ playhead prefix
+  await expect(panel.locator('[data-evidence-count]')).toHaveText('30 events')
+})
+
+test('the raw evidence table: folded into the ⋯ overflow at a narrow width, its menuitem opens the modal (rides the chrome axis)', async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 720 }) // overflow tier → the evidence entry folds into ⋯
+  await page.goto('/?run=f2a')
+  await expect(page.locator('.provenance')).toContainText('trailer consistent ✓', { timeout: 15000 })
+  await expect(page.locator('.evidence-open')).toHaveCount(0) // not inline — it lives in ⋯
+  await page.getByRole('button', { name: 'more actions' }).click()
+  await expect(page.locator('.header-menu-popup')).toBeVisible()
+  await page.getByRole('menuitem', { name: 'evidence table', exact: true }).click()
+  await expect(page.locator('.evidence-panel')).toBeVisible()
+  // the modal takes focus, so the ⋯ menu closes behind it (no stale menu) — the first Esc closes the MODAL
+  await expect(page.locator('.header-menu-popup')).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.evidence-panel')).toHaveCount(0)
+})
+
+// ── THE BELIEF LENS (f3a): the shrinking disc, the growing error, decoded and honest ───────────────────────
+// The ONE belief journey: open f3a, read the current 1σ at tick 2 (the widest disc), scrub to the end, and confirm
+// the reported confidence TIGHTENED (1σ → 0.44 m) while the ACTUAL error against the decoded truth GREW past it — the
+// truth leaves the disc, the tracker overconfident. The strip's stated 1σ + error (data-track-sigma / -error) are the
+// legible, deterministic signals (the ring's radius / the gap-line length ARE those numbers; unit-pinned). The chip
+// carries the honesty contract: a REAL belief-vs-reality comparison, both halves decoded.
+test('f3a belief lens: the reported 1σ shrinks while the actual error grows — a decoded belief-vs-reality comparison', async ({ page }) => {
+  await page.goto('/?run=f3a&tick=2')
+  // f3a carries a manifest (real sim clock), so the readout shows mm:ss.s and the tick lives in its title — the
+  // load/deep-link gate is the title reading tick 2 / 96 (tickCount 96).
+  await expect(page.locator('.readout')).toHaveAttribute('title', 'tick 2 / 96', { timeout: 15000 })
+  // THE HONESTY CHIP — the belief lens's contract: the ring is the tracker's decoded estimate, the drone the decoded
+  // state truth, the gap the actual error — a REAL belief-vs-reality comparison. The chip self-gates on
+  // trackBeliefApplies (f3a only), so exactly this text is present.
+  const chip = page.locator('.scene-chip')
+  await expect(chip).toContainText('tracker', { timeout: 15000 })
+  await expect(chip).toContainText('state truth')
+  await expect(chip).toContainText('belief-vs-reality')
+  await expect(chip).toContainText('1.83 m → 0.44 m')       // the reported 1σ shrink
+  await expect(chip).toContainText('0.23 m → 2.43 m')       // …while the actual error grows
+  // THE STRIP — a live playhead instrument with no selection (the belief run owns the aside). At tick 2 the current
+  // 1σ is the widest disc (~1.83 m), stated as a disc (isotropic).
+  const sigma = page.locator('.track-sigma')
+  await expect(sigma).toContainText('1σ 1.83 m', { timeout: 15000 })
+  await expect(sigma).toContainText('disc')
+  const early = Number(await sigma.getAttribute('data-track-sigma'))
+  expect(early, 'the widest disc at the first update').toBeCloseTo(1.826, 2)
+  // SCRUB TO THE END — a timeline drag to the far right moves the playhead well past the last update (tick 79), so
+  // the current disc is the tightest the tracker ever reported AND the error is at its worst.
+  const box = (await page.locator('.timeline canvas').boundingBox())!
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width * 0.98, box.y + box.height / 2, { steps: 10 })
+  await page.mouse.up()
+  // THE DISC HAS SHRUNK — the reveal discipline, end-to-end: the tracker's reported 1σ tightened to ~0.44 m.
+  await expect(sigma).toContainText('1σ 0.44 m', { timeout: 10000 })
+  const late = Number(await sigma.getAttribute('data-track-sigma'))
+  expect(late, 'the tightest disc at the end of the track').toBeCloseTo(0.443, 2)
+  expect(late, 'the disc visibly tightened — the filter reported gaining confidence').toBeLessThan(early)
+  // …BUT the actual error grew past the disc — the truth is OUTSIDE the 1σ (overconfident), the decoded gap ~2.43 m.
+  const err = page.locator('.track-error')
+  await expect(err).toContainText('error 2.43 m')
+  await expect(err).toContainText('OUTSIDE the disc')
+  await expect(err).toContainText('overconfident')
+  // …and the belief lens never mints a verdict glyph (it is a derivation, not an adjudication).
+  const stripText = (await page.locator('.track-strip').textContent()) ?? ''
+  for (const glyph of ['✓', '✗', '○']) expect(stripText, `no ${glyph} in the belief strip`).not.toContain(glyph)
 })

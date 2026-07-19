@@ -101,6 +101,24 @@ describe('validateRegistration — fail loud, never coerce', () => {
       honestyChip: 'everything here is decoded-real', // claims decoded, names no constants — but ledger HAS constants
     }))).toThrow(/honesty chip disagrees/)
   })
+  // A QUALITY caveat belongs only on a decoded FACT (the drop-anchor precedent), never on a presentational
+  // class (encodes no data) nor a recomputed class (it witnesses agreement instead) — validateRegistration guards it.
+  test('a quality caveat on a decoded class passes; on a presentational or recomputed class it throws', () => {
+    const ok = baseReg({ provenance: [
+      { id: 'a', tier: 'decoded', source: 'contract/x.md §1', answer: 'a decoded fact with a caveat', caveat: 'dirty' },
+      cls('b', 'scenario-constant', 'contract/x.md §2'), cls('c', 'presentational', null),
+    ] })
+    expect(validateRegistration(ok)).toBe(ok)
+    expect(() => validateRegistration(baseReg({ provenance: [
+      cls('a', 'decoded', 'contract/x.md §1'), cls('b', 'scenario-constant', 'contract/x.md §2'),
+      { id: 'c', tier: 'presentational', source: null, answer: 'presentational + a caveat', caveat: 'dirty' },
+    ] }))).toThrow(/declares a quality caveat/)
+    expect(() => validateRegistration(baseReg({ provenance: [
+      cls('a', 'decoded', 'contract/x.md §1'), cls('b', 'scenario-constant', 'contract/x.md §2'), cls('c', 'presentational', null),
+      { id: 'r', tier: 'recomputed', source: 'contract/x.md §3', answer: 'a recompute + a caveat',
+        agree: { basis: 'decoded-consistency', decoded: 'query:los-vs-decoded-components' }, caveat: 'dirty' },
+    ] }))).toThrow(/declares a quality caveat/)
+  })
 })
 
 describe('validateRegistration — the witness gate (a recomputed class must witness HOW it agrees)', () => {

@@ -17,20 +17,55 @@ export interface RunEntry {
   ticks: number; kinds: Record<string, number>; dtUs?: number; supersedesPlanId?: string
 }
 
+// runs/index.json is UNSIGNED and blindly shaped, and the switcher + the Hangar card mount OUTSIDE the app's
+// error boundary — so an entry with a malformed STRUCTURAL field (one a renderer dereferences or acts on)
+// would crash a render or mis-navigate. isRenderableEntry omits such entries at the one point the raw index
+// becomes the run list; the survivors are safe for every downstream consumer, and the label helpers can
+// trust a string id. Presentation hygiene only — the trusted load path (runCatalog) never reads this list.
+//
+// STRUCTURAL fields (must all validate, else OMIT — never a dead button or a crashing card):
+//   • id      — the switch action, the `?run=` URL, and the React key: it must be ACTIONABLE. The load
+//               plan IS the definition of actionable, so the boundary asks the SAME predicate that will later
+//               resolve the id — resolveLoadPlan(id) !== null — and can never drift from it. This omits not
+//               only non-string/blank ids but every id the plan's grammar or prototype denylist rejects
+//               downstream (uppercase `F4`, path/traversal `x/../f0`, prototype-shaped `constructor` /
+//               `__proto__`, a padded ` f4 `) — each of which would otherwise render a control that clicks
+//               straight to `unknown run`.
+//   • kinds   — the Hangar histogram iterates Object.entries(kinds) (a non-object throws) and renders each
+//               count (a non-number renders NaN): require the Record<string, number> shape.
+//   • ticks   — rendered directly and multiplied into the sim clock: a finite number.
+//   • dtUs    — OPTIONAL; when present it feeds the real-sim duration: a finite number.
+//   • detOnly — OPTIONAL; the clock tooltip branches on it: a boolean.
+// PRESENTATIONAL fields (title, supersedesPlanId — rendered optional strings) are NOT checked here: they stay
+// fail-soft at the render boundary (cleanString), so a malformed one degrades and never omits a usable entry.
+// base is not dereferenced by any renderer (the load plan comes from runCatalog), so it is not checked.
+export function isRenderableEntry(e: unknown): e is RunEntry {
+  if (typeof e !== 'object' || e === null) return false
+  const r = e as Record<string, unknown>
+  if (typeof r.id !== 'string' || resolveLoadPlan(r.id) === null) return false
+  if (typeof r.kinds !== 'object' || r.kinds === null) return false
+  for (const count of Object.values(r.kinds)) if (!Number.isFinite(count)) return false
+  if (!Number.isFinite(r.ticks)) return false
+  if (r.dtUs !== undefined && !Number.isFinite(r.dtUs)) return false
+  if (r.detOnly !== undefined && typeof r.detOnly !== 'boolean') return false
+  return true
+}
+
 // Single-fetch seam for runs/index.json. App's run switcher and useRun's entry lookup both
 // need the index; each used to fetch it independently, so a cold load hit the network TWICE for one
 // static file. This memoizes the parsed result: the first caller starts the fetch and concurrent/later
 // callers share the same in-flight (then resolved) promise — exactly ONE request. A FAILURE is NOT
 // cached (the slot is cleared on rejection) so a later run switch retries — preserving useRun's original
 // per-load fetch semantics. The !ok→throw keeps useRun's exact 'fetch runs/index.json: <status>' error;
-// App wraps its call in a catch, so a failure still lands it on an empty switcher, exactly as before.
+// App wraps its call in a catch, so a failure still lands it on an empty switcher, exactly as before. The
+// resolved list is filtered to renderable entries (isRenderableEntry) — the single id-validation boundary.
 let runIndexCache: Promise<RunEntry[]> | null = null
 export function loadRunIndex(): Promise<RunEntry[]> {
   if (runIndexCache) return runIndexCache
   const pending = fetch('runs/index.json').then(res => {
     if (!res.ok) throw new Error('fetch runs/index.json: ' + res.status)
-    return res.json() as Promise<RunEntry[]>
-  })
+    return res.json() as Promise<unknown>
+  }).then(raw => (Array.isArray(raw) ? raw : []).filter(isRenderableEntry))
   runIndexCache = pending
   pending.catch(() => { if (runIndexCache === pending) runIndexCache = null })
   return pending

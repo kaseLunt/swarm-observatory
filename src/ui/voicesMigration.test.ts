@@ -120,8 +120,8 @@ describe('no verdict-glyph literal as UI output outside voices.ts (authorship sw
   // Each exception is a genuine NON-provenance use, justified inline — never a blanket file exemption.
   const SANCTIONED: { file: string; needle: string }[] = [
     // A copy-success affordance checkmark — NOT the verified provenance mark; sourcing it from the provenance
-    // alphabet would mislabel it. (Appears in both share surfaces.)
-    { file: 'ui/App.tsx', needle: 'link copied ✓' },
+    // alphabet would mislabel it. (Appears in both share surfaces; the header chip is terser than the card's.)
+    { file: 'ui/App.tsx', needle: 'copied ✓' },
     { file: 'ui/ThesisCard.tsx', needle: 'link copied ✓' },
     // The verification-math leaf's runtime closure is PINNED to {sensingMath, sensingScenario} (the
     // no-transcendental scan depends on it), so it must NOT import the voices module; the • here is prose in a

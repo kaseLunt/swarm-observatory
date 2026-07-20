@@ -1,14 +1,16 @@
 // Pure header-condensation model — the priority ladder that keeps the app chrome ONE row at every
 // width. No DOM, no store, no React: the tier classification and the per-tier layout are unit-testable
 // without a render harness (the repo carries none), mirroring coldOpen.ts / thesis.ts's split of the
-// decision from the glue. App owns the effect that reads the live width (useHeaderTier); the ladder's
+// decision from the glue. App owns the effect that reads the live width (useHeaderLayout); the ladder's
 // rules live HERE, where a test can pin them, and are the SINGLE source both the header JSX and the CSS
 // read from — never a hand-maintained twin.
 //
 // THE LADDER (widest → narrowest). Chrome sheds from the outside in, in a fixed priority order, by
 // dropping label weight — never by wrapping to a second row:
-//   • full      — everything at full weight: the six run buttons, the labeled hangar / copy-link, the
-//                 full "certification wall".
+//   • full      — everything at full weight: the labeled hangar / copy-link, the full "certification wall".
+//                 The six named run buttons ride the row only above the button-row fit floor
+//                 (SWITCHER_BUTTONS_MIN); across the full tier's narrow band the switcher alone shows the
+//                 `run ▾` picker while the rest of the full-tier chrome stays at full weight.
 //   • condensed — the run switcher collapses to a `run ▾` picker (the largest offender, and the picker
 //                 scales past six runs the button row cannot); the low-priority chrome (hangar, copy-
 //                 link, evidence table) sheds its labels to icons; the wall label condenses to "wall".
@@ -43,9 +45,36 @@ export function headerTier(width: number): HeaderTier {
   return 'full'
 }
 
+// The run switcher carries a SECOND breakpoint that lives INSIDE the full tier. The switcher labels are the
+// runs' short authored names ("Determinism", "Comms link", …), which are wider than the bare ids they
+// replaced, so the six-button row no longer fits one header row at the full tier's narrow end. Below this
+// width the switcher alone yields to the `run ▾` picker while EVERY OTHER full-tier control stays at full
+// weight (labeled chrome, the full wall label, docked panels, no panel-toggles) — only the switcher axis
+// condenses early. The picker is the same disclosure the narrower tiers use, so it scales here for free.
+//
+// The floor is the named row's required width plus a safety reserve. The row needs 1095px to sit on one line
+// with zero overflow, and that width is invariant to the copy control's state: the copy label is width-pinned
+// to its rest label and the shorter "copied ✓" success form renders centered inside it (app.css), so no copy
+// state can widen the row. The floor adds a 24px margin and a 17px allowance for a classic overlay scrollbar
+// (which narrows the usable width without firing a resize), rounded up to the next multiple of 20: 1095 + 24
+// + 17 → 1140. The named row therefore renders only ABOVE 1140px; at 1140 and narrower, down through the
+// condense threshold, the picker carries the switcher.
+export const SWITCHER_BUTTONS_MIN = 1140
+
+// The run-switcher form as a pure function of width — the ONLY control that condenses inside the full tier.
+// The named button row above the fit floor; the picker at the floor and everywhere narrower (each lower tier
+// runs its own ladder, all of which use the picker). Single source of the rule, shared by headerLayout and
+// the header's re-render trigger so the two never drift.
+export function runSwitcherForm(width: number): 'buttons' | 'picker' {
+  return headerTier(width) === 'full' && width > SWITCHER_BUTTONS_MIN ? 'buttons' : 'picker'
+}
+
 // The per-tier layout — the whole ladder in one table, so the header JSX branches on named intents
 // (never on the tier string or a raw width). Each field is one condensation axis:
-//   • runSwitcher  — 'buttons' (the six-run row) vs 'picker' (the `run ▾` disclosure). Always reachable.
+//   • runSwitcher  — 'buttons' (the six-run row) vs 'picker' (the `run ▾` disclosure). Always reachable. The
+//                    ONLY width-conditional axis: it is 'buttons' only in the full tier ABOVE the button-row
+//                    fit floor (SWITCHER_BUTTONS_MIN), and 'picker' at that floor and every narrower width —
+//                    so this field depends on the width, not the tier alone (see runSwitcherForm).
 //   • chrome       — how the LOW-PRIORITY controls (hangar, copy-link, evidence table) present: 'labels' →
 //                    'icons' → 'overflow' (folded into the `⋯` menu). This is the only axis that ever hides a
 //                    control from the row; it hides ONLY the low-priority chrome. The evidence-table entry
@@ -57,7 +86,7 @@ export function headerTier(width: number): HeaderTier {
 //                    'glyph' at EVERY tier: the collapsed chip shows just the verdict glyph, keeping its
 //                    wide headline ("self-consistent — no external manifest") as an sr-only reading. The
 //                    full headline is never carried in the row — even at the full tier's narrow end
-//                    (1081px) the six-button chrome + a full-headline chip would overflow, and the full
+//                    (1081px) the full-weight chrome + a full-headline chip would overflow, and the full
 //                    cold-open CARD already delivered that headline for seconds before it collapsed here,
 //                    so the header chip is a compact verdict reminder, not a second copy of the sentence.
 //   • panelToggles — the side-panel toggles (present only ≤CONDENSED_MAX, where the panels are overlays):
@@ -77,10 +106,13 @@ export interface HeaderLayout {
   dense: boolean
 }
 
-export function headerLayout(tier: HeaderTier): HeaderLayout {
+// `width` refines the ONE width-conditional axis (the run switcher) inside the full tier; omit it and the
+// full tier reports its wide-end default (buttons). Every other axis is a pure function of the tier. All
+// callers that render the live header pass the width so the switcher form is correct near the fit floor.
+export function headerLayout(tier: HeaderTier, width?: number): HeaderLayout {
   switch (tier) {
     case 'full':
-      return { runSwitcher: 'buttons', chrome: 'labels', wallLabel: 'certification wall', wordmark: 'full', chip: 'glyph', panelToggles: 'labels', dense: false }
+      return { runSwitcher: width === undefined ? 'buttons' : runSwitcherForm(width), chrome: 'labels', wallLabel: 'certification wall', wordmark: 'full', chip: 'glyph', panelToggles: 'labels', dense: false }
     case 'condensed':
       return { runSwitcher: 'picker', chrome: 'icons', wallLabel: 'wall', wordmark: 'full', chip: 'glyph', panelToggles: 'icons', dense: false }
     case 'overflow':

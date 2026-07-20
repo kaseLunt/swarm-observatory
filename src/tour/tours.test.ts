@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
-import { TOURS } from './tours'
+import { TOURS, hasTour, tourTitle } from './tours'
+import { LENSES } from '../ui/lensRegistry'
 import type { TourShot, TourStep } from './tourTypes'
 
 // ── e0 tour byte-identity pin (v0.8) ──────────────────────────────────────────────────────────────────
@@ -122,6 +123,90 @@ describe('f2a tour — exact caption / hold / action / arrive byte-pin (parity w
   const EXPECTED_F2A_STEPS = F2A_CAPTIONS.map(([caption, holdMs, arrive], i) => ({ ...F2A_ACTIONS[i]!, caption, holdMs, ...(arrive ? { arrive } : {}) }))
   test('every step is EXACTLY pinned — action, caption, holdMs, arrive; NO extra or missing field (toStrictEqual)', () => {
     expect(f2a.steps).toStrictEqual(EXPECTED_F2A_STEPS)
+  })
+})
+
+// ── f4 comms tour byte-identity pin (the one lost packet) ─────────────────────────────────────────────────
+// The same exact-tuple idiom as e0/f2a: every caption string, every holdMs, every playhead action, and every
+// authored arrive pinned. A single-char caption edit, a moved hold, a changed play target, or a drifted arrive
+// fails HERE. Load-bearing shape: beat 0 opens on the pre-framed stage (NO arrive); every later beat re-asserts
+// the stage shot (authored stillness); the loss beat plays across tick 30 and RESTS AT tick 31 (never a paused
+// tick 30 — that would freeze the launch frame, worst under reduced motion). NOTE: a play beat's `speed` is
+// frozen here as step IDENTITY (anti-drift), NOT as pacing — the driver witness-normalizes every play span, so
+// `speed` sets no flight rate; the one behavioral fact is the play TARGET, checked on its own below.
+const f4 = TOURS.f4!
+const F4_CAPTIONS: readonly [string, number, TourShot | undefined][] = [
+  ['A real recorded link between two endpoints, and 32 messages sent across the whole run. Every timing and outcome is decoded; the endpoints are staged, not placed by position.', 8700, undefined],
+  ['The pulses cross and the ledger climbs — sent and delivered rising together, nothing lost so far. The link keeps a steady beat.', 6400, { kind: 'stage' }],
+  ['14 sent, 14 delivered, not one lost — so far. The next message launches at tick 30. Watch it.', 4700, { kind: 'stage' }],
+  ['At tick 30 the fifteenth message — marked msg 14 — is sent, and never arrives. It fizzles at mid-span; the ledger splits to 1 lost so far, and the loss keeps a permanent mark: t30 · LOSS.', 9400, { kind: 'stage' }],
+  ['The link resumes and every later message arrives — the lost count holds at 1. The whole run: 32 sent, 31 delivered, and the 1 that never arrived, still there to point at.', 8600, { kind: 'stage' }],
+  ['Across the whole run, two readings agree — 32 causation edges and 31 delivered receipts — both point at the same lost packet. The check is self-consistent, not an outside seal: msg 14 — the fifteenth sent — never arrived, a channel loss, not a byte-mismatch. This run and tick can be shared by URL.', 15000, { kind: 'stage' }],
+]
+
+describe('f4 tour — exact caption / hold / action / arrive byte-pin (the loss beat rests at tick 31)', () => {
+  test('six beats, identity unchanged', () => {
+    expect(f4.id).toBe('f4-comms')
+    expect(f4.runId).toBe('f4')
+    expect(f4.title).toBe('The one lost packet')
+    expect(f4.steps).toHaveLength(6)
+  })
+  test('every caption + holdMs is verbatim (the reading windows are byte-frozen)', () => {
+    f4.steps.forEach((step, i) => {
+      const [caption, holdMs] = F4_CAPTIONS[i]!
+      expect(step.caption).toBe(caption)
+      expect(step.holdMs).toBe(holdMs)
+    })
+  })
+  test('the camera is authored stillness — beat 0 pre-framed (no arrive); every later beat re-asserts the stage shot', () => {
+    f4.steps.forEach((step, i) => {
+      expect(step.arrive).toEqual(F4_CAPTIONS[i]![2])
+    })
+    expect(f4.steps[0]!.arrive).toBeUndefined() // beat 0 opens on the composed stage the tour-start reset frames
+    for (const i of [1, 2, 3, 4, 5]) expect(f4.steps[i]!.arrive).toEqual({ kind: 'stage' })
+  })
+  test('THE LOSS BEAT plays across tick 30 and rests AT tick 31 — never a paused tick 30, never a fractional tick', () => {
+    const loss = f4.steps[3]!
+    // The REST TARGET is the one behavioral fact: play through to tick 31 (inside the afterglow window (30, 34)),
+    // NOT a paused tick 30 (which would freeze the launch frame, worst under reduced motion). `speed` is authored
+    // intent only (witness-normalized), so it is NOT asserted here as pacing — only the target and its integrality.
+    expect(loss.play?.to).toBe(31)
+    expect(loss.tick).toBeUndefined()               // NOT a paused scrub (a paused tick 30 freezes the launch frame)
+    expect(Number.isInteger(loss.play!.to)).toBe(true) // the target is an integer — no fractional-tick hazard
+  })
+  // The COMPLETE per-step pin — toStrictEqual, NOT toMatchObject: any EXTRA or MISSING field fails. Composed from
+  // the actions + F4_CAPTIONS so each caption string lives in exactly one place.
+  const F4_ACTIONS = [
+    { tick: 0, select: { entity: null, event: null } },
+    { play: { to: 20, speed: 4 } },
+    { play: { to: 29, speed: 2 } },
+    { play: { to: 31, speed: 1 } },
+    { play: { to: 95, speed: 4 } },
+    { tick: 95 },
+  ]
+  const EXPECTED_F4_STEPS = F4_CAPTIONS.map(([caption, holdMs, arrive], i) => ({ ...F4_ACTIONS[i]!, caption, holdMs, ...(arrive ? { arrive } : {}) }))
+  test('every step is EXACTLY pinned — action, caption, holdMs, arrive; NO extra or missing field (toStrictEqual)', () => {
+    expect(f4.steps).toStrictEqual(EXPECTED_F4_STEPS)
+  })
+})
+
+// ── TOUR-POINTER DRIFT — every registered lens agrees with the authored tours ─────────────────────────────
+// A lens registration's tourId is the DERIVED pointer at the authored TOURS registry: "a tour exists for this
+// run" is stored ONCE (in TOURS), and the registration must not carry a second, drifting copy of that fact. The
+// pin is generic over the registry, so a newly-authored tour that flips its lens's tourId — or forgets to — is
+// caught by the SAME test: for every registered lens, HAVING a tourId is EXACTLY having an authored tour for the
+// run it draws, and the pointer resolves to that run's tour. (A lens id is `<run>-<lens>`, so the run it draws is
+// the id's prefix.) This covers the sibling belief lens the moment its tour lands, with no test change.
+const runOf = (lensId: string): string => lensId.slice(0, lensId.indexOf('-'))
+
+describe('tour-pointer drift — a lens declares a tourId iff its run has an authored tour, and they agree', () => {
+  test.each(LENSES.map(l => [l.id, l] as const))('%s: tourId is set exactly when its run has a tour, and points at it', (_id, lens) => {
+    const runId = runOf(lens.id)
+    expect(lens.tourId !== null).toBe(hasTour(runId)) // the biconditional — no dangling pointer, no unlit handoff
+    if (lens.tourId !== null) {
+      expect(TOURS[runId]!.id).toBe(lens.tourId)            // the pointer resolves to THIS run's authored tour…
+      expect(tourTitle(runId)).toBe(TOURS[runId]!.title)   // …and the title the Hangar handoff reads agrees
+    }
   })
 })
 

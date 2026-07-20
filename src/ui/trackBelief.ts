@@ -341,7 +341,7 @@ export const F3A_TRACK_REGISTRATION: LensRegistration = validateRegistration({
   dims: 'one shrinking disc at the tracker\'s mean with a quiet line to the true pose (sub-bloom) so the tightening AND the growing error read — the run\'s belief-vs-reality mark; every other pixel stays out of its way',
   emptyState: 'a run with no track updates (or a POSITIONLESS run, or a positioned run carrying kind-22 verdicts) mounts no belief stage and wears no chip — the shared trackBeliefApplies gate (POSITIONED AND track updates AND no kind-22), the same fail-closed idiom the query/sensing/comms lenses use',
   honestyChip: TRACK_BELIEF_HONESTY,
-  tourId: null, // no authored tour — the lens ships as the belief-vs-reality half; an authored tour is a follow-up (mirrors f4-comms)
+  tourId: 'f3a-track', // the authored belief tour (TOURS['f3a'].id) — the derived pointer to the stored fact, kept in step with hasTour('f3a')
   mountGate: trackBeliefApplies.name,
   provenance: TRACK_LEDGER,
 })

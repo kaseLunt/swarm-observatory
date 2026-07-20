@@ -662,7 +662,8 @@ export const F4_COMMS_REGISTRATION: LensRegistration = validateRegistration({
   dims: 'one bloom per run — the t30 fizzle; every clean pulse is unbloomed and spent, the SNR lane is a labelled hairline, the ledger rests on its final tally through the silent tail so the ONE loss reads',
   emptyState: 'a run with no comms events (or a positioned run, or a positionless run whose kinds carry query draws) mounts no comms stage and wears no chip — the shared commsStageApplies gate (positionless AND comms-kinds AND no kind-23), the same fail-closed idiom the query/sensing lenses use',
   honestyChip: COMMS_HONESTY,
-  tourId: null, // no authored tour — the lens ships as the hero beat; an authored tour is a separate follow-up
+  tourId: 'f4-comms', // the authored guided tour for this lens — "the one lost packet" (TOURS.f4); the derived
+                      // pointer at the tour registry, pinned against it by the tour-drift test (tourId ⟺ hasTour)
   mountGate: commsStageApplies.name,
   provenance: COMMS_LEDGER,
 })

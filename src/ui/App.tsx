@@ -18,13 +18,13 @@ import { Hangar } from './hangarView'
 import { CertificationWall, type CertificationWallHandle } from './wallView'
 import { EvidenceTable } from './evidenceTableView'
 import { HeaderMenu } from './HeaderMenu'
-import { useHeaderTier } from './useHeaderTier'
-import { headerLayout } from './headerModel'
+import { useHeaderLayout } from './useHeaderLayout'
+import { runShortTitle, runTooltip } from './runShortTitle'
 import { ROBUST_F3A, campaignSeedIds } from '../decode/campaignCatalog'
 import { useCampaignStore } from '../state/campaignStore'
 import { loadIsCurrent, readyTreeVisible, shouldBreakSeal, shouldSealRun } from './hangar'
 import { mapKey, SPEEDS, shareSpeed } from './keyboard'
-import { probeStorage, shouldArmZeroClick, type ZeroClickScope } from './coldOpen'
+import { probeStorage, shouldArmZeroClick, bareRunDeepLink, bareLinkTourToArm, type ZeroClickScope } from './coldOpen'
 import { notifyUserInput } from '../tour/interrupt'
 import { useTour } from '../tour/useTour'
 import { TOURS, tourAdmitted, tourHandoffAction, hasTour } from '../tour/tours'
@@ -56,11 +56,18 @@ const NUDGE_KEY = 'so.tourNudgeSeen'
 //   'off'         — veto: neither the auto-play nor the card ever fires (a returning-visitor-calm app).
 const ZERO_CLICK_SCOPE: ZeroClickScope = 'first-visit'
 
-// A cold open is a BARE load — no deep-link view state in the URL. A shared/deep link (?run=/?tick=/?ev=/…)
-// is NEVER a cold open: it carries the visitor's intent, so the app lands exactly where it points and never
-// hijacks it with an auto-tour (this also keeps every ?run= smoke test — and every shared URL — untouched).
-// Captured ONCE at module eval, before applyUrlOnLoad/syncUrl can touch location.search.
+// A cold open is a BARE load — no query at all in the URL. A STATE-BEARING link (?run=X&tick=/?ev=/…) is NEVER
+// a cold open: it carries the visitor's precise intent, so the app lands exactly where it points and never
+// hijacks it with an auto-tour (this also keeps every state-bearing ?run= smoke test — and every shared URL —
+// untouched). Captured ONCE at module eval, before applyUrlOnLoad/syncUrl can touch location.search.
 const COLD_OPEN_AT_LOAD = typeof location !== 'undefined' && location.search.replace(/^\?/, '') === ''
+
+// A BARE run deep link — ?run=X with NO other view state (no tick/selection/event/speed/…) — names a run's
+// STORY, not a precise shared moment, so it auto-arms that run's tour just as the bare root auto-arms the front
+// door's. null on the bare root (no run named) and on every state-bearing link (?run=X&tick=… etc.), so both
+// of those paths are left exactly as they are. Captured ONCE at module eval alongside COLD_OPEN_AT_LOAD, before
+// applyUrlOnLoad/syncUrl can touch location.search.
+const BARE_RUN_LINK_AT_LOAD = typeof location !== 'undefined' ? bareRunDeepLink(location.search) : null
 
 // Capture entry point (rung 2): ?capture=<fps> engages the fixed-dt clock (flip regeneration invokes it —
 // see docs/capture.md). null on every normal/shared load, so the live path is untouched; captured ONCE at
@@ -161,8 +168,9 @@ function BeliefChip({ model, tourActive }: { model: RunModel; tourActive: boolea
 // The header ladder condenses copy-link in three steps as the viewport narrows, so this ONE component
 // carries three presentations of the SAME copy action + the same honest "copied" feedback (the label
 // flips only on a resolved success — never a false confirm if the clipboard is blocked):
-//   • 'label'    — full tier: the "copy link" / "link copied ✓" text button (the visible text IS the
-//                  accessible name, so the success is announced to assistive tech).
+//   • 'label'    — full tier: the "copy link" text button whose visible chip flips to "copied ✓" inside
+//                  the same rest-width box; the accessible name is a CONSTANT "copy link" (the chip is
+//                  hidden from the tree) and success is announced once, by the sr-only status region.
 //   • 'icon'     — condensed tier: the ⧉ / ✓ glyph (the design's kept copy mark) with a CONSTANT
 //                  aria-label "copy link", so the accessible name stays complete though a glyph alone
 //                  would not be descriptive.
@@ -183,17 +191,27 @@ function HeaderCopyLink({ onCopyLink, variant }: {
     if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(() => setCopied(false), 2000)
   }
-  const className = variant === 'icon' ? 'header-copy header-copy-icon'
-    : variant === 'menuitem' ? 'header-menu-item'
-    : 'header-copy'
-  const content = variant === 'icon' ? (copied ? '✓' : '⧉') : (copied ? 'link copied ✓' : 'copy link')
+  // Success form is "copied ✓" — SHORTER than the rest label "copy link", so with the label form's width
+  // pinned to the rest label (app.css) the success chip shrinks in and never swells out: the row is
+  // width-invariant by construction, at every band. The ✓ is FEEDBACK chrome (the copy succeeded), not an
+  // evidence verdict glyph — a different alphabet from the integrity ✓/✗.
+  const content = variant === 'icon' ? (copied ? '✓' : '⧉') : (copied ? 'copied ✓' : 'copy link')
+  if (variant === 'icon')
+    return <button className="header-copy header-copy-icon" aria-label="copy link" onClick={copy}>{content}</button>
+  if (variant === 'menuitem')
+    return <button className="header-menu-item" role="menuitem" onClick={copy}>{content}</button>
+  // Label form: the accessible name is a CONSTANT aria-label ("copy link") so copying never re-announces the
+  // button (a changing name would announce alongside the status). The swapping visual chip is hidden from the
+  // accessibility tree (aria-hidden), and the polite sr-only role="status" is the SOLE success announcement —
+  // assistive tech hears "link copied" once, not the name change + the status both. The status is out of flow
+  // (sr-only), so it never affects the header width.
   return (
-    <button
-      className={className}
-      role={variant === 'menuitem' ? 'menuitem' : undefined}
-      aria-label={variant === 'icon' ? 'copy link' : undefined}
-      onClick={copy}
-    >{content}</button>
+    <>
+      <button className="header-copy header-copy-label" aria-label="copy link" onClick={copy}>
+        <span aria-hidden="true">{content}</span>
+      </button>
+      <span className="sr-only header-copy-status" role="status">{copied ? 'link copied' : ''}</span>
+    </>
   )
 }
 
@@ -250,6 +268,9 @@ export default function App() {
   const [thesisCollapsed, setThesisCollapsed] = useState(false)
   // Fire-once guard for the zero-click arming (also the StrictMode double-invoke guard in dev; prod is single).
   const zeroClickFiredRef = useRef(false)
+  // Fire-once guard for the bare run deep-link auto-arm (same StrictMode-safe latch). Parks the pending tour
+  // request at most once at mount, so a later consume/re-render never re-parks it.
+  const bareLinkArmedRef = useRef(false)
   // Prior runId for the card-close effect. Seeded null and set on the effect's first run (mount), so the
   // effect closes the cold-open card ONLY on an actual run SWITCH — never on first paint, where the arming
   // effect legitimately opens it. (runId is always a concrete string, so null is an unambiguous "unseeded".)
@@ -294,12 +315,14 @@ export default function App() {
   // "state on a stable element" precedent). Event-rate (the flag flips once at natural-end and once on any
   // clear), so this App re-render never touches the frame path. The e2e smoke asserts on it.
   const finale = useViewStore(s => s.finale)
-  // Header condensation tier (the priority ladder). A width-driven external store that re-renders the
-  // header only when the viewport crosses a ladder threshold — never on the frame path. headerLayout
-  // turns the tier into the per-control intents the header JSX branches on (run switcher form, low-
-  // priority chrome form, wall label, wordmark) — the SINGLE source shared with the unit-tested pure
-  // model, so the ladder's rules are never a hand-maintained twin between the code and the CSS.
-  const layout = headerLayout(useHeaderTier())
+  // Header condensation layout (the priority ladder). A width-driven external store that re-renders the
+  // header only when the viewport crosses a ladder breakpoint — never on the frame path. It resolves the
+  // per-control intents the header JSX branches on (run switcher form, low-priority chrome form, wall
+  // label, wordmark) from the live width — the SINGLE source shared with the unit-tested pure model, so
+  // the ladder's rules are never a hand-maintained twin between the code and the CSS. The switcher form is
+  // width-conditional inside the full tier (the named button row yields to the picker below its fit floor),
+  // which is exactly why the store keys on the width, not the tier alone.
+  const layout = useHeaderLayout()
   // Header-menu keyboard ownership — IDENTITY-KEYED and SYNCHRONOUS. A header disclosure (the run picker
   // or the ⋯ overflow) claims the keyboard the SAME way the Hangar/Wall modals do: while one is open the
   // window keydown owner goes inert on this EXPLICIT token — a ref holding WHICH menu owns it ('picker' |
@@ -468,6 +491,28 @@ export default function App() {
     setThesisOpen(true)
     startTour() // auto-play the first tour beat — interruptible by ANY transport input (existing grammar)
   }, [model])
+
+  // BARE RUN DEEP-LINK AUTO-ARM. A link that names ONLY a run (?run=X, no tick/selection/event/speed) points at
+  // that run's guided STORY, so it PARKS an auto-arm request for the run's authored tour — landing the visitor
+  // at the START of the story the link meant to show, exactly as the bare root auto-arms the front-door tour.
+  // The SAME arrival machine the Hangar handoff uses (pendingTour → tourHandoffAction) then admits it once the
+  // bytes are resident, or REFUSES it — a mismatch destination lands on the frozen stage with NO tour, never a
+  // started one (a run with no authored tour never parks: the arm decision filters it before the machine ever
+  // sees it). A STATE-BEARING link is not bare and is never parked here,
+  // so it lands exactly as shared. The tour-dismissal memory governs this exactly as it governs the cold open
+  // (bareLinkTourToArm → autoArmMemoryAllows): a returning visitor who retired the tour is not re-armed. The
+  // classification was captured before applyUrlOnLoad touched the URL, so this parks against the same run
+  // applyUrlOnLoad seats in the store. Fire-once at mount; the arrival machine consumes the parked request.
+  useEffect(() => {
+    if (bareLinkArmedRef.current) return
+    bareLinkArmedRef.current = true
+    const toArm = bareLinkTourToArm(
+      BARE_RUN_LINK_AT_LOAD,
+      BARE_RUN_LINK_AT_LOAD !== null && hasTour(BARE_RUN_LINK_AT_LOAD),
+      ZERO_CLICK_SCOPE, nudgeSeen, storageOk,
+    )
+    if (toArm !== null) setPendingTour(toArm)
+  }, [])
 
   // COLD-OPEN CARD COLLAPSE: the full card holds through beat 0 (its cold-open share moment —
   // authored beside f1's establishing shot), then collapses to the header verdict chip once the auto-tour
@@ -667,13 +712,16 @@ export default function App() {
           </svg>
           <h1 className={layout.wordmark === 'mark' ? 'sr-only' : undefined}>swarm observatory</h1>
         </div>
-        {/* THE RUN SWITCHER (priority-(b), ALWAYS reachable). At full width the six-run button row
-            (ids as the compact labels, the runs/index.json titles as native tooltips). Below the condense
-            threshold it collapses to a compact `run ▾` picker — the largest single space win, and the
-            picker scales past six runs the button row cannot. The picker is a keyboard-operable disclosure
-            (a button + a menu of the same run entries), NOT a hidden two-row wrap. */}
+        {/* THE RUN SWITCHER (priority-(b), ALWAYS reachable). Every run label is the run's short authored
+            name (runShortTitle) — a bare id teaches a first-time reader nothing — with the id + full title
+            carried in the native tooltip so the id stays discoverable for URLs and power users. The URL and
+            the `?run=` ids themselves are untouched: this changes only the visible/accessible LABEL. Where the
+            six named buttons measurably fit (above the row's fit floor) the button row; below the floor it
+            collapses to a compact `run ▾` picker — the picker scales past six runs the button row cannot.
+            The picker is a keyboard-operable disclosure (a button + a menu of the same run entries), NOT a
+            hidden two-row wrap. */}
         {layout.runSwitcher === 'buttons'
-          ? <nav>{runs.map(r => <button key={r.id} title={r.title} className={r.id === runId ? 'active' : ''} onClick={() => selectRun(r.id)}>{r.id}</button>)}</nav>
+          ? <nav>{runs.map(r => <button key={r.id} title={runTooltip(r.id, r.title)} className={r.id === runId ? 'active' : ''} onClick={() => selectRun(r.id)}>{runShortTitle(r.id, r.title)}</button>)}</nav>
           : runs.length > 0 && (
             <HeaderMenu menuId="picker" label="run ▾" ariaLabel="switch run" className="run-picker" onOwnership={onMenuOwnership}>
               {(close) => runs.map(r => (
@@ -682,9 +730,9 @@ export default function App() {
                   role="menuitem"
                   className={r.id === runId ? 'header-menu-item active' : 'header-menu-item'}
                   aria-current={r.id === runId ? 'true' : undefined}
-                  title={r.title}
+                  title={runTooltip(r.id, r.title)}
                   onClick={() => { close(); selectRun(r.id) }}
-                >{r.id}</button>
+                >{runShortTitle(r.id, r.title)}</button>
               ))}
             </HeaderMenu>
           )}

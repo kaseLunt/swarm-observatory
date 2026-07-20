@@ -962,3 +962,12 @@ describe('the pulse clock reads the manifest dtUs (a different period scales the
     expect(pulseProgressAt(delivered.send.tick, pulseDuration(delivered, missing.dtUs, missing.dtKnown), 3)).toBeNull()
   })
 })
+
+// ── THE TOUR-PER-LENS DECLARATION — the comms lens now registers its authored tour ────────────────────────
+// The lens ships with its guided tour, so the registration's tourId points at it (mirrors the e0/f2a per-lens
+// pins). The biconditional against the tour registry (tourId ⟺ hasTour) is enforced generically in tours.test.ts.
+describe('the comms lens registers its authored tour (the standing tour-per-lens rule)', () => {
+  test('F4_COMMS_REGISTRATION.tourId names the authored tour', () => {
+    expect(F4_COMMS_REGISTRATION.tourId).toBe('f4-comms')
+  })
+})

@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { CONDENSED_MAX, OVERFLOW_MAX, MOBILE_MAX, headerTier, headerLayout, type HeaderTier } from './headerModel'
+import { CONDENSED_MAX, OVERFLOW_MAX, MOBILE_MAX, SWITCHER_BUTTONS_MIN, headerTier, headerLayout, runSwitcherForm, type HeaderTier } from './headerModel'
 
 const ALL_TIERS: HeaderTier[] = ['full', 'condensed', 'overflow', 'mobile']
 
@@ -33,11 +33,39 @@ test('the three thresholds are strictly ordered (mobile < overflow < condense)',
 })
 
 // ── the per-tier layout table — the whole ladder, single-sourced for the header JSX and the smoke ──
-test('the full tier keeps every control at full weight (the collapsed verdict chip stays compact)', () => {
-  expect(headerLayout('full')).toEqual({
+test('the full tier at a wide width keeps every control at full weight (the collapsed verdict chip stays compact)', () => {
+  // A representative desktop width, above the button-row fit floor — the named row rides the row here.
+  expect(headerLayout('full', 1500)).toEqual({
     runSwitcher: 'buttons', chrome: 'labels', wallLabel: 'certification wall', wordmark: 'full',
     chip: 'glyph', panelToggles: 'labels', dense: false,
   })
+})
+
+// ── the run switcher's second breakpoint: it condenses to the picker INSIDE the full tier at the named
+//    button-row fit floor, while every other full-tier control stays at full weight ──
+test('the named button row rides the full tier only above its fit floor; at and below the floor the switcher shows the picker', () => {
+  expect(headerLayout('full', SWITCHER_BUTTONS_MIN + 1).runSwitcher).toBe('buttons')
+  expect(headerLayout('full', SWITCHER_BUTTONS_MIN).runSwitcher).toBe('picker')  // AT the floor → picker
+  expect(headerLayout('full', CONDENSED_MAX + 1).runSwitcher).toBe('picker')     // 1081 — full tier, but the named row overflows
+  // the REST of the full-tier chrome is unchanged across the band — only the switcher axis condenses early
+  const narrowFull = headerLayout('full', CONDENSED_MAX + 1)
+  expect(narrowFull.chrome).toBe('labels')
+  expect(narrowFull.wallLabel).toBe('certification wall')
+  expect(narrowFull.wordmark).toBe('full')
+  expect(narrowFull.panelToggles).toBe('labels')
+})
+
+test('runSwitcherForm: the named row only above the fit floor within the full tier; the picker everywhere narrower', () => {
+  expect(runSwitcherForm(1500)).toBe('buttons')
+  expect(runSwitcherForm(SWITCHER_BUTTONS_MIN + 1)).toBe('buttons')
+  expect(runSwitcherForm(SWITCHER_BUTTONS_MIN)).toBe('picker')
+  expect(runSwitcherForm(CONDENSED_MAX + 1)).toBe('picker') // 1081 — still full tier, but below the fit floor
+  expect(runSwitcherForm(CONDENSED_MAX)).toBe('picker')     // 1080 — already condensed
+  expect(runSwitcherForm(700)).toBe('picker')
+})
+
+test('the button-row fit floor sits inside the full tier, above the condense threshold', () => {
+  expect(SWITCHER_BUTTONS_MIN).toBeGreaterThan(CONDENSED_MAX)
 })
 
 test('the condensed tier collapses the switcher to the picker, sheds low-priority labels to icons, and condenses the chip to its glyph', () => {
@@ -86,7 +114,7 @@ test('only the overflow and mobile tiers fold the low-priority chrome; wider tie
 })
 
 test('the collapsed verdict chip is compact (glyph-only) at EVERY tier — its wide headline never enters the row', () => {
-  // Even the full tier's narrow end (1081px) cannot fit the six-button chrome beside a full-headline chip,
+  // Even the full tier's narrow end (1081px) cannot fit the full-weight chrome beside a full-headline chip,
   // and the cold-open card already delivered that headline; so the header chip is always the glyph reminder.
   for (const t of ALL_TIERS) {
     expect(headerLayout(t).chip).toBe('glyph')

@@ -6,6 +6,17 @@ import { expect, test, type Page } from '@playwright/test'
 // under both the app and node programs.
 import { PROFILE_CONFLATION_RE } from '../src/ui/profileConflation.ts'
 
+// Seed the tour-dismissal memory as already-retired before the app boots — a RETURNING visitor, the calm posture
+// in which neither the bare-root cold open nor a bare run deep link auto-arms a tour. A bare `?run=X` (a run and
+// nothing else) now auto-arms that run's tour on a FIRST visit; the tests that launch a tour BY HAND, or drive a
+// tourable run's non-tour surfaces, call this first so that newly-armed tour never starts under them. Tests that
+// specifically assert the FIRST-visit experience (the cold open, the deep-link nudge, the new bare-link auto-arm)
+// do NOT call it. The key mirrors the app's one persistent tour-nudge marker; a drift would surface as an
+// unexpected auto-tour. Passed as a STRING (the e2e tsconfig excludes the DOM lib — the house pattern).
+async function asReturningVisitor(page: Page): Promise<void> {
+  await page.addInitScript(`try { localStorage.setItem('so.tourNudgeSeen', '1') } catch {}`)
+}
+
 test('boots, verifies F0, renders scene, restores deep link', async ({ page }) => {
   await page.goto('/?run=f0&tick=1')
   await expect(page.locator('.provenance')).toContainText('provenance', { timeout: 15000 })
@@ -59,7 +70,9 @@ test('run switch clears a carried selection and leaks no stale ev into the new U
   // A run switch unmounts the WHOLE ready tree (the current-load witness gate) including the WebGL
   // canvas, so the post-switch paint pays a full context re-init — on CI's software renderer that
   // costs what the FIRST load costs. First-paint allowance, same as the initial-load asserts.
-  await page.getByRole('button', { name: 'f0', exact: true }).click()
+  // The switcher button's label/accessible name is the run's short authored name ("Determinism" for f0),
+  // not the bare id; the id itself is untouched and still drives the URL (asserted below).
+  await page.getByRole('button', { name: 'Determinism', exact: true }).click()
   await expect(page.locator('.readout')).toHaveText('tick 0 / 2', { timeout: 15000 })
   await expect(page).toHaveURL(/run=f0/)
   await expect(page).not.toHaveURL(/ev=/)
@@ -107,6 +120,7 @@ test('keyboard grammar drives the transport', async ({ page }) => {
 })
 
 test('guided tour starts on ?run=e0 and a user interrupt (ArrowRight) closes it while the transport still advances', async ({ page }) => {
+  await asReturningVisitor(page) // launch the tour by hand — no first-visit auto-arm underneath it
   await page.goto('/?run=e0')
   await expect(page.locator('.provenance')).toContainText('trailer self-consistent ○', { timeout: 15000 })
   await page.getByRole('button', { name: '▶ tour' }).click()
@@ -120,6 +134,7 @@ test('guided tour starts on ?run=e0 and a user interrupt (ArrowRight) closes it 
 })
 
 test('guided tour auto-advances to step 2 after the step-1 hold elapses, then Escape stops it cleanly', async ({ page }) => {
+  await asReturningVisitor(page) // launch the tour by hand — no first-visit auto-arm underneath it
   await page.goto('/?run=e0')
   await expect(page.locator('.provenance')).toContainText('trailer self-consistent ○', { timeout: 15000 })
   await page.getByRole('button', { name: '▶ tour' }).click()
@@ -140,9 +155,9 @@ test('guided tour auto-advances to step 2 after the step-1 hold elapses, then Es
 // CONSCIOUS REWRITE: the earlier cold-open test asserted the first-visit tour
 // NUDGE treatment on a bare `/`. This change replaces that first-visit cold-open experience with the ZERO-CLICK
 // THESIS: a bare cold open opens the thesis card AND auto-plays the first tour beat. The nudge PRECEDENT is
-// preserved verbatim — it still governs the DEEP-LINK first-visit path (see the ?run=e0 tour tests above,
-// which still see the launcher) — and the auto-play retires that same NUDGE_KEY, so a returning visit is calm.
-// Only the BARE cold open changed; every ?run= test is untouched (a deep link is never a cold open).
+// preserved — it still governs the STATE-BEARING deep-link first-visit path (a link carrying a precise shared
+// state does not auto-arm, so the nudge is its discoverability voice there) — and the auto-play retires that
+// same NUDGE_KEY, so a returning visit is calm. A BARE run deep link now auto-arms its own tour (the tests below).
 test('cold open: the zero-click thesis card + auto-played first tour beat; an interrupt keeps the card; a returning visit is calm', async ({ page }) => {
   // HERO SWITCH (dev/v0.6): a bare `/` now boots f1 (the cold-open star — a moving vehicle) not e0. f1 is a
   // golden DET-ONLY run, so its honesty voice is the SELF-CHECK (○), NOT the manifest-grade ✓ (two-voice truth,
@@ -173,8 +188,8 @@ test('cold open: the zero-click thesis card + auto-played first tour beat; an in
   // × dismisses the card (and stops any still-running tour).
   await card.getByRole('button', { name: 'dismiss' }).click()
   await expect(card).toHaveCount(0)
-  // A returning visit is calm: the auto-play retired the first-visit key, so no card and no auto-tour fire;
-  // the plain ▶ tour launcher remains. (The URL is now ?run=f1 — a non-bare load is not a cold open either.)
+  // A returning visit is calm: the auto-play retired the first-visit key, so neither the cold open NOR the
+  // bare-link auto-arm fires (the retired marker suppresses both); the plain ▶ tour launcher remains.
   await page.reload()
   await expect(page.locator('.readout')).toHaveText('tick 0 / 64', { timeout: 15000 })
   await expect(page.locator('.thesis-card')).toHaveCount(0)
@@ -252,8 +267,8 @@ test('cold open: the full card collapses to a header verdict chip when the auto-
 // ── after collapse, a RELOAD is CALM — the full card is once-per-browser (first visit) ──────
 // The sibling collapse test proves the chip is a one-way SESSION latch (an interrupt never re-expands it). This
 // pins the deeper PERSISTENCE invariant the docs used to misstate: the first cold open's auto-play retires
-// NUDGE_KEY (startTour → dismissNudge), so a reload seeds nudgeSeen=true and the zero-click arming rejects — and
-// the boot has already rewritten the URL to ?run=f1, a non-bare load that is not a cold open either. Either way
+// NUDGE_KEY (startTour → dismissNudge), so a reload seeds nudgeSeen=true and BOTH the cold open and the bare-link
+// auto-arm reject on the retired marker (whether the boot rewrote the URL to ?run=f1 or left it bare). Either way
 // a reload from the COLLAPSED state is a returning visit: NO full card AND NO chip, the calm posture (the plain
 // ▶ tour launcher, no first-visit pulse). Only cleared storage would bring the full card back. Mirrors the
 // cold-open test's returning-visit block; the difference is the pre-reload state — collapsed, never dismissed.
@@ -283,13 +298,15 @@ test('cold open: after the card collapses, a reload is calm — no card, no chip
 })
 
 // ── the copy-link has a PERMANENT home in the app chrome (the header), not just the cold-open card ──
-// A deep link (?run=e0) is never a cold open, so no thesis card ever mounts — yet the share weapon must still be
-// reachable. The header copy-link proves it: present with no card in sight, and it builds the same shareable
-// view URL with NO verification state (the NEVER-list), exactly as the card's copy did.
+// The thesis card is a root-only cold-open surface, so a deep link never mounts it — yet the share weapon must
+// still be reachable. The header copy-link proves it: present with no card in sight, and it builds the same
+// shareable view URL with NO verification state (the NEVER-list), exactly as the card's copy did. (Returning
+// visitor, so the bare link's first-visit tour auto-arm never plays over the measurement either.)
 test('the permanent header copy-link builds the shareable view URL with no card present (NEVER-list)', async ({ page }) => {
+  await asReturningVisitor(page) // no first-visit auto-tour over the header-copy measurement
   await page.goto('/?run=e0')
   await expect(page.locator('.readout')).toHaveText('tick 0 / 75', { timeout: 15000 }) // e0 tickCount = 75
-  await expect(page.locator('.thesis-card')).toHaveCount(0)             // a deep link is not a cold open — no card
+  await expect(page.locator('.thesis-card')).toHaveCount(0)             // the thesis card is root-only — never on a deep link
   const headerCopy = page.locator('.header-copy')
   await expect(headerCopy).toBeVisible()                                // …but the share weapon is permanent in the chrome
   await page.evaluate(CLIPBOARD_SHIM)
@@ -312,8 +329,9 @@ test('a run switch closes the cold-open thesis card (no prior run’s ✓ under 
   await expect(card).toBeVisible({ timeout: 15000 })
   await expect(card.locator('.thesis-verdict.self')).toBeVisible() // f1 is det-only → its REAL self-check ○ on the cold open (HERO SWITCH)
   // Switch f1 → f0 via the header run-switcher (the card is top-center at desktop width, clear of the
-  // left-aligned nav, so the button is directly clickable). Navigation retires the cold-open narrative.
-  await page.getByRole('button', { name: 'f0', exact: true }).click()
+  // left-aligned nav, so the button is directly clickable). The switcher shows the run's short authored
+  // name ("Determinism" for f0), not the bare id. Navigation retires the cold-open narrative.
+  await page.getByRole('button', { name: 'Determinism', exact: true }).click()
   await expect(page.locator('.readout')).toHaveText('tick 0 / 2', { timeout: 15000 })
   await expect(card).toHaveCount(0) // the card is gone — never repainted with f1's verdict under f0
   // …and it does not spontaneously reopen on the switched-to run (the arm is a once-per-cold-open latch).
@@ -321,16 +339,15 @@ test('a run switch closes the cold-open thesis card (no prior run’s ✓ under 
   await expect(page.locator('.screen.error')).toHaveCount(0)
 })
 
-// The deep-link tour-NUDGE treatment (restored). The zero-click rewrite dropped the only test pinning the
-// first-visit nudge TREATMENT (the pulse CTA on the ▶ tour button + the quiet dismiss ×). That precedent is
-// NOT gone — it still governs the DEEP-LINK first-visit path, because a deep link (?run=…) is never a cold
-// open, so the zero-click thesis is skipped BY DESIGN and the nudge is the discoverability voice there. This
-// fresh-context deep link (Playwright isolates storage per test = a first visit) re-pins that treatment AND
-// the design invariant that the deep-link path shows NO zero-click card / auto-tour.
-test('a first-visit deep link shows the tour-nudge treatment (pulse CTA + dismiss ×) and NO zero-click open', async ({ page }) => {
-  await page.goto('/?run=e0')
+// The deep-link tour-NUDGE treatment (the pulse CTA on the ▶ tour button + the quiet dismiss ×). A BARE run
+// deep link now auto-arms the tour on a first visit, so the nudge is the discoverability voice on a
+// STATE-BEARING deep link (?run=…&tick=…) — one that carries a precise shared state and therefore does NOT
+// auto-arm. This fresh-context state-bearing link (Playwright isolates storage per test = a first visit)
+// re-pins that treatment AND the invariant that the state-bearing path shows NO zero-click card / auto-tour.
+test('a first-visit state-bearing deep link shows the tour-nudge treatment (pulse CTA + dismiss ×) and NO auto-arm', async ({ page }) => {
+  await page.goto('/?run=e0&tick=1')
   await expect(page.locator('.provenance')).toContainText('trailer self-consistent ○', { timeout: 15000 })
-  // A deep link is not a cold open: neither the thesis card nor the auto-tour ever fires here.
+  // A state-bearing deep link does not auto-arm: neither the thesis card nor the auto-tour ever fires here.
   await expect(page.locator('.thesis-card')).toHaveCount(0)
   await expect(page.locator('.tour-overlay')).toHaveCount(0)
   // The nudge TREATMENT: the ▶ tour button wears the pulse CTA class, and the quiet dismiss × is present.
@@ -356,6 +373,7 @@ test('plain-clicking the timeline selects the nearest event (no drag → select,
 })
 
 test('a tour play step plays VISIBLY — the playhead sweeps through intermediate ticks, not an instant jump', async ({ page }) => {
+  await asReturningVisitor(page) // launch the tour by hand — no first-visit auto-arm underneath it
   await page.goto('/?run=e0')
   await expect(page.locator('.provenance')).toContainText('trailer self-consistent ○', { timeout: 15000 })
   await page.getByRole('button', { name: '▶ tour' }).click()
@@ -788,6 +806,7 @@ test('scrub-from-finale eases the camera to the establishing frame — the camer
 // vantage first. This proves the from-finale entry — the money case — via the app's OWN camera: it moves a large
 // distance OFF the close-up and lands on the composed default [6,4.5,9] where step 0 was authored to open.
 test('tour-from-finale resets the camera to the composed load vantage (step 0 opens on the correct stage)', async ({ page }) => {
+  await asReturningVisitor(page) // drive the play→finale→tour sequence by hand — no first-visit auto-arm racing it
   await page.addInitScript(CAPTURE_SCENE)
   const errors: string[] = []
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()) })
@@ -837,6 +856,7 @@ test('tour-from-finale resets the camera to the composed load vantage (step 0 op
 // the reset — so it doubles as browser proof that the POV preset moves the camera. Then gate on a DEMONSTRATED
 // state (settled AND back on the captured vantage — the house pattern, never mere stillness).
 test('the e0 POV preset moves the camera and the query tour reframes the stage', async ({ page }) => {
+  await asReturningVisitor(page) // drive the POV→tour sequence by hand — no first-visit auto-arm racing it
   await page.addInitScript(CAPTURE_SCENE)
   const errors: string[] = []
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()) })
@@ -889,13 +909,16 @@ test('the Hangar renders all six cards; a visited full-manifest run earns ✓, a
   await expect(page.locator('.hangar-panel')).toBeVisible()
   await expect(page.locator('.hangar-card')).toHaveCount(6)
   // Each run with an authored tour names its chip by the lens it launches (consumed from the TOURS
-  // titles), so the three tour chips differentiate instead of reading one generic label — the ▶
+  // titles), so the tour chips differentiate instead of reading one generic label — the ▶
   // affordance stays. exact:true pins the whole "▶ {title}" accessible name, not a substring of it.
   await expect(page.locator('.hangar-card[data-run="e0"]').getByRole('button', { name: '▶ The query stage', exact: true })).toBeVisible()
   await expect(page.locator('.hangar-card[data-run="f1"]').getByRole('button', { name: '▶ Motion lifecycle', exact: true })).toBeVisible()
   await expect(page.locator('.hangar-card[data-run="f2a"]').getByRole('button', { name: '▶ What the sensor admits', exact: true })).toBeVisible()
+  // f4 (the comms marquee) now names its guided tour — the Hangar handoff is one of the tour's three entry points.
+  await expect(page.locator('.hangar-card[data-run="f4"]').getByRole('button', { name: '▶ The one lost packet', exact: true })).toBeVisible()
+  await expect(page.locator('.hangar-card[data-run="f3a"]').getByRole('button', { name: '▶ What the tracker believes', exact: true })).toBeVisible()
   // Every run WITHOUT an authored tour offers exactly one action — "open run" — and zero tour chips.
-  for (const noTour of ['f0', 'f3a', 'f4']) {
+  for (const noTour of ['f0']) {
     const card = page.locator(`.hangar-card[data-run="${noTour}"]`)
     await expect(card.getByRole('button')).toHaveCount(1)
     await expect(card.getByRole('button', { name: 'open run', exact: true })).toHaveCount(1)
@@ -938,6 +961,7 @@ test('the Hangar renders all six cards; a visited full-manifest run earns ✓, a
 // ── the SIM-CLOCK reads real time on published runs, assumed elsewhere ──────────────
 test('the readout shows real dt_us sim time on f3a and keeps the assumed tick readout on e0', async ({ page }) => {
   // f3a pins dt_us = 125000 → 96 ticks × 125000µs = 12.0s. At tick 0 the clock reads 0:00.0 / 0:12.0.
+  await asReturningVisitor(page) // read the RESTING clock: no first-visit auto-arm scrubbing f3a off tick 0 to its first fix
   await page.goto('/?run=f3a')
   await expect(page.locator('.provenance')).toContainText('trailer consistent ✓', { timeout: 15000 })
   await expect(page.locator('.readout')).toHaveText('0:00.0 / 0:12.0')
@@ -1121,7 +1145,7 @@ test('the header ladder: one row with zero overflow at every tier; the run switc
 
   // ── FULL TIER (1280px) — the widest chrome, asserted PRESENT before any measurement (the false-green guard). ──
   await page.setViewportSize({ width: 1280, height: 720 })
-  await page.goto('/?run=f2a')
+  await page.goto('/?run=f2a&tick=1') // state-bearing (a pinned tick) → not a bare run link, so no auto-arm: the first-visit nudge stays
   await expect(page.locator('.provenance')).toContainText('trailer consistent ✓', { timeout: 15000 })
   await expect(page.locator('header nav button')).toHaveCount(6)                              // all six run entries, in the button row
   await expect(page.getByRole('button', { name: 'hangar', exact: true })).toBeVisible()       // hangar, labeled
@@ -1171,10 +1195,11 @@ test('the header ladder: the `run ▾` picker opens and switches runs (condensed
   await page.goto('/?run=f2a')
   await expect(page.locator('.provenance')).toContainText('trailer consistent ✓', { timeout: 15000 })
   await expect(page.locator('header nav button')).toHaveCount(0) // the button row is condensed away
-  // Open the picker and switch f2a → f0 through a menu item. A run switch unmounts the whole ready tree (a full
-  // WebGL context re-init on CI's software renderer), so allow the first-paint timeout, as the run-switch tests do.
+  // Open the picker and switch f2a → f0 through a menu item (labeled with f0's short authored name,
+  // "Determinism"). A run switch unmounts the whole ready tree (a full WebGL context re-init on CI's
+  // software renderer), so allow the first-paint timeout, as the run-switch tests do.
   await page.getByRole('button', { name: 'switch run' }).click()
-  await page.getByRole('menuitem', { name: 'f0', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Determinism', exact: true }).click()
   await expect(page.locator('.readout')).toHaveText('tick 0 / 2', { timeout: 15000 }) // f0 tickCount = 2 — the switch landed
   await expect(page).toHaveURL(/run=f0/)
 })
@@ -1243,9 +1268,19 @@ test('the header ladder: a bare cold open keeps one row with the verdict chip pr
   await expect(chip).toBeVisible()
   // The chip is COMPACT: its wide headline is sr-only (never in the row), leaving just the verdict glyph.
   await expect(chip.locator('.thesis-chip-verdict .sr-only')).toHaveCount(1)
+  // The named run button row renders and fits one row at a wide full-tier width (above the button-row fit
+  // floor) — the widest chrome the switcher ever shows, with the verdict chip present.
+  await page.setViewportSize({ width: 1500, height: 720 })
+  await expect(page.locator('header nav button')).toHaveCount(6)
+  await expect.poll(noOverflow, { timeout: 5000, message: 'the named run button row fits one row with the verdict chip present at 1500px' }).toBe(true)
+  // At the full tier's NARROW end the named row would overflow, so the switcher alone yields to the `run ▾`
+  // picker there while every other full-tier control stays at full weight. Prove the picker carries it at 1081.
+  await page.setViewportSize({ width: 1081, height: 720 })
+  await expect(page.locator('header nav button')).toHaveCount(0)               // the named button row has yielded…
+  await expect(page.getByRole('button', { name: 'switch run' })).toBeVisible() // …to the picker (still full-tier chrome otherwise)
   // Sweep the tier edges + the phones with the chip PRESENT — one row, zero overflow at every width. Includes
-  // the full tier's narrow end (1081), both sides of the overflow floor (961/960) and the mobile floor (641/640),
-  // and three phone widths (390/375/360).
+  // the full tier's narrow end (1081 — now carrying the picker), both sides of the overflow floor (961/960)
+  // and the mobile floor (641/640), and three phone widths (390/375/360).
   for (const w of [1081, 1080, 961, 960, 641, 640, 390, 375, 360]) {
     await page.setViewportSize({ width: w, height: 720 })
     await expect(chip).toBeVisible() // the chip persists across resizes (a latched cold-open surface)
@@ -1254,6 +1289,67 @@ test('the header ladder: a bare cold open keeps one row with the verdict chip pr
     // a settled fit is the true steady state). A genuine overflow never settles and still fails the poll.
     await expect.poll(noOverflow, { timeout: 5000, message: `no horizontal overflow at ${w}px with the cold-open verdict chip present` }).toBe(true)
   }
+})
+
+// The copy control is width-invariant by construction: its width is pinned to the rest label and the shorter
+// "copied ✓" success form renders centered inside it. Two mutation-sensitive pins, each captured ATOMICALLY —
+// one page.evaluate reads the label AND the geometry in a single synchronous pass, so the 2s success→rest
+// reset can never fire between "confirm success" and "measure" (which would silently measure the rest state
+// and let a wider-success mutation pass). Each read returns the label so we assert the capture WAS the success
+// form: (1) the picker band's narrow end stays one row while the chip is shown; (2) at the button-row floor
+// edge the control's width is identical rest vs success.
+const CAPTURE_ON_SUCCESS = `(() => {
+  const btn = document.querySelector('header .header-copy')
+  const label = btn && btn.textContent
+  if (!label || label.indexOf('copied') === -1) return null // not (yet) the success chip → keep polling
+  return { label, width: btn.getBoundingClientRect().width, fits: document.documentElement.scrollWidth <= window.innerWidth }
+})()`
+
+test('the header ladder: at the picker-band edge (1081) the copy success chip keeps the row one line (atomic capture during the transient)', async ({ page }) => {
+  await page.setViewportSize({ width: 1081, height: 720 }) // full-tier chrome, but below the button floor → the picker carries the switcher
+  await page.goto('/')
+  await expect(page.locator('.tour-caption')).toContainText('Playback advances the recorded trajectory', { timeout: 15000 })
+  await expect(page.locator('.thesis-chip')).toBeVisible()
+  await expect(page.locator('header nav button')).toHaveCount(0) // the picker band (labeled chrome, no button row)
+  await page.evaluate(CLIPBOARD_SHIM)
+  await page.locator('header .header-copy').click()
+  const snap = await page.waitForFunction(CAPTURE_ON_SUCCESS, undefined, { timeout: 5000 }).then(h => h.jsonValue()) as { label: string; width: number; fits: boolean }
+  expect(snap.label, 'the atomic read captured the success chip').toContain('copied ✓')
+  expect(snap.fits, 'no horizontal overflow while the copy success chip is shown at 1081').toBe(true)
+})
+
+test('the header ladder: at the fit-floor edge the copy control width is identical in rest and success states (atomic capture)', async ({ page }) => {
+  await page.setViewportSize({ width: 1141, height: 720 }) // the narrowest width where the named row renders (the floor + 1px)
+  await page.goto('/')
+  await expect(page.locator('.tour-caption')).toContainText('Playback advances the recorded trajectory', { timeout: 15000 })
+  await expect(page.locator('.thesis-chip')).toBeVisible()
+  await expect(page.locator('header nav button')).toHaveCount(6) // the named row is present at the edge
+  const copy = page.locator('header .header-copy')
+  const restWidth = Number(await copy.evaluate((el) => el.getBoundingClientRect().width)) // rest is stable — no race
+  await page.evaluate(CLIPBOARD_SHIM)
+  await copy.click()
+  const snap = await page.waitForFunction(CAPTURE_ON_SUCCESS, undefined, { timeout: 5000 }).then(h => h.jsonValue()) as { label: string; width: number; fits: boolean }
+  expect(snap.label, 'the atomic read captured the success chip').toContain('copied ✓')
+  expect(snap.width, 'the copy control width is invariant rest vs success — no swell (fails if a wider success form returns)').toBe(restWidth)
+  expect(snap.fits, 'no horizontal overflow with the copy success chip at the fit-floor edge').toBe(true)
+})
+
+// Exactly ONE accessibility announcement fires on copy. The button's accessible name is a CONSTANT aria-label
+// ("copy link"), so copying does not re-announce a changed name; the polite sr-only role="status" region is
+// the sole channel that changes ("" → "link copied"). Common browser/AT combinations would otherwise announce
+// both the name change and the status.
+test('the header ladder: copying announces via exactly one channel — the status region; the button name stays constant', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 }) // full tier → the label copy variant
+  await page.goto('/')
+  await expect(page.locator('.tour-caption')).toContainText('Playback advances the recorded trajectory', { timeout: 15000 })
+  const copy = page.locator('header .header-copy')
+  const status = page.locator('.header-copy-status')
+  await expect(copy).toHaveAttribute('aria-label', 'copy link') // stable name, before
+  await expect(status).toBeEmpty()                              // status silent, before
+  await page.evaluate(CLIPBOARD_SHIM)
+  await copy.click()
+  await expect(status).toHaveText('link copied')               // the ONE channel that changes on copy
+  await expect(copy).toHaveAttribute('aria-label', 'copy link') // name STILL constant — not a second announcement
 })
 
 // F4 — a disclosure opened over the cold-open CARD must paint ABOVE it (the header lifts into its own stacking
@@ -1283,8 +1379,8 @@ test('the header ladder: a disclosure opens ABOVE the cold-open card and its ite
     return !!el && !!el.closest('.header-menu-popup')
   })()`)
   expect(onTop, 'the popup paints above the cold-open card').toBe(true)
-  // …and a folded item is clickable over the card: switch runs to prove it (f0 → tick 0 / 2).
-  await page.getByRole('menuitem', { name: 'f0', exact: true }).click()
+  // …and a folded item is clickable over the card: switch runs to prove it (f0, labeled "Determinism" → tick 0 / 2).
+  await page.getByRole('menuitem', { name: 'Determinism', exact: true }).click()
   await expect(page.locator('.readout')).toHaveText('tick 0 / 2', { timeout: 15000 })
 })
 
@@ -1337,14 +1433,14 @@ test('the header ladder: a folded action restores focus to the ⋯ trigger (the 
   expect(await focusName(), 'focus stays on the ⋯ trigger after a panel action (never body)').toBe('more actions')
 })
 
-// F3 (closure) — the OPEN ⋯ popup must stay within a phone viewport in the REAL widest state: a FRESH deep
-// link (Playwright isolates storage per test) still shows the tour nudge, pushing the ⋯ trigger far right, so
-// a left-anchored popup would open off-screen. Right-anchored, it opens INTO the viewport. Measured with the
-// menu OPEN, and both folded panel toggles activated from inside it.
+// F3 (closure) — the OPEN ⋯ popup must stay within a phone viewport in the REAL widest state: a FRESH
+// state-bearing deep link (Playwright isolates storage per test) still shows the tour nudge, pushing the ⋯
+// trigger far right, so a left-anchored popup would open off-screen. Right-anchored, it opens INTO the
+// viewport. Measured with the menu OPEN, and both folded panel toggles activated from inside it.
 test('the header ladder: at a phone width with the tour nudge present, the OPEN ⋯ popup stays within the viewport and its folded panel toggles work', async ({ page }) => {
   for (const w of [375, 360]) {
     await page.setViewportSize({ width: w, height: 720 })
-    await page.goto('/?run=f2a') // a deep link with fresh (isolated) storage → the first-visit tour nudge is PRESENT
+    await page.goto('/?run=f2a&tick=1') // state-bearing (a pinned tick) → not a bare run link, so no auto-arm: the first-visit tour nudge is PRESENT
     await expect(page.locator('.provenance')).toContainText('trailer consistent ✓', { timeout: 15000 })
     await expect(page.getByRole('button', { name: 'dismiss tour nudge' })).toBeVisible() // the real widest state (nudge present)
     // OPEN the ⋯: the right-anchored popup AND the document must both stay within the viewport.
@@ -1366,18 +1462,22 @@ test('the header ladder: at a phone width with the tour nudge present, the OPEN 
   }
 })
 
-// The run picker carries UNSIGNED runs/index.json ids — a hostile long id must not escape the left-anchored
-// popup at a phone width (horizontal scroll + unreachable choices). Stub the index (no existing idiom, so a
-// page.route intercept — the index is a single memoized fetch) to inject a 64-char id, OPEN the picker at 360
-// AND 375, and assert the popup box, every item box, and the document scrollWidth all stay within the
-// viewport (the id ellipsizes, never extends the box), and the hostile item is still activatable.
-const HOSTILE_ID = 'a'.repeat(64) // an unsigned, URL-safe long id — ~448px of text, far past any phone width
-test('the header ladder: a hostile long run id ellipsizes inside the picker and never escapes the viewport (360/375), and stays activatable', async ({ page }) => {
-  // Inject the long id into the index (its base points at a real bundle; we assert the SWITCH fires, not the
+// The run picker carries UNSIGNED runs/index.json data. For an unauthored run (no short name) the picker
+// shows its index TITLE, so a hostile long title — like a hostile long id — must not escape the left-anchored
+// popup at a phone width (horizontal scroll + unreachable choices). Both the id and the title come from the
+// same unsigned index, so both are attacker-controlled. Stub the index (no existing idiom, so a page.route
+// intercept — the index is a single memoized fetch) to inject a run with a 64-char title (the string the
+// picker actually renders) and a URL-safe id, OPEN the picker at 360 AND 375, and assert the popup box, every
+// item box, and the document scrollWidth all stay within the viewport (the label ellipsizes, never extends
+// the box), and the hostile item is still activatable (its id drives the switch).
+const HOSTILE_ID = 'a'.repeat(64) // an unsigned, URL-safe long id — drives the switch + the run= URL
+const HOSTILE_TITLE = 'z'.repeat(64) // the unsigned display string the picker renders (~448px, far past any phone width)
+test('the header ladder: a hostile long run label ellipsizes inside the picker and never escapes the viewport (360/375), and stays activatable', async ({ page }) => {
+  // Inject the run into the index (its base points at a real bundle; we assert the SWITCH fires, not the
   // load). route persists for the page's lifetime, so one registration covers both goto()s in the loop.
   await page.route('**/runs/index.json', async (route) => {
     const runs = await route.fetch().then(r => r.json()) as unknown[]
-    runs.push({ id: HOSTILE_ID, title: 'hostile long id', base: 'runs/f0', ticks: 2, kinds: {} })
+    runs.push({ id: HOSTILE_ID, title: HOSTILE_TITLE, base: 'runs/f0', ticks: 2, kinds: {} })
     await route.fulfill({ json: runs })
   })
   for (const w of [375, 360]) {
@@ -1387,8 +1487,9 @@ test('the header ladder: a hostile long run id ellipsizes inside the picker and 
     // OPEN the PICKER (the left-anchored disclosure that carries the run ids).
     await page.getByRole('button', { name: 'switch run' }).click()
     await expect(page.locator('.header-menu-popup')).toBeVisible()
-    // the hostile item must be PRESENT (the index injection took) and its accessible name is the FULL id.
-    await expect(page.getByRole('menuitem', { name: HOSTILE_ID, exact: true })).toBeVisible()
+    // the hostile item must be PRESENT (the index injection took); its accessible name is the FULL displayed
+    // title (an unauthored run has no short name, so the picker falls back to the index title).
+    await expect(page.getByRole('menuitem', { name: HOSTILE_TITLE, exact: true })).toBeVisible()
     // the popup box, EVERY item box, and the document must all stay within the viewport.
     const box = await page.evaluate(`(() => {
       const iw = window.innerWidth
@@ -1402,7 +1503,7 @@ test('the header ladder: a hostile long run id ellipsizes inside the picker and 
     expect(box.maxRight, `picker popup + items right edge within the viewport at ${w}px`).toBeLessThanOrEqual(box.iw)
     expect(box.scrollW <= box.iw, `no document overflow with the picker open (hostile id) at ${w}px`).toBe(true)
     // …and the hostile item is still ACTIVATABLE — clicking it fires the switch (the URL updates to the id).
-    await page.getByRole('menuitem', { name: HOSTILE_ID, exact: true }).click()
+    await page.getByRole('menuitem', { name: HOSTILE_TITLE, exact: true }).click()
     await expect(page).toHaveURL(new RegExp('run=' + HOSTILE_ID))
   }
 })
@@ -1572,6 +1673,156 @@ test('f4 the contested link: the ledger is written by the scrub, the t30 loss an
   await page.waitForFunction(`(() => { const s = ${ANCHOR_LABEL_STATE}; return !!(s && s.found && s.visible); })()`, undefined, { timeout: 15000 })
   const labelState = await page.evaluate(ANCHOR_LABEL_STATE) as { found: boolean; visible: boolean; text: string } | null
   expect(labelState?.text, 'the anchor names the loss with the DECODED tick · reason, shown at rest after the run end').toBe('t30 · LOSS')
+})
+
+// ── THE f4 GUIDED TOUR — "the one lost packet": the run-through lands the loss beat on its evidence ──────────
+// The marquee's guided reading, driven in a real browser to the LOSS BEAT (beat 3). Pins the ship-bar: the
+// caption is up, the ledger has SPLIT to 15/14/1, the strip's drop line speaks the quality register ("never
+// arrived", never an integrity ✗), and the persistent anchor names the loss "t30 · LOSS" (the SDF label read
+// through the scene hook, since troika text is WebGL). The loss beat PLAYS across t30 and rests at t31.
+test('f4 guided tour: stepping to the loss beat lands the caption, the split ledger, and the t30 anchor', async ({ page }) => {
+  test.setTimeout(120_000) // beats 0–2 of holds + witness flights before the loss beat is reached
+  await page.addInitScript(CAPTURE_COMMS_SCENE)
+  const errors: string[] = []
+  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()) })
+  await asReturningVisitor(page) // launch the f4 tour by hand — no first-visit auto-arm underneath it
+  await page.goto('/?run=f4') // a returning visitor's deep link does not auto-arm → no unbid tour; we launch it explicitly
+  await expect(page.locator('.comms-strip')).toBeVisible({ timeout: 15000 })
+
+  // Launch from the header ▶ affordance — one of the three entry points the comms lens now lights.
+  await page.getByRole('button', { name: '▶ tour', exact: true }).click()
+  await expect(page.locator('.tour-caption')).toContainText('A real recorded link between two endpoints')
+
+  // Beat 3 — THE SPLIT. The caption appears at beat entry (before the flight completes); wait for it, then wait
+  // for the flight to ARRIVE (the ledger splits at rest) before reading the loss evidence.
+  await expect(page.locator('.tour-caption')).toContainText('the fifteenth message — marked msg 14', { timeout: 90000 })
+  await expect(page.locator('.comms-ledger')).toHaveAttribute('data-comms-ledger', '15/14/1', { timeout: 20000 })
+  const dropLine = page.locator('.comms-drop')
+  await expect(dropLine).toContainText('msg 14')
+  await expect(dropLine).toContainText('never arrived')      // the quality register…
+  await expect(page.locator('.comms-strip')).not.toContainText('✗') // …NEVER the integrity alarm
+  await page.waitForFunction(`(() => { const s = ${ANCHOR_LABEL_STATE}; return !!(s && s.found && s.visible); })()`, undefined, { timeout: 15000 })
+  const labelState = await page.evaluate(ANCHOR_LABEL_STATE) as { found: boolean; visible: boolean; text: string } | null
+  expect(labelState?.text, 'the loss beat rests on the labelled anchor').toBe('t30 · LOSS')
+
+  expect(errors, `no console errors: ${errors.join(' | ')}`).toEqual([])
+})
+
+// The reduced-motion variant: play beats SNAP (no sweep, the bloom skipped), so the loss beat's RESTING frame must
+// carry the whole conclusion on its own — the split ledger AND the labelled anchor, zero bloom required.
+test('f4 guided tour under reduced motion: the loss beat snaps to t31 and still lands the anchor + split ledger', async ({ page }) => {
+  test.setTimeout(90_000) // under reduced motion the flights snap, so only the reading holds pace the run to the loss beat
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await asReturningVisitor(page) // launch the f4 tour by hand — no first-visit auto-arm underneath it
+  await page.addInitScript(CAPTURE_COMMS_SCENE)
+  const errors: string[] = []
+  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()) })
+  await page.goto('/?run=f4')
+  await expect(page.locator('.comms-strip')).toBeVisible({ timeout: 15000 })
+
+  await page.getByRole('button', { name: '▶ tour', exact: true }).click()
+  await expect(page.locator('.tour-caption')).toContainText('A real recorded link between two endpoints')
+  await expect(page.locator('.tour-caption')).toContainText('the fifteenth message — marked msg 14', { timeout: 60000 })
+  await expect(page.locator('.comms-ledger')).toHaveAttribute('data-comms-ledger', '15/14/1', { timeout: 15000 })
+  await expect(page.locator('.comms-drop')).toContainText('never arrived')
+  await page.waitForFunction(`(() => { const s = ${ANCHOR_LABEL_STATE}; return !!(s && s.found && s.visible); })()`, undefined, { timeout: 15000 })
+  const labelState = await page.evaluate(ANCHOR_LABEL_STATE) as { found: boolean; visible: boolean; text: string } | null
+  expect(labelState?.text, 'reduced motion still rests on the labelled anchor — the story survives the snap').toBe('t30 · LOSS')
+
+  expect(errors, `no console errors: ${errors.join(' | ')}`).toEqual([])
+})
+
+// ── THE STORY BECOMES REACHABLE — a bare run deep link auto-arms that run's tour ─────────────────────────────
+// The launch link is `?run=f4`. A BARE run deep link (a run and NOTHING else) points at that run's guided story,
+// so it auto-arms the run's authored tour on a FIRST visit — zero clicks — through the SAME arrival machine the
+// Hangar handoff uses. A STATE-BEARING link (any extra param) lands exactly as shared, no tour. The tour-dismissal
+// memory governs it: a returning visitor is not re-armed. NO returning-visitor seed in these tests — they ARE the
+// first-visit launch-link experience, so a deleted auto-arm fails them (the caption never appears without a click).
+
+test('a bare ?run=f4 deep link auto-arms the f4 tour on a first visit — the marquee launch link lands on the story', async ({ page }) => {
+  test.setTimeout(60_000) // the auto-arm waits on the model load, then the tour's opening beat
+  await page.goto('/?run=f4')
+  await expect(page.locator('.comms-strip')).toBeVisible({ timeout: 15000 })
+  // The f4 tour's opening caption is up with NO click — the bare-link auto-arm started it (fail-if-broken: no click here).
+  await expect(page.locator('.tour-caption')).toContainText('A real recorded link between two endpoints', { timeout: 15000 })
+  // …and it stays INTERRUPTIBLE by any transport input: Escape (a deselect at the resting tick) stops it, the overlay clears.
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.tour-overlay')).toHaveCount(0)
+})
+
+test('a state-bearing ?run=f4&tick=12 deep link lands as a shared view — no auto-arm', async ({ page }) => {
+  // A precise shared state (a pinned tick) is NOT a bare run link, so it lands EXACTLY where it points and never
+  // hijacks the visitor with a tour. Fresh (first-visit) storage, yet no auto-tour: the classifier gates on "a run
+  // and nothing else". Fail-if-broken: widen the classifier to treat this as bare and the overlay would appear.
+  await page.goto('/?run=f4&tick=12')
+  await expect(page.locator('.comms-strip')).toBeVisible({ timeout: 15000 })
+  await expect(page.locator('.tour-overlay')).toHaveCount(0) // the shared view stands; no story auto-plays over it
+  // …and it landed where it pointed — the ledger has advanced off the tick-0 rest (the shared state took effect).
+  await expect(page.locator('.comms-ledger')).not.toHaveAttribute('data-comms-ledger', '0/0/0')
+})
+
+test('a bare ?run=f3a deep link auto-arms the f3a tour on a first visit — the second tour is reachable too', async ({ page }) => {
+  test.setTimeout(60_000)
+  await page.goto('/?run=f3a')
+  await expect(page.locator('.provenance')).toContainText('trailer consistent ✓', { timeout: 15000 })
+  // The f3a tour's opening caption is up with NO click — the bare-link auto-arm reaches the second tour too.
+  await expect(page.locator('.tour-caption')).toContainText('A tracker has locked onto one drone', { timeout: 15000 })
+})
+
+test('a bare ?run=f0 deep link has no authored tour → it lands quietly, no auto-arm, no launcher (today\'s behavior)', async ({ page }) => {
+  // f0 ships no tour, so the bare-link arm decision parks nothing: the run lands exactly as it always has —
+  // no auto-tour, and no ▶ launcher (which only renders where a tour exists). First visit, no seed needed.
+  await page.goto('/?run=f0')
+  await expect(page.locator('.readout')).toHaveText('tick 0 / 2', { timeout: 15000 }) // f0 tickCount = 2, at rest
+  await expect(page.locator('.tour-overlay')).toHaveCount(0)                          // nothing to arm
+  await expect(page.getByRole('button', { name: '▶ tour', exact: true })).toHaveCount(0) // no tour → no launcher
+})
+
+test('the bare-link auto-arm respects the tour-dismissal memory: it arms once, then a reload of the same link is calm (a returning visitor is not re-armed)', async ({ page }) => {
+  test.setTimeout(60_000)
+  // FIRST visit: the bare link auto-arms, and starting the tour retires the tour-dismissal marker.
+  await page.goto('/?run=f4')
+  await expect(page.locator('.tour-caption')).toContainText('A real recorded link between two endpoints', { timeout: 15000 })
+  // RETURNING visit — the SAME bare link, the marker now retired: CALM. No tour auto-arms, and the ▶ tour launcher
+  // stands WITHOUT the first-visit pulse (the manual entry point remains; the memory rule matches the cold open's).
+  await page.reload()
+  await expect(page.locator('.comms-strip')).toBeVisible({ timeout: 15000 })
+  await expect(page.locator('.tour-overlay')).toHaveCount(0)
+  const tourBtn = page.getByRole('button', { name: '▶ tour', exact: true })
+  await expect(tourBtn).toBeVisible()
+  await expect(tourBtn).not.toHaveClass(/tour-nudge-cta/)
+})
+
+// ── THE f4 SHARE CLAIM, THROUGH THE PRODUCTION COPY HANDLER — the actual click-to-clipboard path ─────────────
+// The beat-5 caption promises "This run and tick can be shared by URL"; the reduced-motion tour leaves the closing
+// view AT the visitor's ladder speed (proven against the driver in f4TourCaptions.test.ts), so a non-default speed
+// rides the share URL too. That unit proof reconstructs the LinkState; THIS binds the claim to the REAL copy handler
+// (the header copy control → clipboard) so a change to what the handler serializes FAILS here. The closing beat's
+// resting state is reachable directly by a state-bearing deep link (no tour needed): ?run=f4&tick=95&speed=4 IS that
+// view. The capturing shim is the house clipboard pattern (headless Chromium's real clipboard rejects un-focused).
+test('f4 share via the real copy control: a ladder speed rides the URL; selection never does; the default omits speed', async ({ page }) => {
+  // A NON-DEFAULT ladder speed rides along — the handler serializes run + tick + speed, and NEVER a selection.
+  await page.goto('/?run=f4&tick=95&speed=4')
+  await expect(page.locator('.comms-strip')).toBeVisible({ timeout: 15000 })
+  await page.evaluate(CLIPBOARD_SHIM)
+  await page.locator('.header-copy').click()
+  await page.waitForFunction('window.__copiedUrl !== null', undefined, { timeout: 5000 })
+  const clip4 = new URL((await page.evaluate('window.__copiedUrl')) as string).searchParams
+  expect([...clip4.keys()].sort()).toEqual(['run', 'speed', 'tick']) // EXACTLY these — sel and ev absent by construction
+  expect(clip4.get('run')).toBe('f4')
+  expect(clip4.get('tick')).toBe('95')
+  expect(clip4.get('speed')).toBe('4') // the arriving ladder speed round-trips through the handler
+
+  // THE DEFAULT companion — at the resting default speed the handler OMITS speed: run + tick only.
+  await page.goto('/?run=f4&tick=95')
+  await expect(page.locator('.comms-strip')).toBeVisible({ timeout: 15000 })
+  await page.evaluate(CLIPBOARD_SHIM)
+  await page.locator('.header-copy').click()
+  await page.waitForFunction('window.__copiedUrl !== null', undefined, { timeout: 5000 })
+  const clip1 = new URL((await page.evaluate('window.__copiedUrl')) as string).searchParams
+  expect([...clip1.keys()].sort()).toEqual(['run', 'tick']) // no speed param at the default
+  expect(clip1.get('run')).toBe('f4')
+  expect(clip1.get('tick')).toBe('95')
 })
 
 // THE BINDING GPU RULE — the pulses are PRECOMPILED (instanced attributes) and UNIFORM-DRIVEN (the playhead), so

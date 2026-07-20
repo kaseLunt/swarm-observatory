@@ -49,6 +49,7 @@ export type CallsignScheme = 'nato' | 'squadron'
 export const CALLSIGN_SCHEME: CallsignScheme = 'nato'      // the safe default; 'squadron' is the alternative if the owner picks it
 export const SQUADRON_WORD = 'VANTA'                       // consumed only when CALLSIGN_SCHEME === 'squadron'
 export const F2A_TOUR_TITLE = 'What the sensor admits'     // the lens's LAW-4 question in five words
+export const F3A_TOUR_TITLE = 'What the tracker believes'  // the belief lens's question — names the lens, never the story it uncovers (not "the overconfident tracker")
 
 // NATO phonetic alphabet — genre-true, Lattice register. Past 26 → "ALFA-2" (index / 26).
 const NATO = [

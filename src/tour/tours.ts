@@ -1,5 +1,5 @@
 import type { Tour } from './tourTypes'
-import { F2A_TOUR_TITLE } from '../ui/identityPlate'
+import { F2A_TOUR_TITLE, F3A_TOUR_TITLE } from '../ui/identityPlate'
 import type { TrustVerdict } from '../decode/verify'
 import { loadIsCurrent } from '../ui/hangar'
 
@@ -118,6 +118,95 @@ export const TOURS: Record<string, Tour> = {
       { play: { to: 67, speed: 4 }, arrive: { kind: 'conjunction', occluder: true }, caption: 'Then the occluder cuts the line of sight: in range and in view, but blocked — so eligibility drops back to ember for a stretch.', holdMs: 7000 },
       { play: { to: 82, speed: 4 }, arrive: { kind: 'head', distance: 'medium' }, caption: 'The sightline clears and the drone is admitted again — right up to the exact max-range edge at tick 82, another boundary tie.', holdMs: 6800 },
       { tick: 95, select: { event: 211 }, arrive: { kind: 'stage' }, caption: 'Ninety-six sensing verdicts. In range, LOS clear and eligibility are recomputed live in your browser and match the engine byte for byte; in FOV is shown honestly in the claim voice. Every view is a shareable URL.', holdMs: 11400 },
+    ],
+  },
+  f4: {
+    id: 'f4-comms',
+    runId: 'f4',
+    title: 'The one lost packet',
+    // THE CONTESTED LINK, guided: a steady link, proven honest, and the ONE packet you can point at. Every number
+    // is decode-true from the f4 bundle and PLAYHEAD-SCOPED — the ledger is written by the scrub, so each caption
+    // quotes the tally AT ITS OWN rest tick. The loss is NOT-YET before tick 30: at tick 29 the ledger reads
+    // 14 sent · 14 delivered · 0 lost, at tick 30 it splits to 15 · 14 · 1. A pre-t30 beat therefore NEVER says
+    // "1 lost"; the whole-run 32 / 31 / 1 is a closing claim only. Counts are scope-labelled to match the strip
+    // ("so far" while scrubbing, "the whole run" at the end).
+    //   THE DROPPED MESSAGE IS THE FIFTEENTH SEND but carries the zero-based marker msg 14 (ids 0–13 are the
+    // fourteen delivered before it — so "15 sent" and "msg 14" both name it). A caption that quotes the id gives
+    // BOTH the ordinal and the marker, so the running "14 delivered" and the identifier "msg 14" can never read as
+    // the same message.
+    //   THE LOSS BEAT (beat 3) PLAYS ACROSS tick 30 AND RESTS AT tick 31 — never a paused tick 30. A paused landing
+    // on tick 30 freezes the hero pulse full-bloom at its source (a launch, not a loss), and under reduced motion
+    // that frozen frame would be the ONLY frame. Resting at 31 lands in the afterglow window (the fizzle done, the
+    // ember decaying at mid-span, the persistent "t30 · LOSS" anchor up) — the decode-true "the loss just happened,
+    // and its mark persists" frame. The tick field is an integer at rest; the play sweep (never a fractional tick)
+    // is what samples the sub-tick collapse.
+    //   THE CAMERA IS AUTHORED STILLNESS. Beat 0 opens on the composed stage the tour-start reset already frames (no
+    // arrive). EVERY later beat re-asserts arrive:{kind:'stage'} — the comms duet has no flying subject, so the
+    // stage shot is the only one that resolves, and re-asserting it re-computes the IDENTICAL frame (the ease is a
+    // no-op, the camera holds perfectly still). Omitting arrive on a play beat would drift to the trajectory-so-far
+    // default, which on a run with no entity trajectory is degenerate — so arrive is a MUST here, not decoration.
+    //   REDUCED MOTION IS FIRST-CLASS AND HONEST. Under reduced motion a play beat SNAPS to its target tick (no
+    // sweep), so the bloom is skipped — the tour NEVER depends on it being seen. Every beat lands its meaning on
+    // evidence that survives the snap: the labelled anchor, the split ledger, and the closing receipt.
+    //   A play beat's `speed` is authored INTENT only: the driver witness-normalizes every play span to a fixed
+    // presentation window, so the number does not set the flight rate — it is authored the same way the other
+    // tours author theirs, and must NOT be tuned as a live pacing control.
+    //   THE CLOSING LINE names only what a share URL round-trips — the run and tick (the serializer carries
+    // run/tick/selection/speed, and this tour holds no selection). The active tour beat and the authored camera do
+    // NOT serialize, so a recipient opens the resting view, never the guided one; the caption must not promise it.
+    //   holdMs is the FULL reading window per caption (≥ caption.length·50, rounded up to the next 100, with one
+    // step of margin for a beat already on the 100-boundary) — the reading-window floor, never discounted.
+    steps: [
+      { tick: 0, select: { entity: null, event: null }, caption: 'A real recorded link between two endpoints, and 32 messages sent across the whole run. Every timing and outcome is decoded; the endpoints are staged, not placed by position.', holdMs: 8700 },
+      { play: { to: 20, speed: 4 }, arrive: { kind: 'stage' }, caption: 'The pulses cross and the ledger climbs — sent and delivered rising together, nothing lost so far. The link keeps a steady beat.', holdMs: 6400 },
+      { play: { to: 29, speed: 2 }, arrive: { kind: 'stage' }, caption: '14 sent, 14 delivered, not one lost — so far. The next message launches at tick 30. Watch it.', holdMs: 4700 },
+      { play: { to: 31, speed: 1 }, arrive: { kind: 'stage' }, caption: 'At tick 30 the fifteenth message — marked msg 14 — is sent, and never arrives. It fizzles at mid-span; the ledger splits to 1 lost so far, and the loss keeps a permanent mark: t30 · LOSS.', holdMs: 9400 },
+      { play: { to: 95, speed: 4 }, arrive: { kind: 'stage' }, caption: 'The link resumes and every later message arrives — the lost count holds at 1. The whole run: 32 sent, 31 delivered, and the 1 that never arrived, still there to point at.', holdMs: 8600 },
+      { tick: 95, arrive: { kind: 'stage' }, caption: 'Across the whole run, two readings agree — 32 causation edges and 31 delivered receipts — both point at the same lost packet. The check is self-consistent, not an outside seal: msg 14 — the fifteenth sent — never arrived, a channel loss, not a byte-mismatch. This run and tick can be shared by URL.', holdMs: 15000 },
+    ],
+  },
+  f3a: {
+    id: 'f3a-track',
+    runId: 'f3a',
+    // The belief lens's LAW-4 question (identityPlate.F3A_TOUR_TITLE) — names the lens, never the story it uncovers.
+    title: F3A_TOUR_TITLE,
+    // THE BELIEF TOUR — the tracker that grows confident while growing wrong. Every number is DECODE-TRUE from the
+    // f3a bundle and re-derived from the belief STRIP's rendered output at each beat's playhead (the reported-1σ and
+    // actual-error series — see f3aTour.test.ts, which pins each figure through sigmaAt/errorAt at the beat's tick).
+    // The tick anchors: the first track update is t2 (widest belief, the truth still INSIDE the disc), the truth has
+    // slipped outside by t5 and stays out, the last update is t79 (the tightest belief, the truth well outside), and
+    // TrackDropped fires at t87 (reason TIMEOUT). confirmedTick is t1. The reported 1σ shrinks monotonically to its
+    // GLOBAL MINIMUM at t79 (0.44 m) — the ONE backed superlative ("most sure of all"). The ACTUAL error is
+    // NON-MONOTONIC (it peaks at t43, ~3.51 m, NOT at t79's 2.43 m; the error/σ ratio also peaks at t43, not t79), so
+    // NO caption carries a wrongness superlative — the wrongness is stated as a comparison, never a maximum.
+    //   PURE PAUSED SCRUBS, by design (no play beats). The disc and the strip are fully playhead-driven — a scrub to
+    // tick t lands EXACTLY on that tick's decoded state, so each beat's caption reads the same numbers a viewer would
+    // at that playhead. Under reduced motion the authored camera CUTS and the playhead SNAPS to the same rest frame,
+    // so this whole story survives with zero animation (the four scrub targets each show a coherent 1σ/error pair;
+    // beat 5 rests clean) — no beat may depend on motion being seen.
+    //   TRUE SCALE IS LAW: the confidence disc is the reported 1σ eigen-semi-axis of the tracker's covariance, drawn
+    // true-scale — never magnified. The STAGE carries the RELATIONSHIP (the drone drifting outside the ring), the
+    // STRIP carries the PRECISION (the 0.44 m vs 2.43 m class of numbers). The divergence beats frame the head CLOSE
+    // so the ~2.43 m end-gap reads; if a beat's geometry still reads small, that is honest — the caption leans on the
+    // strip and never scales the disc up.
+    //   CAPTION HONESTY MUSTS (this lens is the honesty showpiece): the timeout is SEQUENTIAL, never causal ("grows
+    // overconfident, then times out" — never "because"); the tracker is "overconfident," never "broken"; the disc is
+    // the reported 1σ (no 68%/probability-region claim — the σ-multiple that rounding can shift stays on the strip,
+    // out of the captions); the gap between belief and reality is named plainly as the tracker's actual error —
+    // decoded data, both halves, DERIVED from all 78 updates and sampled at the beats' four checkpoints (never "shown"
+    // at all 78); and the close claims only what a share URL round-trips (run, tick, selection — never the guided
+    // view). holdMs is the full reading window (≥ caption.length·50, rounded up).
+    //   AUTHORED CAMERA: open easing off the stage reset into the head (medium) so the ring reads around the drone;
+    // the divergence beats go head CLOSE (the legibility remedy); the close cranes back to the whole-instrument stage
+    // bookend. head + stage both resolve on f3a (it carries the flying subject 1:0); the sensing/query/comms shots
+    // resolve null here and fall through. Beat 0 establishes full selection state explicitly (the deep-link contract).
+    steps: [
+      { tick: 2, select: { entity: '1:0', event: null }, arrive: { kind: 'head', distance: 'medium' }, caption: "A tracker has locked onto one drone. At its first fix the belief is wide — the reported 1σ is 1.83 m — and the drone's decoded position sits inside the disc.", holdMs: 7900 },
+      { tick: 4, arrive: { kind: 'head', distance: 'medium' }, caption: "Two more fixes in, the reported 1σ pulls in to 1.55 m — the tracker is growing confident, and the drone's decoded position is still inside the tightening disc.", holdMs: 8000 },
+      { tick: 25, arrive: { kind: 'head', distance: 'close' }, caption: "Keep going and the two part ways: the disc has tightened under a metre — a reported 1σ of 0.76 m — but the gap to the drone's decoded truth has grown to 2.25 m, the tracker's actual error. The drone is now outside the disc.", holdMs: 11200 },
+      { tick: 79, arrive: { kind: 'head', distance: 'close' }, caption: "At its last fix the tracker is most sure of all — a reported 1σ of 0.44 m — while the decoded truth sits 2.43 m away, well outside the ring the tracker drew. More certain, and less right — overconfident.", holdMs: 10400 },
+      { tick: 87, arrive: { kind: 'head', distance: 'close' }, caption: "No fix comes after tick 79. The estimate holds at its last value — 0.44 m of reported confidence against 2.43 m of actual error — and at tick 87 the track times out and is dropped (TIMEOUT). It grows overconfident, then times out.", holdMs: 11700 },
+      { tick: 87, arrive: { kind: 'stage' }, caption: "Both halves are decoded: the ring is the tracker's own reported estimate, the drone is the decoded state truth, and the gap between them is the tracker's actual error — derived from all 78 decoded updates, sampled here at four checkpoints. This run, tick, and selection can be shared by URL.", holdMs: 14800 },
     ],
   },
 }

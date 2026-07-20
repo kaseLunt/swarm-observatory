@@ -1,5 +1,5 @@
-import { expect, test } from 'vitest'
-import { probeStorage, shouldArmZeroClick } from './coldOpen'
+import { describe, expect, test } from 'vitest'
+import { probeStorage, shouldArmZeroClick, autoArmMemoryAllows, bareRunDeepLink, bareLinkTourToArm } from './coldOpen'
 
 // A minimal in-memory Storage stand-in (the node-env runner has no localStorage). `throwing` models a
 // denied/private-mode store where every access throws — the denied-store case.
@@ -86,4 +86,72 @@ test("scope 'off' vetoes the zero-click open entirely", () => {
 test("scope 'always' ignores BOTH the nudge marker and storage availability (auto-play every cold open)", () => {
   expect(shouldArmZeroClick('always', true, true, true, true)).toBe(true)   // seen marker ignored
   expect(shouldArmZeroClick('always', true, true, false, false)).toBe(true) // storage denial irrelevant
+})
+
+// ── the SHARED tour-dismissal memory gate (both auto-arm surfaces read the same rule) ──────────────
+describe('autoArmMemoryAllows — the one memory rule the cold open and the bare deep link share', () => {
+  test("'off' vetoes an auto-arm regardless of the marker or storage", () => {
+    expect(autoArmMemoryAllows('off', false, true)).toBe(false)
+    expect(autoArmMemoryAllows('off', false, false)).toBe(false)
+  })
+  test("'first-visit' permits only an UNSEEN marker on an AVAILABLE store", () => {
+    expect(autoArmMemoryAllows('first-visit', false, true)).toBe(true)   // fresh visit, store works → arm
+    expect(autoArmMemoryAllows('first-visit', true, true)).toBe(false)   // marker SEEN → returning visitor, no re-arm
+    expect(autoArmMemoryAllows('first-visit', false, false)).toBe(false) // denied store cannot retire the marker → suppress
+  })
+  test("'always' ignores both the marker and storage", () => {
+    expect(autoArmMemoryAllows('always', true, false)).toBe(true)
+    expect(autoArmMemoryAllows('always', false, true)).toBe(true)
+  })
+})
+
+// ── the BARE-link classifier: run-and-nothing-else, every other combination is a shared view ────────
+describe('bareRunDeepLink — a run param and NOTHING else is bare; any extra state is a shared view', () => {
+  test('a lone run param is bare — the run id is returned', () => {
+    expect(bareRunDeepLink('?run=f4')).toBe('f4')
+    expect(bareRunDeepLink('run=f4')).toBe('f4')       // a missing leading '?' is tolerated
+    expect(bareRunDeepLink('?run=f3a')).toBe('f3a')
+  })
+  test('the empty query (the bare ROOT) is NOT a bare run link — it names no run', () => {
+    expect(bareRunDeepLink('')).toBeNull()
+    expect(bareRunDeepLink('?')).toBeNull()
+  })
+  test('an empty run value is not a run link', () => {
+    expect(bareRunDeepLink('?run=')).toBeNull()
+  })
+  test('ANY additional state param makes it a shared view, never bare — in EITHER order', () => {
+    for (const qs of [
+      '?run=f4&tick=12', '?tick=12&run=f4',   // a precise tick
+      '?run=f4&sel=1:0', '?run=f4&ev=30',      // a selection / an event
+      '?run=f4&speed=4',                        // a transport speed
+      '?run=f4&capture=30',                     // the capture entry point
+      '?run=f4&foo=1',                          // an unknown param is still extra state
+    ]) expect(bareRunDeepLink(qs), qs).toBeNull()
+  })
+  test('a repeated run= is not a clean single-run link', () => {
+    expect(bareRunDeepLink('?run=f4&run=e0')).toBeNull()
+  })
+})
+
+// ── the bare-link ARM decision: names a bare run + a tour EXISTS + the memory permits ───────────────
+describe('bareLinkTourToArm — park a bare run tour iff it exists AND the memory permits (admission is the arrival machine\'s)', () => {
+  test('a bare run with a tour on a fresh first visit → park that run', () => {
+    expect(bareLinkTourToArm('f4', true, 'first-visit', false, true)).toBe('f4')
+  })
+  test('no bare run (a state-bearing or root load classified to null) → park nothing', () => {
+    expect(bareLinkTourToArm(null, false, 'first-visit', false, true)).toBeNull()
+  })
+  test('a bare run with NO authored tour → park nothing (f0 keeps today\'s behavior)', () => {
+    expect(bareLinkTourToArm('f0', false, 'first-visit', false, true)).toBeNull()
+  })
+  test('a RETURNING visitor (marker seen) is not re-armed by a bare link', () => {
+    expect(bareLinkTourToArm('f4', true, 'first-visit', true, true)).toBeNull()
+  })
+  test('a denied store suppresses the bare-link auto-arm (cannot retire the marker) under first-visit', () => {
+    expect(bareLinkTourToArm('f4', true, 'first-visit', false, false)).toBeNull()
+  })
+  test("scope 'off' vetoes the bare-link auto-arm; 'always' arms every visit", () => {
+    expect(bareLinkTourToArm('f4', true, 'off', false, true)).toBeNull()
+    expect(bareLinkTourToArm('f4', true, 'always', true, false)).toBe('f4') // marker + storage irrelevant under 'always'
+  })
 })

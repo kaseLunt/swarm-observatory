@@ -1,5 +1,15 @@
 import { expect, test, type Page } from '@playwright/test'
 
+// Every test here launches a run's tour BY HAND (the ▶ affordance) and measures its authored camera. A bare
+// run deep link now auto-arms that run's tour on a FIRST visit, which would start a second, unbid tour under
+// these hand-driven measurements. Seed the tour-dismissal memory as already-retired — a RETURNING visitor, the
+// calm posture in which a bare deep link does NOT auto-arm — so each test drives exactly the one tour it starts.
+// The key mirrors the app's persistent tour-nudge marker; a drift would surface as an unexpected auto-tour here.
+// Passed as a STRING (the e2e tsconfig excludes the DOM lib, so browser code travels as source — the house pattern).
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(`try { localStorage.setItem('so.tourNudgeSeen', '1') } catch {}`)
+})
+
 // ── v0.7: THE AUTHORED TOUR CAMERA — both tours played through, per-beat evidence ─────────────────────────
 // The authored per-beat arrives ride the EXISTING trail-frame channel on intent 'tour-arrival' (no new camera
 // owner). These specs play each tour beat-by-beat, capture a screenshot at every beat (the before/after
@@ -96,7 +106,7 @@ test('f1 hero tour: authored arrives compose around the head; the front door END
   await page.addInitScript(CAPTURE_SCENE)
   const errors: string[] = []
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()) })
-  await page.goto('/?run=f1') // a deep link is not a cold open → no auto-tour; we drive it explicitly
+  await page.goto('/?run=f1') // a returning visitor's deep link does not auto-arm → no unbid tour; we drive it explicitly
   await expect(page.locator('.readout')).toHaveText('tick 0 / 64', { timeout: 15000 })
   await page.waitForFunction('!!window.__scene', undefined, { timeout: 15000 })
   // NEGATIVE CONTROL — latch the PRE-TOUR (load-vantage) camera. Beat 0 is UN-AUTHORED (no arrive — the
@@ -258,7 +268,7 @@ test('e0 query-stage tour: corridor / crane / stage-bookend arrives each move th
   await page.addInitScript(CAPTURE_SCENE)
   const errors: string[] = []
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()) })
-  await page.goto('/?run=e0') // a deep link is not a cold open → no auto-tour; we drive it explicitly
+  await page.goto('/?run=e0') // a returning visitor's deep link does not auto-arm → no unbid tour; we drive it explicitly
   await expect(page.locator('.readout')).toContainText('tick 0 / 75', { timeout: 15000 })
   await page.waitForFunction('!!window.__scene', undefined, { timeout: 15000 })
   // The PRE-TOUR load vantage — for e0 this IS the stage bookend (CameraRig frames the query core theatre on

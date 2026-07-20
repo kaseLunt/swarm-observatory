@@ -233,6 +233,17 @@ DEFERRED on triggers: belief sparklines (BeliefUpdated in ZERO runs), jam/contes
 | Schema atlas (24 kinds: present/lensed/dormant) | D-tail | PLANNED |
 | Dev harness route (spec §9) | D-tail | PLANNED (pays across every lens cycle) |
 
+## v0.9.1 — THE TOURS (**LADDER COMPLETE 2026-07-19** — all four rungs merged to `dev/v0.9.1` @ 8c4fd98; snapshot #8 = this tree, pin in the session ledger at push; **CYCLE OPENED 2026-07-19** on the owner's word after the v0.9 close — G-1 scope as laddered incl. the added R4, G-2 the six switcher names approved verbatim; plan of record `docs/superpowers/plans/2026-07-19-swarm-observatory-v0.9.1-the-tours.md`; branch `dev/v0.9.1`; discharges the tour-per-lens STANDING-RULE violation carried from v0.9 + the critic's "marquee unsignposted" finding)
+
+| # | Rung | Status |
+|---|------|--------|
+| R1 | Names on the switcher: authored capability names (Determinism · Motion · Geometry · Sensing · Target track · Comms link), three-form discipline (id / short / full) | SHIPPED (merged ed2292f; 6 rounds — the polish rung that closed a tampered-index crash CLASS layer by layer [title → id → full structural shape → load-plan actionability, ONE boundary], made the header row state-invariant [the copy control no longer swells on success — `copied ✓` rests inside the rest-width box], and added the probe-derived fit floor SWITCHER_BUTTONS_MIN=1140 with margin + scrollbar allowance) |
+| R2 | The f4 tour "The one lost packet": six beats, the loss WITNESSED (play-to-31 at 1×, never paused-at-30 — a paused t30 renders a launch, not a loss, and is the only RM frame), captions pinned to the decoded ledger at each beat's playhead | SHIPPED (merged 02268da; 5 rounds — the count-vs-id collision fixed [msg 14 IS the fifteenth send; ordinal + marker both named], the share claim narrowed to what a URL round-trips and BOUND to the production copy handler end-to-end [driver half + clipboard-shim browser half]) |
+| R3 | The f3a tour "What the tracker believes": six paused-scrub beats, TRUE-SCALE disc, sequential timeout voice ("grows wrong, then times out") | SHIPPED (merged 3f21fd2; 2 rounds — the review DISPROVED "most wrong" by whole-series decode [max error 3.507 m @ t43, not the last fix's 2.43 m; even the error/σ ratio peaks at t43]; caption superlatives now require whole-series extremum pins and wrongness superlatives are banned by test; the receipt speaks derived-from-all-78 / four-checkpoints; the share claim serializer-bound) |
+| R4 | The story becomes reachable: a bare `?run=X` auto-arms that run's tour through the EXISTING arrival machine; state-bearing links and the bare root byte-identical; the dismissal memory honored (returning visitors never re-armed) | SHIPPED (merged 759a5a0; 1 round ZERO findings — the cycle's only first-pass approval; the classifier fails closed [key set exactly `{run}`], the 48-case cold-open truth table proven unchanged across the refactor, refusal never burns the first-visit marker) |
+
+Cycle gates at close: **2075 unit** (incl. the 205 byte-exact conformance subset) / **61 e2e** — all green on the merged tree. CARRY out of the cycle: the cross-tour `TourStep.play.speed` contract (the driver witness-normalizes every span, so authored speeds are intent metadata, documented as such on f4 — strip the field or formalize it engine-wide; one small task, all four tours + three byte-pins).
+
 ## C1 ERA — "THE SWARM ARRIVES" (GATED: Certus C1 milestone)
 
 | Item | Source | Status |

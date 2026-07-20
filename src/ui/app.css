@@ -595,6 +595,12 @@ header:has(.header-menu-popup) { position: relative; z-index: 49; }
    belongs to selection/CTAs), lifting to the transport cyan on hover exactly like .hangar-open / .help-toggle. */
 .header-copy { border-color: var(--border); color: var(--text-dim); letter-spacing: 0.04em; white-space: nowrap; }
 .header-copy:hover, .header-copy:focus-visible { border-color: var(--accent); color: var(--accent); }
+/* The label form's width is PINNED to its rest label ("copy link", 79px at this chrome's font), label
+   centered. The success form "copied ✓" is shorter, so it renders centered INSIDE this box — the control
+   shrinks in, never swells out. The header row is therefore width-invariant across the copy's rest/success
+   states by construction (no layout shift, at every band), so the button-row fit floor is sized once against
+   this stable width. */
+.header-copy-label { min-width: 79px; text-align: center; }
 /* Collapsed cold-open card: the full card's verdict voice, compacted into the header once the
    auto-tour leaves beat 0. The verdict hue rides the glyph + word (the full card's .thesis-verdict tokens,
    header-scale); × dismisses (stops the tour, retires the chip for the session). No copy-link here — it has

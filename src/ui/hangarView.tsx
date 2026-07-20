@@ -4,6 +4,7 @@ import { assumedClockTitle, cardNote, cardVerdict, effectiveSealStatus, histogra
 import { CATEGORY } from './theme'
 import { ROBUST_F3A } from '../decode/campaignCatalog'
 import { tourTitle } from '../tour/tours'
+import { runTitle, cleanString } from './runShortTitle'
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
 // THE HANGAR — the run-library front door.
@@ -161,9 +162,11 @@ function HangarCard({ entry, current, sealStatus, tourTitle, onOpenRun, onOpenTo
 
   return (
     <article className={current ? 'hangar-card current' : 'hangar-card'} data-run={entry.id}>
-      {/* HEAD BAND (reserved: v0.7 Wall header) — title largest, earned verdict beside it. */}
+      {/* HEAD BAND (reserved: v0.7 Wall header) — title largest, earned verdict beside it. The full title
+          comes from the UNSIGNED index, so it renders through the fail-soft boundary (id fallback on a
+          malformed/blank title) — the Hangar mounts outside the error boundary and must never blank. */}
       <header className="hangar-card-head">
-        <h3>{entry.title}</h3>
+        <h3>{runTitle(entry.id, entry.title)}</h3>
         <span className={`hangar-verdict ${verdict.state}`}>
           <span className="hangar-glyph" aria-hidden="true">{VOICE_GLYPH[verdict.state]}</span>
           {verdict.label}
@@ -193,9 +196,11 @@ function HangarCard({ entry, current, sealStatus, tourTitle, onOpenRun, onOpenTo
       </ul>
 
       {/* supersedes_plan_id: surfaced only when a manifest carries a non-zero chain — the anti-
-          p-hacking tripwire made architectural. Dormant today (no published manifest carries one). */}
-      {entry.supersedesPlanId && (
-        <p className="hangar-supersedes">supersedes {entry.supersedesPlanId}</p>
+          p-hacking tripwire made architectural. Dormant today (no published manifest carries one). It is an
+          unsigned rendered string, so it goes through the fail-soft boundary (a malformed value renders
+          nothing, never a coerced object) — its structural absence is fine; only its shape must be safe. */}
+      {cleanString(entry.supersedesPlanId) && (
+        <p className="hangar-supersedes">supersedes {cleanString(entry.supersedesPlanId)}</p>
       )}
 
       {/* ACTIONS — tour is the primary action where an authored tour exists (the chip names the lens it

@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { hasTour, tourTitle, tourAdmitted, tourHandoffAction, TOURS } from './tours'
+import { bareLinkTourToArm } from '../ui/coldOpen'
 import type { TrustVerdict } from '../decode/verify'
 
 // ── the ONE tour-admission predicate, consumed by all three tour entry points ─────────────────────────
@@ -28,7 +29,10 @@ describe('tourTitle — the authored tour title by run id, an OWN-property looku
     for (const id of Object.keys(TOURS)) expect(tourTitle(id)).toBe(TOURS[id]!.title)
   })
   test('a run without an authored tour resolves undefined — its Hangar card shows "open run", never a tour chip', () => {
-    for (const id of ['f0', 'f3a', 'f4', 'nope']) expect(tourTitle(id)).toBeUndefined()
+    for (const id of ['f0', 'nope']) expect(tourTitle(id)).toBeUndefined() // every lens run now ships its tour
+  })
+  test('the comms lens (f4) resolves its authored tour title — the marquee is signposted', () => {
+    expect(tourTitle('f4')).toBe('The one lost packet')
   })
   test('a prototype-shaped id never resolves an INHERITED member as a title (the retired render-crash class)', () => {
     // TOURS['__proto__'] would be Object.prototype and TOURS['toString'] a function; a plain bracket read would
@@ -44,6 +48,9 @@ describe('tourAdmitted — model + identity + verdict + tour-exists', () => {
   test('HAPPY PATH: resident model, current run, honest verdict, tour exists → admitted', () => {
     expect(tourAdmitted('e0', true, 'e0', SELF)).toBe(true)
     expect(tourAdmitted('f2a', true, 'f2a', 'manifest-verified')).toBe(true)
+    // f4 admits: its verdict is manifest-verified (dirty tree wears the quality register, NOT a mismatch), so the
+    // ▶ tour launcher, the Hangar handoff, and a launched deep link all light up on the comms marquee.
+    expect(tourAdmitted('f4', true, 'f4', 'manifest-verified')).toBe(true)
   })
   test('STALE MODEL DURING THE SWITCH GAP: a non-current model (loadedRunId names the PRIOR run) is NOT admitted', () => {
     expect(tourAdmitted('e0', true, 'f1', SELF)).toBe(false)
@@ -98,5 +105,30 @@ describe('tourHandoffAction — the Hangar → tour handoff, as a pure action', 
   })
   test('REFUSE: a parked run with no authored tour → refuse (drop the doomed request) — unchanged', () => {
     expect(tourHandoffAction('f0', 'f0', true, 'f0', SELF, OK)).toBe('refuse')
+  })
+})
+
+// ── a BARE run deep link parks through the arrival machine, which admits or REFUSES it ────────────────
+// The bare-link arm decision (coldOpen.bareLinkTourToArm) parks a run WITHOUT knowing the verdict — admission
+// (identity + verdict) is the arrival machine's job. A mismatch bare link therefore parks and is REFUSED there
+// (it lands on the frozen stage with NO tour), never started; a tour-less run never parks at all (the arm
+// decision filters it — the machine's refusal of a doomed parked run above is defense in depth). This pins the
+// composition; no mismatch fixture is reachable by a deep link in the e2e suite, so that path is covered HERE.
+describe('bare run deep link → arrival machine: parked, then admitted or refused', () => {
+  const OK = false
+  test('a bare link to a HONEST tour run parks it, and the arrival machine STARTS it', () => {
+    const parked = bareLinkTourToArm('f4', true, 'first-visit', false, true)
+    expect(parked).toBe('f4')
+    expect(tourHandoffAction(parked, 'f4', true, 'f4', 'manifest-verified', OK)).toBe('start')
+  })
+  test('a bare link to a MISMATCH destination parks it, then the arrival machine REFUSES → frozen, no tour', () => {
+    const parked = bareLinkTourToArm('f4', true, 'first-visit', false, true)
+    expect(parked).toBe('f4')
+    expect(tourHandoffAction(parked, 'f4', true, 'f4', 'mismatch', OK)).toBe('refuse')
+  })
+  test('a bare link on a RETURNING visit parks NOTHING → the arrival machine is idle (no re-arm)', () => {
+    const parked = bareLinkTourToArm('f4', true, 'first-visit', /* nudgeSeen */ true, true)
+    expect(parked).toBeNull()
+    expect(tourHandoffAction(parked, 'f4', true, 'f4', 'manifest-verified', OK)).toBe('idle')
   })
 })

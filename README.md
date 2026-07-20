@@ -114,7 +114,9 @@ draws f3a's tracker against the truth it was estimating, where the reported 1σ 
 *shrinks* as the actual error *grows* (a filter confident and wrong, shown as a decoded
 comparison); and the **raw evidence table** lists every decoded event of the loaded run, each
 f64 one hover from its exact round-trippable value, so any rendered claim can be checked against
-the byte it came from. **The Hangar** is the run-library front door — a
+the byte it came from. Every lens run now ships a **guided tour** — a narrated sixty-second
+pass whose every number is test-pinned to the decoded bytes at that moment of playback — and
+a bare run link (`?run=f4`) starts its run's story itself on a first visit. **The Hangar** is the run-library front door — a
 card per run family that earns its verification seal only after you open it and its hashes
 re-fold in your browser this session. Multi-entity content arrives with the engine's C1
 milestone — and the causal-chain grammar here is deliberately designed as the single-entity
@@ -135,8 +137,8 @@ mine. If the commit density looks unusual, that's why — the interesting artifa
 just the app, it's the process that let it ship this fast while staying provable.
 
 Every task runs the same loop: a committed plan
-([`docs/superpowers/plans/`](./docs/superpowers/plans/) — fourteen cycles so far, v0.1 through
-v0.9), a written brief, implementation, and then **two independent reviews per task** — a
+([`docs/superpowers/plans/`](./docs/superpowers/plans/) — fifteen cycles so far, v0.1 through
+v0.9.1), a written brief, implementation, and then **two independent reviews per task** — a
 line-level code review, and a separate adversarial pass that must produce *executable
 evidence* for its findings, not opinions. The two disagree regularly; findings are
 adjudicated (fix now / defer with a trigger / reject with reasons), and both reviewers have
@@ -157,8 +159,8 @@ questions a viewer can ask, one selection grammar, four laws, and a strict gramm
 the past may be drawn into the present frame — is ratified and binding: every new surface
 is judged against it before it ships.
 <!-- CUT-POINT C -->
-Current state of the gates: **1981 unit tests** (including the 205-test byte-exact conformance
-subset) and **49 Playwright end-to-end checks** (as of v0.9); CI runs typecheck, lint, the
+Current state of the gates: **2075 unit tests** (including the 205-test byte-exact conformance
+subset) and **61 Playwright end-to-end checks** (as of v0.9.1); CI runs typecheck, lint, the
 full test suite, a production build, and the browser smoke pass on every push, and has been
 green on GitHub runners since the first push. The test suite re-derives every pinned hash
 from the vendored bundles on every run.
